@@ -1,0 +1,488 @@
+[
+  {
+    "id": "NHC_2024_INFANT_FEEDING_EVAL",
+    "title": "国家卫生健康委办公厅关于印发婴幼儿营养喂养评估服务指南（试行）的通知",
+    "organization": "中华人民共和国国家卫生健康委员会",
+    "date": "2024-11-27",
+    "url": "https://www.nhc.gov.cn/fys/c100078/202502/19903ff647694f3a85ed6fe332380b34.shtml",
+    "access_type": "official_public_page",
+    "notes": "覆盖 0-3 岁母乳喂养、辅食添加、合理膳食、饮食行为、营养评估和转诊。"
+  },
+  {
+    "id": "CNS_2022_INFANT_FEEDING_CORE",
+    "title": "《中国婴幼儿喂养指南（2022）》核心信息",
+    "organization": "中国营养学会 / 中国居民膳食指南",
+    "date": "2022-06-02",
+    "url": "https://dg.cnsoc.org/article/04/gc5cUak3RhSGheqSaRljnA.html",
+    "access_type": "official_public_page",
+    "notes": "包括 0-6 月龄、7-24 月龄和学龄前儿童膳食指南核心信息；图示版权归中国营养学会。"
+  },
+  {
+    "id": "WHO_2023_COMPLEMENTARY_FEEDING_GUIDELINE",
+    "title": "WHO Guideline for complementary feeding of infants and young children 6-23 months of age",
+    "organization": "World Health Organization",
+    "date": "2023-10-16",
+    "url": "https://www.who.int/publications/i/item/9789240081864",
+    "access_type": "official_publication",
+    "notes": "全球规范性辅食指南，适用于 6-23 月龄，含母乳和非母乳喂养儿童。"
+  },
+  {
+    "id": "WHO_2025_IYCF_MODEL_CHAPTER",
+    "title": "Infant and young child feeding: model chapter for textbooks for medical students and allied health professionals, 2nd ed.",
+    "organization": "World Health Organization",
+    "date": "2025-09-24",
+    "url": "https://www.who.int/publications/i/item/9789240113732",
+    "access_type": "official_publication",
+    "notes": "卫生专业人员基础教育资料，聚焦 2 岁以下婴幼儿喂养。"
+  },
+  {
+    "id": "WHO_UNICEF_2021_IYCF_COUNSELLING",
+    "title": "Infant and young child feeding counselling: an integrated course, 2nd ed.",
+    "organization": "WHO / UNICEF",
+    "date": "2021-10-15",
+    "url": "https://www.who.int/publications/i/item/9789240032408",
+    "access_type": "official_training_material",
+    "notes": "用于医务人员的母乳喂养和辅食咨询课程资料。"
+  },
+  {
+    "id": "CDC_2026_SOLIDS",
+    "title": "When, What, and How to Introduce Solid Foods",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-04-14",
+    "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html",
+    "access_type": "official_public_health_page",
+    "notes": "辅食引入时间、准备信号、过敏食物和米粉砷暴露提示。"
+  },
+  {
+    "id": "CDC_2025_AMOUNT_FREQUENCY",
+    "title": "How Much and How Often To Feed",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2025-03-11",
+    "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/how-much-and-how-often-to-feed.html",
+    "access_type": "official_public_health_page",
+    "notes": "6-24 月龄进食频次和由少到多原则。"
+  },
+  {
+    "id": "CDC_2025_AVOID_LIMIT",
+    "title": "Foods and Drinks to Avoid or Limit",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2025-03-11",
+    "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/foods-and-drinks-to-avoid-or-limit.html",
+    "access_type": "official_public_health_page",
+    "notes": "蜂蜜、添加糖、高盐、汞含量高鱼类、未巴氏杀菌食品、牛奶、果汁和咖啡因限制。"
+  },
+  {
+    "id": "CDC_2024_CHOKING",
+    "title": "Choking Hazards",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2024-10-10",
+    "url": "https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html",
+    "access_type": "official_public_health_page",
+    "notes": "食物形状、质地、进食姿势和看护对预防噎呛的重要性。"
+  },
+  {
+    "id": "CDC_2026_BREASTMILK_STORAGE",
+    "title": "Breast Milk Storage and Preparation",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-03-25",
+    "url": "https://www.cdc.gov/breastfeeding/breast-milk-preparation-and-storage/handling-breastmilk.html",
+    "access_type": "official_public_health_page",
+    "notes": "母乳挤出、储存、解冻和处理安全。"
+  },
+  {
+    "id": "CDC_2024_FORMULA_PREP",
+    "title": "Infant Formula Preparation and Storage",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2024-12-19",
+    "url": "https://www.cdc.gov/infant-toddler-nutrition/formula-feeding/preparation-and-storage.html",
+    "access_type": "official_public_health_page",
+    "notes": "配方奶冲调、清洁、加热和储存安全。"
+  },
+  {
+    "id": "CDC_2025_VITAMIN_D",
+    "title": "Vitamin D and Breastfeeding",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2025-09-23",
+    "url": "https://www.cdc.gov/breastfeeding-special-circumstances/hcp/diet-micronutrients/vitamin-d.html",
+    "access_type": "official_public_health_page",
+    "notes": "母乳或部分母乳喂养婴儿维生素 D 补充。"
+  },
+  {
+    "id": "AAP_2025_SOLIDS",
+    "title": "Starting Solid Foods",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2025-09-01",
+    "url": "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/starting-solid-foods.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "AAP 面向家庭的辅食开始、铁锌来源、单一食材观察和噎呛风险教育。"
+  },
+  {
+    "id": "AAP_2025_ALLERGENS",
+    "title": "When to Introduce Egg, Peanut Butter & Other Common Food Allergens to a Baby",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2025-06-12",
+    "url": "https://www.healthychildren.org/English/healthy-living/nutrition/Pages/when-to-introduce-egg-peanut-butter-and-other-common-food-allergens-to-your-baby-food-allergy-prevention-tips.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "过敏食物早期、适龄、安全形态引入；高风险婴儿需先咨询医生。"
+  },
+  {
+    "id": "AAP_2024_BREASTFEEDING_POLICY_EXPLAINED",
+    "title": "Breastfeeding: AAP Policy Explained",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2024-05-01",
+    "url": "https://www.healthychildren.org/English/ages-stages/baby/breastfeeding/Pages/Where-We-Stand-Breastfeeding.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "AAP 母乳喂养政策解读：约 6 个月纯母乳，添加辅食后可持续至 2 岁或更久。"
+  },
+  {
+    "id": "AAP_2026_SAFE_SLEEP",
+    "title": "How to Keep Your Sleeping Baby Safe: AAP Policy Explained",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2026-01-01",
+    "url": "https://www.healthychildren.org/English/ages-stages/baby/sleep/Pages/a-parents-guide-to-safe-sleep.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "AAP 安全睡眠建议，适用于 1 岁内婴儿。"
+  },
+  {
+    "id": "CDC_2024_SAFE_SLEEP",
+    "title": "Providing Care for Babies to Sleep Safely",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2024-09-17",
+    "url": "https://www.cdc.gov/sudden-infant-death/sleep-safely/index.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 支持 AAP 2022 安全睡眠建议。"
+  },
+  {
+    "id": "AAP_2024_POOP_COLORS",
+    "title": "The Many Colors of Baby Poop",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2024-08-01",
+    "url": "https://www.healthychildren.org/English/ages-stages/baby/Pages/The-Many-Colors-of-Poop.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "婴儿大便颜色正常范围和红/黑/白便就医提示。"
+  },
+  {
+    "id": "AAP_2022_INFANT_CONSTIPATION",
+    "title": "How Can I Tell If My Baby is Constipated?",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2022-05-01",
+    "url": "https://www.healthychildren.org/English/ages-stages/baby/diapers-clothing/pages/Infant-Constipation.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "婴儿排便频率差异、便秘判断和喂养不足提示。"
+  },
+  {
+    "id": "AAP_2015_INFANT_DIARRHEA",
+    "title": "Diarrhea in Babies",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2015-01-01",
+    "url": "https://www.healthychildren.org/English/ages-stages/baby/diapers-clothing/Pages/Diarrhea-in-Babies.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "婴儿腹泻与正常稀便区分，以及何时联系儿科医生。"
+  },
+  {
+    "id": "BOOK_AAP_CARING_BIRTH_TO_5",
+    "title": "Caring for Your Baby and Young Child: Birth to Age 5",
+    "organization": "American Academy of Pediatrics",
+    "date": "book",
+    "url": "https://shop.aap.org/caring-for-your-baby-and-young-child-paperback/",
+    "access_type": "bibliographic_only",
+    "notes": "权威母婴书籍；未取得授权前不要入库正文，只可登记书目信息或人工摘录极短事实并保留页码。"
+  },
+  {
+    "id": "BOOK_AAP_PEDIATRIC_NUTRITION",
+    "title": "Pediatric Nutrition",
+    "organization": "American Academy of Pediatrics",
+    "date": "book",
+    "url": "https://shop.aap.org/pediatric-nutrition-paperback/",
+    "access_type": "bibliographic_only",
+    "notes": "专业营养参考书；版权限制同上。"
+  },
+  {
+    "id": "NHC_2022_CHILDCARE_FEEDING_NUTRITION",
+    "title": "国家卫生健康委办公厅关于印发托育机构婴幼儿喂养与营养指南（试行）的通知",
+    "organization": "中华人民共和国国家卫生健康委员会",
+    "date": "2022-01-17",
+    "url": "https://www.nhc.gov.cn/rkjcyjtfzs/c100147/202201/a7d3fc17153f410ea97270814a3e662f.shtml",
+    "access_type": "official_public_page",
+    "notes": "适合扩充托育场景下的辅食添加、顺应喂养、自带食物和食品安全。"
+  },
+  {
+    "id": "USDA_HHS_2020_2025_DGA_BIRTH_TO_24M",
+    "title": "Dietary Guidelines for Americans, 2020-2025: Chapter 2, Infants and Toddlers",
+    "organization": "U.S. Department of Agriculture / U.S. Department of Health and Human Services",
+    "date": "2020-12-29",
+    "url": "https://www.dietaryguidelines.gov/resources/2020-2025-dietary-guidelines-online-materials",
+    "access_type": "official_publication",
+    "notes": "适合扩充出生至24月龄膳食模式、辅食准备信号、噎呛预防、添加糖限制。美国政府资料通常可较宽松复用，但仍需保留来源和更新日期。"
+  },
+  {
+    "id": "FDA_EPA_FISH_ADVICE_CHILDREN",
+    "title": "Advice about Eating Fish",
+    "organization": "U.S. Food and Drug Administration / U.S. Environmental Protection Agency",
+    "date": "2021-10-28",
+    "url": "https://www.fda.gov/Food/ResourcesForYou/Consumers/ucm393070.htm",
+    "access_type": "official_public_health_page",
+    "notes": "适合扩充1-3岁鱼类摄入、低汞鱼选择、高汞鱼避免、儿童份量。"
+  },
+  {
+    "id": "NIAID_2017_PEANUT_PREVENTION",
+    "title": "Addendum Guidelines for the Prevention of Peanut Allergy in the United States",
+    "organization": "National Institute of Allergy and Infectious Diseases",
+    "date": "2017-01-05",
+    "url": "https://www.niaid.nih.gov/sites/default/files/addendum-peanut-allergy-prevention-guidelines.pdf",
+    "access_type": "official_guideline_pdf",
+    "notes": "适合扩充花生过敏预防：严重湿疹或鸡蛋过敏婴儿需先评估，轻中度湿疹约6月龄引入，普通风险按家庭偏好和适龄形态引入。"
+  },
+  {
+    "id": "NIAID_2024_FOOD_ALLERGY_PREVENTION",
+    "title": "Causes and Prevention of Food Allergy",
+    "organization": "National Institute of Allergy and Infectious Diseases",
+    "date": "2024-06-10",
+    "url": "https://www.niaid.nih.gov/diseases-conditions/food-allergy-causes-prevention",
+    "access_type": "official_public_health_page",
+    "notes": "适合补充LEAP研究长期随访和食物过敏预防背景，不作为个体诊断依据。"
+  },
+  {
+    "id": "NHS_WEANING_BEST_START",
+    "title": "Weaning - Best Start in Life",
+    "organization": "NHS",
+    "date": "current_public_page",
+    "url": "https://www.nhs.uk/start-for-life/baby/weaning/",
+    "access_type": "official_public_health_page",
+    "notes": "NHS网站内容通常按Open Government Licence复用，除另有说明。适合扩充辅食开始、食物质地、安全喂养和家庭食谱。"
+  },
+  {
+    "id": "UNICEF_2024_COMMUNITY_IYCF_PACKAGE",
+    "title": "The Community Infant and Young Child Feeding Counselling Package",
+    "organization": "UNICEF",
+    "date": "2024",
+    "url": "https://www.unicef.org/documents/community-iycf-package",
+    "access_type": "official_training_material",
+    "notes": "适合扩充社区咨询、照护者沟通、喂养困难、残障儿童喂养和营养不良预防；使用前需核对每个PDF的版权/许可页。"
+  },
+  {
+    "id": "UNICEF_2026_IYCF_DATA",
+    "title": "Infant and young child feeding (IYCF) data",
+    "organization": "UNICEF DATA",
+    "date": "2026-04",
+    "url": "https://data.unicef.org/resources/dataset/infant-young-child-feeding/",
+    "access_type": "official_dataset",
+    "notes": "数据集标注为CC BY 3.0 IGO，适合扩充指标定义、国家趋势和RAG元数据，不适合作为个体喂养诊断依据。"
+  },
+  {
+    "id": "AAP_2024_RESPONDING_TO_CRYING",
+    "title": "Responding To Your Baby's Cries",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2024-12-06",
+    "url": "https://healthychildren.org/English/ages-stages/baby/crying-colic/Pages/Responding-to-Your-Babys-Cries.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "新生儿哭闹模式、固定哭闹时段和安抚策略；AAP版权内容，只做转述和链接引用。"
+  },
+  {
+    "id": "AAP_2024_COLIC_RELIEF",
+    "title": "Colic Relief Tips for Parents",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2024-06-13",
+    "url": "https://healthychildren.org/English/ages-stages/baby/crying-colic/Pages/Colic.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "婴儿每日固定时段烦躁、肠绞痛特征和何时需要警惕医疗问题。"
+  },
+  {
+    "id": "AAP_2022_CALMING_FUSSY_BABY",
+    "title": "How to Calm a Fussy Baby: Tips for Parents & Caregivers",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2022-03-21",
+    "url": "https://www.healthychildren.org/english/ages-stages/baby/crying-colic/pages/Calming-A-Fussy-Baby.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "安抚哭闹婴儿、记录喂养睡眠哭闹、发热/反流/喂养相关哭闹排查和照护者安全暂停。"
+  },
+  {
+    "id": "AAP_2025_FEVER_BABY",
+    "title": "Fever and Your Baby",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2025-10-13",
+    "url": "https://www.healthychildren.org/English/health-issues/conditions/fever/Pages/Fever-and-Your-Baby.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "3月龄及以下婴儿肛温38.0°C或以上应立即联系儿科医生。"
+  },
+  {
+    "id": "AAP_2023_INFANT_ABDOMINAL_PAIN",
+    "title": "Abdominal Pain in Infants: 8 Possible Reasons Your Baby's Tummy Hurts",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2023-04-12",
+    "url": "https://www.healthychildren.org/English/health-issues/conditions/abdominal/pages/Abdominal-Pains-in-Infants.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "婴儿腹痛、肠绞痛、胀气、反流、喂养问题等鉴别；提醒有担忧应咨询儿科医生。"
+  },
+  {
+    "id": "AAP_2023_TEMPERAMENT",
+    "title": "Temperament: How Your Child's Personality Affects Behavior",
+    "organization": "American Academy of Pediatrics / HealthyChildren.org",
+    "date": "2023-02-16",
+    "url": "https://www.healthychildren.org/English/family-life/family-dynamics/Pages/Temperament-How-Your-Childs-Personality-Affects-Behavior.aspx",
+    "access_type": "official_clinical_education",
+    "notes": "介绍活动水平、规律性、接近/退缩、适应性、强度、情绪、坚持性、分心性和感官阈值等气质维度；只做中文转述。"
+  },
+  {
+    "id": "IECMHC_TEMPERAMENT",
+    "title": "Infant Toddler Temperament Tool",
+    "organization": "Center of Excellence for Infant and Early Childhood Mental Health Consultation",
+    "date": "current_public_page",
+    "url": "https://www.iecmhc.org/resources/infant-toddler-temperament-tool/",
+    "access_type": "expert_education_page",
+    "notes": "面向照护者和早期儿童工作者的婴幼儿气质工具，强调气质没有好坏之分以及照护者与儿童匹配。"
+  },
+  {
+    "id": "ZERO_TO_THREE_TEMPERAMENT",
+    "title": "Getting to Know Your Baby",
+    "organization": "ZERO TO THREE",
+    "date": "current_public_page",
+    "url": "https://www.zerotothree.org/resource/getting-to-know-your-baby/",
+    "access_type": "expert_education_page",
+    "notes": "面向家庭的婴儿气质教育，强调观察宝宝的独特反应方式并调整照护策略。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_2M",
+    "title": "Important Milestones: Your Baby By Two Months",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/2-months.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC Learn the Signs. Act Early. 2月龄社交、语言、认知、运动里程碑和就医沟通提示。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_4M",
+    "title": "Important Milestones: Your Baby By Four Months",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/4-months.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 4月龄发育里程碑和行动建议。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_6M",
+    "title": "Important Milestones: Your Baby By Six Months",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/6-months.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 6月龄发育里程碑，适合与辅食准备和互动游戏建议联动。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_9M",
+    "title": "Important Milestones: Your Baby By Nine Months",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/9-months.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 9月龄发育里程碑和需要与医生沟通的行动提示。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_12M",
+    "title": "Important Milestones: Your Baby By One Year",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/1-year.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 12月龄发育里程碑。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_15M",
+    "title": "Important Milestones: Your Baby By Fifteen Months",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/15-months.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 15月龄发育里程碑。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_18M",
+    "title": "Important Milestones: Your Baby By Eighteen Months",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/18-months.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 18月龄发育里程碑。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_24M",
+    "title": "Important Milestones: Your Baby By Two Years",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/2-years.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 24月龄发育里程碑。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_30M",
+    "title": "Important Milestones: Your Child By Thirty Months",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/30-months.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 30月龄发育里程碑。"
+  },
+  {
+    "id": "CDC_2026_MILESTONES_36M",
+    "title": "Important Milestones: Your Child By Three Years",
+    "organization": "Centers for Disease Control and Prevention",
+    "date": "2026-02-24",
+    "url": "https://www.cdc.gov/act-early/milestones/3-years.html",
+    "access_type": "official_public_health_page",
+    "notes": "CDC 3岁发育里程碑。"
+  },
+  {
+    "id": "XHS_2025_MATERNAL_INFANT_REPORT",
+    "title": "2025小红书母婴行业细分场景需求洞察图鉴",
+    "organization": "小红书",
+    "date": "2025",
+    "url": "https://business.xiaohongshu.com/",
+    "access_type": "platform_report",
+    "notes": "用于平台话题观察和内容需求标签，不作为医学或育儿建议证据。"
+  },
+  {
+    "id": "XHS_SEARCH_2026_BABY_CARE",
+    "title": "小红书平台育儿内容公开搜索观察",
+    "organization": "小红书公开内容",
+    "date": "2026-05-14",
+    "url": "https://www.xiaohongshu.com/",
+    "access_type": "platform_observation",
+    "notes": "基于公开搜索可见的宝宝睡眠、辅食、湿疹、便便、发育、母乳/配方奶等话题聚类；不入库用户帖正文。"
+  },
+  {
+    "id": "REDDIT_NEWPARENTS",
+    "title": "r/NewParents",
+    "organization": "Reddit community",
+    "date": "2026-05-14",
+    "url": "https://www.reddit.com/r/NewParents/",
+    "access_type": "community_discussion",
+    "notes": "新手父母社区，常见话题包括睡眠、喂养、哭闹、反流、产后压力和照护分工；只做话题聚类，不作为医学证据。"
+  },
+  {
+    "id": "REDDIT_BEYONDTHEBUMP",
+    "title": "r/beyondthebump",
+    "organization": "Reddit community",
+    "date": "2026-05-14",
+    "url": "https://www.reddit.com/r/beyondthebump/",
+    "access_type": "community_discussion",
+    "notes": "产后和婴儿照护社区，适合观察家庭情绪、睡眠剥夺、母乳/瓶喂、返工托育等问题。"
+  },
+  {
+    "id": "REDDIT_SCIENCEBASEDPARENTING",
+    "title": "r/ScienceBasedParenting",
+    "organization": "Reddit community",
+    "date": "2026-05-14",
+    "url": "https://www.reddit.com/r/ScienceBasedParenting/",
+    "access_type": "community_discussion",
+    "notes": "偏证据讨论的育儿社区，常见话题包括睡眠训练证据、辅食/过敏、疫苗、屏幕时间和行为干预；需回到权威来源核验。"
+  },
+  {
+    "id": "REDDIT_PARENTING",
+    "title": "r/Parenting",
+    "organization": "Reddit community",
+    "date": "2026-05-14",
+    "url": "https://www.reddit.com/r/Parenting/",
+    "access_type": "community_discussion",
+    "notes": "泛育儿社区，幼儿阶段常见话题包括挑食、发脾气、如厕训练、托育适应、兄弟姐妹和边界设置。"
+  }
+]
