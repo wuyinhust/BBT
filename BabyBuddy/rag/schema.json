@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BabyBuddy RAG Feeding Knowledge Entry",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "category",
+    "age_min_months",
+    "age_max_months",
+    "content",
+    "source_ids",
+    "risk_level"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable unique id."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["喂奶", "辅食", "饮食安全", "营养监测", "便便", "睡眠", "饮食行为", "过敏", "哭闹", "气质", "发育里程碑", "社区话题"]
+    },
+    "age_min_months": {
+      "type": "number",
+      "minimum": 0
+    },
+    "age_max_months": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Upper bound is inclusive unless the application treats ranges as half-open."
+    },
+    "age_label": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string",
+      "description": "Chinese paraphrase suitable for retrieval and answer grounding."
+    },
+    "recommendations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "avoid_or_limit": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "red_flags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["routine", "caution", "high", "urgent"],
+      "description": "RAG/product risk hint, not a diagnosis."
+    },
+    "source_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": ["guideline", "policy", "public_health_page", "clinical_education", "expert_education", "platform_report", "community_discussion", "book_reference"]
+    },
+    "last_verified": {
+      "type": "string",
+      "format": "date"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "answer_boundary": {
+      "type": "string",
+      "description": "Guidance for model behavior when this record is retrieved."
+    }
+  }
+}
