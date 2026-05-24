@@ -57,7 +57,7 @@ struct FeedingWidgetProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<FeedingWidgetEntry>) -> Void) {
         let entry = loadEntry()
-        completion(Timeline(entries: [entry], policy: nextPolicy(for: entry)))
+        completion(Timeline(entries: timelineEntries(from: entry), policy: nextPolicy(for: entry)))
     }
 
     private func loadEntry() -> FeedingWidgetEntry {
@@ -91,6 +91,29 @@ struct FeedingWidgetProvider: TimelineProvider {
         }
 
         return .after(entry.date.addingTimeInterval(60 * 60))
+    }
+
+    private func timelineEntries(from entry: FeedingWidgetEntry) -> [FeedingWidgetEntry] {
+        guard let lastFeedingDate = entry.lastFeedingDate else {
+            return [entry]
+        }
+
+        let months = entry.babyInfo?.ageMonths(asOf: entry.date)
+        let thresholds = FeedingIntervalStatus.thresholds(for: months)
+        let checkpoints = [
+            thresholds.justFed,
+            thresholds.tooSoon,
+            thresholds.safe,
+            thresholds.maybeHungry,
+            thresholds.definitelyHungry
+        ]
+
+        let futureEntries = checkpoints
+            .map { lastFeedingDate.addingTimeInterval($0 * 3600 + 5) }
+            .filter { $0 > entry.date }
+            .map { FeedingWidgetEntry(date: $0, lastFeedingDate: lastFeedingDate, babyInfo: entry.babyInfo) }
+
+        return [entry] + futureEntries
     }
 }
 
@@ -268,7 +291,7 @@ struct FeedingLiveActivity: Widget {
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FeedingActivityAttributes.self) { context in
-            LockScreenView(state: context.state, babyAgeMonths: context.attributes.babyAgeMonths)
+            LockScreenView(state: context.state)
                 .activityBackgroundTint(Color(hex: "#171827").opacity(0.92))
                 .activitySystemActionForegroundColor(liveActivityTint)
         } dynamicIsland: { context in
@@ -276,7 +299,7 @@ struct FeedingLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.leading) {
                     DynamicIslandExpandedHeader(
                         lastFeedingDate: context.state.lastFeedingDate,
-                        babyAgeMonths: context.attributes.babyAgeMonths
+                        babyAgeMonths: context.state.babyAgeMonths
                     )
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -287,29 +310,29 @@ struct FeedingLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.center) {
                     DynamicIslandExpandedStatus(
                         lastFeedingDate: context.state.lastFeedingDate,
-                        babyAgeMonths: context.attributes.babyAgeMonths
+                        babyAgeMonths: context.state.babyAgeMonths
                     )
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     DynamicIslandEmojiTrail(
                         lastFeedingDate: context.state.lastFeedingDate,
-                        babyAgeMonths: context.attributes.babyAgeMonths
+                        babyAgeMonths: context.state.babyAgeMonths
                     )
                 }
             } compactLeading: {
                 DynamicCompactStatusEmoji(
                     lastFeedingDate: context.state.lastFeedingDate,
-                    babyAgeMonths: context.attributes.babyAgeMonths
+                    babyAgeMonths: context.state.babyAgeMonths
                 )
             } compactTrailing: {
                 DynamicCompactStatusLabel(
                     lastFeedingDate: context.state.lastFeedingDate,
-                    babyAgeMonths: context.attributes.babyAgeMonths
+                    babyAgeMonths: context.state.babyAgeMonths
                 )
             } minimal: {
                 DynamicStatusEmoji(
                     lastFeedingDate: context.state.lastFeedingDate,
-                    babyAgeMonths: context.attributes.babyAgeMonths
+                    babyAgeMonths: context.state.babyAgeMonths
                 )
             }
             .keylineTint(liveActivityTint)
@@ -319,64 +342,54 @@ struct FeedingLiveActivity: Widget {
 
 struct LockScreenView: View {
     let state: FeedingActivityAttributes.ContentState
-    let babyAgeMonths: Int?
 
     var body: some View {
-        TimelineView(.periodic(from: Date(), by: 60)) { timeline in
-            let status = FeedingIntervalStatus(
-                lastFeedingDate: state.lastFeedingDate,
-                babyAgeMonths: babyAgeMonths,
-                now: timeline.date
-            )
-            let accent = Color(hex: status.accentColorHex)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Text("BaByBuddy")
+                    .font(.subheadline.weight(.heavy))
+                    .foregroundStyle(.white)
+                Spacer(minLength: 12)
+                Text(clockText(from: state.lastFeedingDate) + " 上次喂养")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.68))
+            }
 
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    Text("BaByBuddy")
-                        .font(.subheadline.weight(.heavy))
-                        .foregroundStyle(.white)
-                    Spacer(minLength: 12)
-                    Text(clockText(from: state.lastFeedingDate) + " 上次喂养")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.68))
-                }
-
-                HStack(alignment: .center, spacing: 14) {
-                    Text(status.emoji)
-                        .font(.system(size: 40))
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(status.label)
-                            .font(.system(size: 28, weight: .heavy, design: .rounded))
-                            .foregroundStyle(accent)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        Text(lockScreenDetailText(status: status))
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.72))
-                            .lineLimit(1)
-                    }
+            HStack(alignment: .center, spacing: 14) {
+                Text("🍼")
+                    .font(.system(size: 40))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 6) {
+                    ElapsedFeedingTimerText(prefix: "距上次喂养 ", lastFeedingDate: state.lastFeedingDate)
+                        .font(.system(size: 25, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(hex: "#C2B7FF"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                    Text("打开应用查看最新照护建议")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .lineLimit(1)
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
-            .background {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(hex: "#262741").opacity(0.96),
-                                Color(hex: "#171827").opacity(0.94)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(hex: "#262741").opacity(0.96),
+                            Color(hex: "#171827").opacity(0.94)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(.white.opacity(0.14), lineWidth: 1)
-                    )
-            }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(.white.opacity(0.14), lineWidth: 1)
+                )
         }
     }
 }
@@ -386,21 +399,13 @@ private struct DynamicIslandExpandedHeader: View {
     let babyAgeMonths: Int?
 
     var body: some View {
-        TimelineView(.periodic(from: Date(), by: 60)) { context in
-            let status = FeedingIntervalStatus(
-                lastFeedingDate: lastFeedingDate,
-                babyAgeMonths: babyAgeMonths,
-                now: context.date
-            )
-
-            HStack(spacing: 8) {
-                Text(status.emoji)
-                    .font(.title3)
-                Text(status.label)
-                    .font(.subheadline.weight(.heavy))
-                    .foregroundStyle(Color(hex: status.accentColorHex))
-                    .lineLimit(1)
-            }
+        HStack(spacing: 8) {
+            Text("🍼")
+                .font(.title3)
+            ElapsedFeedingTimerText(lastFeedingDate: lastFeedingDate)
+                .font(.subheadline.weight(.heavy))
+                .foregroundStyle(Color(hex: "#C2B7FF"))
+                .lineLimit(1)
         }
     }
 }
@@ -410,22 +415,14 @@ private struct DynamicIslandExpandedStatus: View {
     let babyAgeMonths: Int?
 
     var body: some View {
-        TimelineView(.periodic(from: Date(), by: 60)) { context in
-            let status = FeedingIntervalStatus(
-                lastFeedingDate: lastFeedingDate,
-                babyAgeMonths: babyAgeMonths,
-                now: context.date
-            )
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(status.label)
-                    .font(.headline.weight(.heavy))
-                    .foregroundStyle(Color(hex: status.accentColorHex))
-                    .lineLimit(1)
-                Text(clockText(from: lastFeedingDate) + " 上次喂养")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 4) {
+            ElapsedFeedingTimerText(prefix: "距上次喂养 ", lastFeedingDate: lastFeedingDate)
+                .font(.headline.weight(.heavy))
+                .foregroundStyle(Color(hex: "#C2B7FF"))
+                .lineLimit(1)
+            Text(clockText(from: lastFeedingDate) + " 上次喂养")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -435,25 +432,13 @@ private struct DynamicIslandEmojiTrail: View {
     let babyAgeMonths: Int?
 
     var body: some View {
-        TimelineView(.periodic(from: Date(), by: 60)) { context in
-            let status = FeedingIntervalStatus(
-                lastFeedingDate: lastFeedingDate,
-                babyAgeMonths: babyAgeMonths,
-                now: context.date
-            )
-            let accent = Color(hex: status.accentColorHex)
-
-            HStack(spacing: 8) {
-                Text("🍼")
-                ForEach(0..<5, id: \.self) { _ in
-                    Text(status.emoji)
-                        .opacity(0.9)
-                }
-                Text("🍼")
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(accent)
+        HStack(spacing: 8) {
+            Text("🍼")
+            Text("打开应用查看最新照护建议")
+            Text("🍼")
         }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(Color(hex: "#C2B7FF"))
     }
 }
 
@@ -462,15 +447,8 @@ private struct DynamicCompactStatusEmoji: View {
     let babyAgeMonths: Int?
 
     var body: some View {
-        TimelineView(.periodic(from: Date(), by: 60)) { context in
-            let status = FeedingIntervalStatus(
-                lastFeedingDate: lastFeedingDate,
-                babyAgeMonths: babyAgeMonths,
-                now: context.date
-            )
-            Text(status.emoji)
-                .font(.system(.caption, design: .rounded))
-        }
+        Text("🍼")
+            .font(.system(.caption, design: .rounded))
     }
 }
 
@@ -479,16 +457,9 @@ private struct DynamicCompactStatusLabel: View {
     let babyAgeMonths: Int?
 
     var body: some View {
-        TimelineView(.periodic(from: Date(), by: 60)) { context in
-            let status = FeedingIntervalStatus(
-                lastFeedingDate: lastFeedingDate,
-                babyAgeMonths: babyAgeMonths,
-                now: context.date
-            )
-            Text(status.label)
-                .font(.system(.caption2, design: .rounded).weight(.bold))
-                .lineLimit(1)
-        }
+        ElapsedFeedingTimerText(lastFeedingDate: lastFeedingDate)
+            .font(.system(.caption2, design: .rounded).weight(.bold))
+            .lineLimit(1)
     }
 }
 
@@ -497,14 +468,26 @@ private struct DynamicStatusEmoji: View {
     let babyAgeMonths: Int?
 
     var body: some View {
-        TimelineView(.periodic(from: Date(), by: 60)) { context in
-            let status = FeedingIntervalStatus(
-                lastFeedingDate: lastFeedingDate,
-                babyAgeMonths: babyAgeMonths,
-                now: context.date
+        Text("🍼")
+    }
+}
+
+private struct ElapsedFeedingTimerText: View {
+    var prefix = ""
+    let lastFeedingDate: Date
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if !prefix.isEmpty {
+                Text(prefix)
+            }
+            Text(
+                timerInterval: lastFeedingDate...lastFeedingDate.addingTimeInterval(24 * 60 * 60),
+                countsDown: false,
+                showsHours: true
             )
-            Text(status.emoji)
         }
+        .monospacedDigit()
     }
 }
 
@@ -514,19 +497,14 @@ private func clockText(from date: Date) -> String {
     return formatter.string(from: date)
 }
 
-private func lockScreenDetailText(status: FeedingIntervalStatus) -> String {
-    switch status {
-    case .justFed:
-        return "刚完成喂养，暂时不用着急。"
-    case .tooSoon:
-        return "还不太饿，继续观察就可以。"
-    case .safe:
-        return "状态正好，按当前节奏陪伴。"
-    case .maybeHungry:
-        return "可以开始留意饥饿信号。"
-    case .definitelyHungry:
-        return "宝宝已经饿了，建议准备喂养。"
-    case .warning:
-        return "建议尽快安排下一次喂养。"
+private func elapsedFeedingText(from date: Date, now: Date) -> String {
+    "距上次喂养 " + elapsedShortText(from: date, now: now)
+}
+
+private func elapsedShortText(from date: Date, now: Date) -> String {
+    let minutes = max(Int(now.timeIntervalSince(date) / 60), 0)
+    if minutes < 60 {
+        return "\(minutes)分钟"
     }
+    return "\(minutes / 60)小时\(minutes % 60)分"
 }

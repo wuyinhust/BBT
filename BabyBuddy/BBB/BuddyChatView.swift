@@ -86,7 +86,7 @@ struct BuddyChatView: View {
                 Image(systemName: "message.fill")
                 TextField("和 buddy 聊聊天吧...", text: $messageText)
             }
-            .font(.footnote.weight(.semibold))
+            .font(BBBFont.font(size: 13, weight: .semibold))
             .foregroundStyle(Color(hex: "#A9A6B9"))
             .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)

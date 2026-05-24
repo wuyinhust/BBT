@@ -1,15 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "ChatGPT_Image_2026年5月13日_17_08_04-removebg-preview.png",
+      "filename" : "image 24.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "image 24@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
+      "filename" : "image 24@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

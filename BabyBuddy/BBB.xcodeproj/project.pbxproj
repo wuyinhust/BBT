@@ -9,27 +9,33 @@
 /* Begin PBXBuildFile section */
 		27E43B478CA3AD0673510EBF /* BaByBuddyWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248DD516A1260C910752AEE8 /* BaByBuddyWidgetBundle.swift */; };
 		30EA1CB3C7BE396FE2D1E6D9 /* ActivityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16851AE20788329FCEA0CA0 /* ActivityStore.swift */; };
-		ACHSTKBLD00000000000001 /* AchievementStickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACHSTKREF00000000000001 /* AchievementStickerStore.swift */; };
 		38FA07B2E571E9AC19D6C52E /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB127FE032B7ABC2205A055 /* Models.swift */; };
 		6657DB659C8DB7D27868FEB1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E62A96081C4DA27A68905E70 /* ContentView.swift */; };
 		6FF7C2646CC91F66F477EC86 /* BBBApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0572B03F18DDC9494FC72E4B /* BBBApp.swift */; };
 		8ADB314B96B7460DD0133AA0 /* ShakeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A83CB333C6C586A43AE6264 /* ShakeDetector.swift */; };
 		8F8574101C82F9F5B7E6C3A0 /* BaByBuddyWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 99B3394530EE8E6934513A41 /* BaByBuddyWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A3239C72CEC527C89372AF63 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C94D1EB326D2FD84913950C8 /* Foundation.framework */; };
+		ACHSTKBLD00000000000001 /* AchievementStickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACHSTKREF00000000000001 /* AchievementStickerStore.swift */; };
 		AST01BLD000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AST01REF000000000000001 /* Assets.xcassets */; };
 		B564EB58B2155D6DE2AA8A37 /* FeedingActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1AF612DA59E32807FC8FFD /* FeedingActivityAttributes.swift */; };
+		BBBFONTBLD0000000000001 /* BBBFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBFONTREF0000000000001 /* BBBFont.swift */; };
+		BBBFONTRES0000000000001 /* AlimamaFangYuanTiVF-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */; };
 		BCV01BLD000000000000001 /* BuddyChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCV01REF000000000000001 /* BuddyChatView.swift */; };
 		BIE01BLD000000000000001 /* BabyInfoEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BIE01REF000000000000001 /* BabyInfoEditView.swift */; };
 		CPV01BLD000000000000001 /* CompanionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CPV01REF000000000000001 /* CompanionPickerView.swift */; };
 		DD5114F47B635FE842294EA7 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9055D29909109FB3B0237737 /* VideoPlayerView.swift */; };
+		FCS01BLD000000000000001 /* FamilyCloudStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCS01REF000000000000001 /* FamilyCloudStore.swift */; };
 		FDS01BLD000000000000001 /* FeedingDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDS01REF000000000000001 /* FeedingDraftStore.swift */; };
 		FS001BLD0000000000000001 /* FeedingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FS001REF0000000000000001 /* FeedingSheet.swift */; };
 		HV001BLD0000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = HV001REF0000000000000001 /* HomeView.swift */; };
+		LICLABBLD000000000001 /* LiveIslandCameraLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LICLABREF000000000001 /* LiveIslandCameraLabView.swift */; };
 		LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LIS01REF000000000000001 /* LiveIslandSceneView.swift */; };
-		OP001BLD0000000000000001 /* OtherPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP001REF0000000000000001 /* OtherPages.swift */; };
 		ONB01BLD000000000000001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONB01REF000000000000001 /* OnboardingView.swift */; };
+		OP001BLD0000000000000001 /* OtherPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP001REF0000000000000001 /* OtherPages.swift */; };
 		PV001BLD0000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV001REF0000000000000001 /* ProfileView.swift */; };
-		RV001BLD0000000000000001 /* RecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RV001REF0000000000000001 /* RecordView.swift */; };
+		RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = RES01REF000000000000001 /* RecordEditSheets.swift */; };
+		RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RHV01REF000000000000001 /* RecordHomeView.swift */; };
+		SDS01BLD000000000000001 /* SleepDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = SDS01REF000000000000001 /* SleepDraftStore.swift */; };
 		VID01BLD000000000000001 /* Videos in Resources */ = {isa = PBXBuildFile; fileRef = VID01REF000000000000001 /* Videos */; };
 /* End PBXBuildFile section */
 
@@ -56,26 +62,32 @@
 		728CAC24E4DDC7070A4DEAD2 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = BaByBuddyWidget/Info.plist; sourceTree = "<group>"; };
 		8A83CB333C6C586A43AE6264 /* ShakeDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ShakeDetector.swift; path = BBB/ShakeDetector.swift; sourceTree = "<group>"; };
 		9055D29909109FB3B0237737 /* VideoPlayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VideoPlayerView.swift; path = BBB/VideoPlayerView.swift; sourceTree = "<group>"; };
-		ACHSTKREF00000000000001 /* AchievementStickerStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AchievementStickerStore.swift; path = BBB/AchievementStickerStore.swift; sourceTree = "<group>"; };
 		99B3394530EE8E6934513A41 /* BaByBuddyWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BaByBuddyWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AFBEFADC6441C33D178AEE4 /* BaByBuddyWidgetExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BaByBuddyWidgetExtension.entitlements; sourceTree = "<group>"; };
+		ACHSTKREF00000000000001 /* AchievementStickerStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AchievementStickerStore.swift; path = BBB/AchievementStickerStore.swift; sourceTree = "<group>"; };
 		AST01REF000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = BBB/Assets.xcassets; sourceTree = "<group>"; };
 		BCV01REF000000000000001 /* BuddyChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BuddyChatView.swift; path = BBB/BuddyChatView.swift; sourceTree = "<group>"; };
 		BIE01REF000000000000001 /* BabyInfoEditView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BabyInfoEditView.swift; path = BBB/BabyInfoEditView.swift; sourceTree = "<group>"; };
+		BBBFONTREF0000000000001 /* BBBFont.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BBBFont.swift; path = BBB/BBBFont.swift; sourceTree = "<group>"; };
+		BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = AlimamaFangYuanTiVF-Thin.ttf; path = BBB/Fonts/AlimamaFangYuanTiVF-Thin.ttf; sourceTree = "<group>"; };
 		C94D1EB326D2FD84913950C8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		CPV01REF000000000000001 /* CompanionPickerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CompanionPickerView.swift; path = BBB/CompanionPickerView.swift; sourceTree = "<group>"; };
 		E62A96081C4DA27A68905E70 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContentView.swift; path = BBB/ContentView.swift; sourceTree = "<group>"; };
 		F16851AE20788329FCEA0CA0 /* ActivityStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ActivityStore.swift; path = BBB/ActivityStore.swift; sourceTree = "<group>"; };
 		F2AE3C2B6FC0FE33BC35F395 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = BBB/Info.plist; sourceTree = "<group>"; };
+		FCS01REF000000000000001 /* FamilyCloudStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FamilyCloudStore.swift; path = BBB/FamilyCloudStore.swift; sourceTree = "<group>"; };
 		FDB127FE032B7ABC2205A055 /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Models.swift; path = BBB/Models.swift; sourceTree = "<group>"; };
 		FDS01REF000000000000001 /* FeedingDraftStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FeedingDraftStore.swift; path = BBB/FeedingDraftStore.swift; sourceTree = "<group>"; };
 		FS001REF0000000000000001 /* FeedingSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FeedingSheet.swift; path = BBB/FeedingSheet.swift; sourceTree = "<group>"; };
 		HV001REF0000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = BBB/HomeView.swift; sourceTree = "<group>"; };
+		LICLABREF000000000001 /* LiveIslandCameraLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveIslandCameraLabView.swift; path = BBB/LiveIslandCameraLabView.swift; sourceTree = "<group>"; };
 		LIS01REF000000000000001 /* LiveIslandSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveIslandSceneView.swift; path = BBB/LiveIslandSceneView.swift; sourceTree = "<group>"; };
-		OP001REF0000000000000001 /* OtherPages.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OtherPages.swift; path = BBB/OtherPages.swift; sourceTree = "<group>"; };
 		ONB01REF000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = BBB/OnboardingView.swift; sourceTree = "<group>"; };
+		OP001REF0000000000000001 /* OtherPages.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OtherPages.swift; path = BBB/OtherPages.swift; sourceTree = "<group>"; };
 		PV001REF0000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = BBB/ProfileView.swift; sourceTree = "<group>"; };
-		RV001REF0000000000000001 /* RecordView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordView.swift; path = BBB/RecordView.swift; sourceTree = "<group>"; };
+		RES01REF000000000000001 /* RecordEditSheets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordEditSheets.swift; path = BBB/RecordEditSheets.swift; sourceTree = "<group>"; };
+		RHV01REF000000000000001 /* RecordHomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordHomeView.swift; path = BBB/RecordHomeView.swift; sourceTree = "<group>"; };
+		SDS01REF000000000000001 /* SleepDraftStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SleepDraftStore.swift; path = BBB/SleepDraftStore.swift; sourceTree = "<group>"; };
 		VID01REF000000000000001 /* Videos */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Videos; path = BBB/Videos; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -132,11 +144,15 @@
 				579076D497F6554B21D4DE5F /* BBB.entitlements */,
 				F16851AE20788329FCEA0CA0 /* ActivityStore.swift */,
 				0572B03F18DDC9494FC72E4B /* BBBApp.swift */,
+				BBBFONTREF0000000000001 /* BBBFont.swift */,
 				E62A96081C4DA27A68905E70 /* ContentView.swift */,
+				FCS01REF000000000000001 /* FamilyCloudStore.swift */,
 				HV001REF0000000000000001 /* HomeView.swift */,
+				LICLABREF000000000001 /* LiveIslandCameraLabView.swift */,
 				LIS01REF000000000000001 /* LiveIslandSceneView.swift */,
 				BCV01REF000000000000001 /* BuddyChatView.swift */,
-				RV001REF0000000000000001 /* RecordView.swift */,
+				RHV01REF000000000000001 /* RecordHomeView.swift */,
+				RES01REF000000000000001 /* RecordEditSheets.swift */,
 				PV001REF0000000000000001 /* ProfileView.swift */,
 				CPV01REF000000000000001 /* CompanionPickerView.swift */,
 				ONB01REF000000000000001 /* OnboardingView.swift */,
@@ -144,11 +160,13 @@
 				BIE01REF000000000000001 /* BabyInfoEditView.swift */,
 				ACHSTKREF00000000000001 /* AchievementStickerStore.swift */,
 				FDS01REF000000000000001 /* FeedingDraftStore.swift */,
+				SDS01REF000000000000001 /* SleepDraftStore.swift */,
 				FS001REF0000000000000001 /* FeedingSheet.swift */,
 				FDB127FE032B7ABC2205A055 /* Models.swift */,
 				8A83CB333C6C586A43AE6264 /* ShakeDetector.swift */,
 				VID01REF000000000000001 /* Videos */,
 				AST01REF000000000000001 /* Assets.xcassets */,
+				BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */,
 				9055D29909109FB3B0237737 /* VideoPlayerView.swift */,
 				F2AE3C2B6FC0FE33BC35F395 /* Info.plist */,
 			);
@@ -245,6 +263,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AST01BLD000000000000001 /* Assets.xcassets in Resources */,
+				BBBFONTRES0000000000001 /* AlimamaFangYuanTiVF-Thin.ttf in Resources */,
 				VID01BLD000000000000001 /* Videos in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -258,18 +277,23 @@
 			files = (
 				30EA1CB3C7BE396FE2D1E6D9 /* ActivityStore.swift in Sources */,
 				6FF7C2646CC91F66F477EC86 /* BBBApp.swift in Sources */,
+				BBBFONTBLD0000000000001 /* BBBFont.swift in Sources */,
 				6657DB659C8DB7D27868FEB1 /* ContentView.swift in Sources */,
 				HV001BLD0000000000000001 /* HomeView.swift in Sources */,
+				LICLABBLD000000000001 /* LiveIslandCameraLabView.swift in Sources */,
 				LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */,
 				BCV01BLD000000000000001 /* BuddyChatView.swift in Sources */,
-				RV001BLD0000000000000001 /* RecordView.swift in Sources */,
+				RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */,
+				RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */,
 				PV001BLD0000000000000001 /* ProfileView.swift in Sources */,
 				CPV01BLD000000000000001 /* CompanionPickerView.swift in Sources */,
 				ONB01BLD000000000000001 /* OnboardingView.swift in Sources */,
 				OP001BLD0000000000000001 /* OtherPages.swift in Sources */,
 				BIE01BLD000000000000001 /* BabyInfoEditView.swift in Sources */,
 				ACHSTKBLD00000000000001 /* AchievementStickerStore.swift in Sources */,
+				FCS01BLD000000000000001 /* FamilyCloudStore.swift in Sources */,
 				FDS01BLD000000000000001 /* FeedingDraftStore.swift in Sources */,
+				SDS01BLD000000000000001 /* SleepDraftStore.swift in Sources */,
 				FS001BLD0000000000000001 /* FeedingSheet.swift in Sources */,
 				38FA07B2E571E9AC19D6C52E /* Models.swift in Sources */,
 				8ADB314B96B7460DD0133AA0 /* ShakeDetector.swift in Sources */,
@@ -361,24 +385,22 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = BBB/BBB.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development: yin wu (KHX52UYQQT)";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development: yin wu (KHX52UYQQT)";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 73AUQDMCJ2;
 				INFOPLIST_FILE = BBB/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 0.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy;
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bbb;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -448,24 +470,22 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = BBB/BBB.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development: yin wu (KHX52UYQQT)";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development: yin wu (KHX52UYQQT)";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 73AUQDMCJ2;
 				INFOPLIST_FILE = BBB/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 0.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy;
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bbb;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -475,14 +495,14 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = BaByBuddyWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development: yin wu (KHX52UYQQT)";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development: yin wu (KHX52UYQQT)";
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 73AUQDMCJ2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BaByBuddyWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -495,7 +515,7 @@
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -505,14 +525,14 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = BaByBuddyWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development: yin wu (KHX52UYQQT)";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development: yin wu (KHX52UYQQT)";
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 73AUQDMCJ2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BaByBuddyWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -527,7 +547,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

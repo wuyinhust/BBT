@@ -6,9 +6,7 @@ struct HomeView: View {
     @Binding var selectedTab: RootTab
     @Binding var showBabyInfo: Bool
     @Binding var showCompanionPicker: Bool
-    var openFeedSheet: () -> Void = {}
     @State private var showChat = false
-    @State private var showRecord = false
     @State private var showProfile = false
     @State private var now = Date()
 
@@ -51,16 +49,6 @@ struct HomeView: View {
         }
         .navigationDestination(isPresented: $showChat) {
             BuddyChatView(showFeedSheet: .constant(false), showCompanionPicker: $showCompanionPicker)
-        }
-        .navigationDestination(isPresented: $showRecord) {
-            RecordView(showFeedSheet: Binding(
-                get: { false },
-                set: { isPresented in
-                    if isPresented {
-                        openFeedSheet()
-                    }
-                }
-            ))
         }
         .navigationDestination(isPresented: $showProfile) {
             ProfileView(showBabyInfo: $showBabyInfo)
@@ -119,12 +107,12 @@ struct HomeView: View {
         } label: {
             VStack(alignment: .leading, spacing: 3) {
                 Text(todayDateText)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(BBBFont.font(size: 12, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
                     .lineLimit(1)
 
                 Text("\(profileStore.currentProfile.name)今天\(babyAgeText)了")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(BBBFont.font(size: 16, weight: .bold))
                     .foregroundStyle(DesignToken.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -145,7 +133,7 @@ struct HomeView: View {
             Text("✦")
                 .foregroundStyle(DesignToken.primary)
             Text("今天也一起照顾宝宝")
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .font(BBBFont.font(size: 20, weight: .semibold))
                 .foregroundStyle(DesignToken.textPrimary)
             Text("✦")
                 .foregroundStyle(DesignToken.primary)
@@ -169,7 +157,7 @@ struct HomeView: View {
                                 .font(.system(size: 34, weight: .semibold))
                                 .foregroundStyle(DesignToken.primary.opacity(0.72))
                             Text("中央主视觉")
-                                .font(.footnote.weight(.bold))
+                                .font(BBBFont.font(size: 13, weight: .bold))
                                 .foregroundStyle(DesignToken.textSecondary)
                         }
                         .opacity(0.5)
@@ -190,7 +178,7 @@ struct HomeView: View {
             NavigationLink(destination: DailyMessageView()) {
                 circleShortcut(icon: "envelope.fill")
             }
-            Button { showRecord = true } label: {
+            Button { selectedTab = .record } label: {
                 circleShortcut(icon: "book.fill")
             }
         }
@@ -216,10 +204,10 @@ struct HomeView: View {
             HStack(spacing: 10) {
                 HStack(spacing: 12) {
                     Image(systemName: "message.fill")
-                    Text("和 buddy 聊聊天吧...")
-                        .lineLimit(1)
+                Text("和 buddy 聊聊天吧...")
+                    .lineLimit(1)
                 }
-                .font(.footnote.weight(.semibold))
+                .font(BBBFont.font(size: 13, weight: .semibold))
                 .foregroundStyle(Color(hex: "#A9A6B9"))
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)

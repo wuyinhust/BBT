@@ -37,13 +37,34 @@ final class FeedingDraftStore: ObservableObject {
         rightSeconds > 0 ||
         activeBreastSide != nil ||
         bottleTimerStartedAt != nil ||
-        (type == .bottle && (bottleAmount > 0 || totalBottleMinutes > 0)) ||
-        (type == .solid && solidAmount > 0) ||
-        (type == .breast && breastMode == .expressedBottle && expressedAmount > 0)
+        hasMetadataDraft ||
+        hasBottleDraft ||
+        hasSolidDraft
     }
 
     var isRecording: Bool {
-        activeBreastSide != nil || bottleTimerStartedAt != nil || hasDraft
+        (type == .breast && activeBreastSide != nil) ||
+        bottleTimerStartedAt != nil ||
+        !entries.isEmpty ||
+        hasMetadataDraft ||
+        hasBottleDraft ||
+        hasSolidDraft
+    }
+
+    private var hasMetadataDraft: Bool {
+        !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        imageData != nil ||
+        mood != .happy
+    }
+
+    private var hasBottleDraft: Bool {
+        type == .bottle &&
+        (totalBottleMinutes > 0 || milkType != .formula || bottleAmount != 60)
+    }
+
+    private var hasSolidDraft: Bool {
+        type == .solid &&
+        (solidFood != .rice || solidAmount != 30 || solidUnit != .g)
     }
 
     var leftSeconds: Int {
@@ -65,7 +86,7 @@ final class FeedingDraftStore: ObservableObject {
 
     var statusTitle: String {
         switch type {
-        case .breast: return breastMode.displayName
+        case .breast: return "亲喂"
         case .bottle: return milkType.displayName
         case .solid: return "辅食"
         }
@@ -84,9 +105,6 @@ final class FeedingDraftStore: ObservableObject {
         }
         switch type {
         case .breast:
-            if breastMode == .expressedBottle, expressedAmount > 0 {
-                return "\(Int(expressedAmount))ml"
-            }
             return "进行中"
         case .bottle:
             return "\(Int(bottleAmount))ml"
@@ -155,20 +173,21 @@ final class FeedingDraftStore: ObservableObject {
         let data = UserDefaults.standard.data(forKey: draftKey)
             ?? UserDefaults(suiteName: WidgetStorageKey.appGroupID)?.data(forKey: draftKey)
         guard let data, let draft = try? JSONDecoder().decode(FeedingDraft.self, from: data) else { return }
-        type = draft.type
+        let migratedBottleDraft = draft.type == .breast && draft.breastMode == .expressedBottle && draft.expressedAmount > 0
+        type = migratedBottleDraft ? .bottle : draft.type
         mood = draft.mood
         entries = draft.entries
         note = draft.note
         imageData = draft.imageData
-        breastMode = draft.breastMode
+        breastMode = migratedBottleDraft ? .nursing : draft.breastMode
         leftBaseSeconds = draft.leftBaseSeconds
         rightBaseSeconds = draft.rightBaseSeconds
         activeBreastSide = draft.activeBreastSide
         activeBreastStartAt = draft.activeBreastStartAt
         hitMilestones = draft.hitMilestones
         expressedAmount = draft.expressedAmount
-        milkType = draft.milkType
-        bottleAmount = draft.bottleAmount
+        milkType = migratedBottleDraft ? .expressed : draft.milkType
+        bottleAmount = migratedBottleDraft ? draft.expressedAmount : draft.bottleAmount
         bottleMinutes = draft.bottleMinutes
         bottleIsTimed = draft.bottleIsTimed
         bottleTimerStartedAt = draft.bottleTimerStartedAt

@@ -85,6 +85,7 @@ enum FeedingIntervalStatus: Int, Codable, CaseIterable, Hashable {
 struct FeedingActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var lastFeedingDate: Date
+        var babyAgeMonths: Int?
         var status: FeedingIntervalStatus
     }
 

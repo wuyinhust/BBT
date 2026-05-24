@@ -1,10 +1,26 @@
 import CoreImage
 import CoreImage.CIFilterBuiltins
+import AVFoundation
 import Foundation
 import PhotosUI
 import SwiftUI
 import UIKit
 import Vision
+
+struct AchievementAssetFiles {
+    var stickerFilename: String
+    var originalFilename: String?
+    var stickerURL: URL?
+    var originalURL: URL?
+}
+
+struct AchievementAssetExport {
+    var achievementID: UUID
+    var stickerFilename: String
+    var originalFilename: String?
+    var stickerURL: URL?
+    var originalURL: URL?
+}
 
 struct CustomAchievement: Identifiable, Codable, Hashable {
     let id: UUID
@@ -48,6 +64,16 @@ struct AchievementTemplate: Identifiable, Hashable {
 final class AchievementStickerStore: ObservableObject {
     @Published private(set) var achievements: [CustomAchievement] = []
 
+    static let currentCatalogTemplateIDs: Set<String> = [
+        "first-hug",
+        "first-big-smile",
+        "first-formula-can",
+        "first-diaper",
+        "first-vaccine",
+        "first-head-lift",
+        "one-month"
+    ]
+
     private let metadataFilename = "custom_achievements.json"
     private let stickerImageCache = NSCache<NSString, UIImage>()
     private let thumbnailImageCache = NSCache<NSString, UIImage>()
@@ -60,12 +86,13 @@ final class AchievementStickerStore: ObservableObject {
         let id = UUID()
         let originalFilename = "\(id.uuidString)-original.jpg"
         let stickerFilename = "\(id.uuidString)-sticker.png"
-        let finalStickerImage = stickerImage ?? StickerGenerator.generateSticker(from: sourceImage)
+        let optimizedSourceImage = sourceImage.optimizedForStickerInput(maxSide: StickerGenerator.stickerInputMaxSide)
+        let finalStickerImage = stickerImage ?? StickerGenerator.generateSticker(from: optimizedSourceImage)
         let originalURL = imageURL(for: originalFilename)
         let stickerURL = imageURL(for: stickerFilename)
 
         do {
-            try saveJPEG(sourceImage.optimizedForStickerInput(), filename: originalFilename)
+            try saveJPEG(optimizedSourceImage, filename: originalFilename)
             try savePNG(finalStickerImage, filename: stickerFilename)
 
             let achievement = CustomAchievement(
@@ -82,6 +109,7 @@ final class AchievementStickerStore: ObservableObject {
 
             achievements = updatedAchievements
             cache(finalStickerImage, for: stickerFilename)
+            FamilyCloudStore.shared.scheduleUpload(reason: "achievement")
             return achievement
         } catch {
             try? FileManager.default.removeItem(at: originalURL)
@@ -100,8 +128,70 @@ final class AchievementStickerStore: ObservableObject {
         achievements[index].note = note
         do {
             try persist(achievements)
+            FamilyCloudStore.shared.scheduleUpload(reason: "achievement-note")
         } catch {
             achievements[index].note = previousNote
+        }
+    }
+
+    func updateImage(for achievement: CustomAchievement, sourceImage: UIImage, stickerImage: UIImage? = nil) throws -> CustomAchievement {
+        guard let index = achievements.firstIndex(where: { $0.id == achievement.id }) else {
+            throw AchievementStickerError.achievementNotFound
+        }
+
+        let previousAchievement = achievements[index]
+        let previousStickerImage = self.stickerImage(named: previousAchievement.stickerFilename)
+        let previousOriginalImage = previousAchievement.originalFilename.flatMap { UIImage(contentsOfFile: imageURL(for: $0).path) }
+        let optimizedSourceImage = sourceImage.optimizedForStickerInput(maxSide: StickerGenerator.stickerInputMaxSide)
+        let finalStickerImage = stickerImage ?? StickerGenerator.generateSticker(from: optimizedSourceImage)
+
+        do {
+            let originalFilename = previousAchievement.originalFilename ?? "\(previousAchievement.id.uuidString)-original.jpg"
+            try saveJPEG(optimizedSourceImage, filename: originalFilename)
+            try savePNG(finalStickerImage, filename: previousAchievement.stickerFilename)
+            if achievements[index].originalFilename == nil {
+                achievements[index].originalFilename = originalFilename
+                try persist(achievements)
+            }
+            cache(finalStickerImage, for: previousAchievement.stickerFilename)
+            clearThumbnails(for: previousAchievement.stickerFilename)
+            objectWillChange.send()
+            FamilyCloudStore.shared.scheduleUpload(reason: "achievement-image")
+            return achievements[index]
+        } catch {
+            if let previousStickerImage {
+                try? savePNG(previousStickerImage, filename: previousAchievement.stickerFilename)
+                cache(previousStickerImage, for: previousAchievement.stickerFilename)
+            }
+            if let originalFilename = previousAchievement.originalFilename,
+               let previousOriginalImage {
+                try? saveJPEG(previousOriginalImage, filename: originalFilename)
+            }
+            achievements[index] = previousAchievement
+            clearThumbnails(for: previousAchievement.stickerFilename)
+            throw error
+        }
+    }
+
+    func delete(_ achievement: CustomAchievement) throws {
+        guard achievement.templateID == nil,
+              let index = achievements.firstIndex(where: { $0.id == achievement.id }) else {
+            return
+        }
+
+        let removedAchievement = achievements.remove(at: index)
+        do {
+            try persist(achievements)
+            try? FileManager.default.removeItem(at: imageURL(for: removedAchievement.stickerFilename))
+            if let originalFilename = removedAchievement.originalFilename {
+                try? FileManager.default.removeItem(at: imageURL(for: originalFilename))
+            }
+            stickerImageCache.removeObject(forKey: removedAchievement.stickerFilename as NSString)
+            clearThumbnails(for: removedAchievement.stickerFilename)
+            FamilyCloudStore.shared.markAchievementDeleted(removedAchievement.id)
+        } catch {
+            achievements.insert(removedAchievement, at: index)
+            throw error
         }
     }
 
@@ -124,13 +214,54 @@ final class AchievementStickerStore: ObservableObject {
         return thumbnail
     }
 
+    func exportAchievements() -> [CustomAchievement] {
+        achievements
+    }
+
+    func exportAchievementAssetURLs() -> [AchievementAssetExport] {
+        achievements.map { achievement in
+            AchievementAssetExport(
+                achievementID: achievement.id,
+                stickerFilename: achievement.stickerFilename,
+                originalFilename: achievement.originalFilename,
+                stickerURL: temporaryAssetURL(for: achievement.stickerFilename),
+                originalURL: achievement.originalFilename.flatMap { temporaryAssetURL(for: $0) }
+            )
+        }
+    }
+
+    func importAchievements(_ achievements: [CustomAchievement], assetFiles: [String: AchievementAssetFiles]) throws {
+        let sanitizedAchievements = sanitizedForCurrentCatalog(achievements)
+        try FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
+        for achievement in sanitizedAchievements {
+            guard let files = assetFiles[achievement.stickerFilename] else { continue }
+            if let stickerURL = files.stickerURL {
+                let destination = imageURL(for: achievement.stickerFilename)
+                replaceFile(at: destination, with: stickerURL)
+            }
+            if let originalFilename = achievement.originalFilename,
+               let originalURL = files.originalURL {
+                let destination = imageURL(for: originalFilename)
+                replaceFile(at: destination, with: originalURL)
+            }
+        }
+        try persist(sanitizedAchievements.sorted { $0.completedAt > $1.completedAt })
+        self.achievements = sanitizedAchievements.sorted { $0.completedAt > $1.completedAt }
+        stickerImageCache.removeAllObjects()
+        thumbnailImageCache.removeAllObjects()
+    }
+
     private func load() {
         guard let data = try? Data(contentsOf: metadataURL),
               let decoded = try? JSONDecoder().decode([CustomAchievement].self, from: data) else {
             achievements = []
             return
         }
-        achievements = decoded.sorted { $0.completedAt > $1.completedAt }
+        let sanitizedAchievements = sanitizedForCurrentCatalog(decoded)
+        achievements = sanitizedAchievements.sorted { $0.completedAt > $1.completedAt }
+        if sanitizedAchievements.count != decoded.count {
+            try? persist(achievements)
+        }
     }
 
     private func persist(_ achievements: [CustomAchievement]) throws {
@@ -151,6 +282,16 @@ final class AchievementStickerStore: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
+    private func sanitizedForCurrentCatalog(_ achievements: [CustomAchievement]) -> [CustomAchievement] {
+        return achievements.filter { achievement in
+            if let templateID = achievement.templateID,
+               !Self.currentCatalogTemplateIDs.contains(templateID) {
+                return false
+            }
+            return true
+        }
+    }
+
     private func savePNG(_ image: UIImage, filename: String) throws {
         try FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
         guard let data = image.pngData() else { throw AchievementStickerError.imageEncodingFailed }
@@ -159,7 +300,7 @@ final class AchievementStickerStore: ObservableObject {
 
     private func saveJPEG(_ image: UIImage, filename: String) throws {
         try FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
-        guard let data = image.jpegData(compressionQuality: 0.88) else { throw AchievementStickerError.imageEncodingFailed }
+        guard let data = image.jpegData(compressionQuality: 0.95) else { throw AchievementStickerError.imageEncodingFailed }
         try data.write(to: imageURL(for: filename), options: [.atomic])
     }
 
@@ -175,22 +316,49 @@ final class AchievementStickerStore: ObservableObject {
         return image
     }
 
+    private func temporaryAssetURL(for filename: String) -> URL? {
+        let sourceURL = imageURL(for: filename)
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else { return nil }
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(filename)")
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: tempURL)
+            return tempURL
+        } catch {
+            return nil
+        }
+    }
+
+    private func replaceFile(at destination: URL, with source: URL) {
+        try? FileManager.default.removeItem(at: destination)
+        if (try? FileManager.default.copyItem(at: source, to: destination)) == nil {
+            try? FileManager.default.moveItem(at: source, to: destination)
+        }
+    }
+
     private func cache(_ image: UIImage, for filename: String) {
         stickerImageCache.setObject(image, forKey: filename as NSString)
+    }
+
+    private func clearThumbnails(for filename: String) {
+        thumbnailImageCache.removeAllObjects()
     }
 }
 
 enum AchievementStickerError: LocalizedError {
     case imageEncodingFailed
+    case achievementNotFound
 
     var errorDescription: String? {
         switch self {
         case .imageEncodingFailed: return "图片保存失败"
+        case .achievementNotFound: return "成就不存在"
         }
     }
 }
 
 enum StickerGenerator {
+    static let stickerInputMaxSide: CGFloat = 2048
+
     private struct InstanceStats {
         var area: Int = 0
         var sumX: Double = 0
@@ -295,7 +463,7 @@ enum StickerGenerator {
               let outputCGImage = context.createCGImage(outputImage, from: inputImage.extent) else {
             return nil
         }
-        return UIImage(cgImage: outputCGImage, scale: UIScreen.main.scale, orientation: .up)
+        return UIImage(cgImage: outputCGImage, scale: 1, orientation: .up)
     }
 }
 
@@ -309,12 +477,13 @@ extension UIImage {
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = scale
         let renderer = UIGraphicsImageRenderer(size: size, format: format)
-        return renderer.image { _ in
+        return renderer.image { context in
+            context.cgContext.interpolationQuality = .high
             draw(in: CGRect(origin: .zero, size: size))
         }
     }
 
-    func optimizedForStickerInput(maxSide: CGFloat = 1200) -> UIImage {
+    func optimizedForStickerInput(maxSide: CGFloat = StickerGenerator.stickerInputMaxSide) -> UIImage {
         let normalizedImage = normalized()
         let longestSide = max(normalizedImage.size.width, normalizedImage.size.height)
         guard longestSide > maxSide else { return normalizedImage }
@@ -327,7 +496,8 @@ extension UIImage {
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
         let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-        return renderer.image { _ in
+        return renderer.image { context in
+            context.cgContext.interpolationQuality = .high
             normalizedImage.draw(in: CGRect(origin: .zero, size: targetSize))
         }
     }
@@ -348,6 +518,7 @@ extension UIImage {
         return renderer.image { context in
             UIColor.clear.setFill()
             UIRectFill(CGRect(origin: .zero, size: canvasSize))
+            context.cgContext.interpolationQuality = .high
 
             context.cgContext.setShadow(
                 offset: CGSize(width: 0, height: shadowYOffset),
@@ -371,9 +542,70 @@ extension UIImage {
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
         let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-        return renderer.image { _ in
+        return renderer.image { context in
+            context.cgContext.interpolationQuality = .high
             normalizedImage.draw(in: CGRect(origin: .zero, size: targetSize))
         }
+    }
+
+    func croppedToPreviewFrame(
+        _ previewCropFrame: CGRect,
+        previewSize: CGSize,
+        videoGravity: AVLayerVideoGravity = .resizeAspectFill
+    ) -> UIImage? {
+        let normalizedImage = normalized()
+        guard let cgImage = normalizedImage.cgImage,
+              previewSize.width > 0,
+              previewSize.height > 0,
+              previewCropFrame.width > 0,
+              previewCropFrame.height > 0 else {
+            return nil
+        }
+
+        let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+        let scale: CGFloat
+        switch videoGravity {
+        case .resizeAspect:
+            scale = min(previewSize.width / imageSize.width, previewSize.height / imageSize.height)
+        case .resize:
+            let cropRect = CGRect(
+                x: previewCropFrame.minX / previewSize.width * imageSize.width,
+                y: previewCropFrame.minY / previewSize.height * imageSize.height,
+                width: previewCropFrame.width / previewSize.width * imageSize.width,
+                height: previewCropFrame.height / previewSize.height * imageSize.height
+            )
+            return normalizedImage.cropped(toPixelRect: cropRect)
+        default:
+            scale = max(previewSize.width / imageSize.width, previewSize.height / imageSize.height)
+        }
+
+        let displayedSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let displayedOrigin = CGPoint(
+            x: (previewSize.width - displayedSize.width) / 2,
+            y: (previewSize.height - displayedSize.height) / 2
+        )
+
+        let cropRect = CGRect(
+            x: (previewCropFrame.minX - displayedOrigin.x) / scale,
+            y: (previewCropFrame.minY - displayedOrigin.y) / scale,
+            width: previewCropFrame.width / scale,
+            height: previewCropFrame.height / scale
+        )
+        return normalizedImage.cropped(toPixelRect: cropRect)
+    }
+
+    private func cropped(toPixelRect rect: CGRect) -> UIImage? {
+        let normalizedImage = normalized()
+        guard let cgImage = normalizedImage.cgImage else { return nil }
+
+        let imageBounds = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+        let cropRect = rect.integral.intersection(imageBounds)
+        guard cropRect.width > 1, cropRect.height > 1,
+              let cropped = cgImage.cropping(to: cropRect) else {
+            return nil
+        }
+
+        return UIImage(cgImage: cropped, scale: normalizedImage.scale, orientation: .up)
     }
 
     func trimTransparentPixels(alphaThreshold: UInt8 = 8) -> UIImage {

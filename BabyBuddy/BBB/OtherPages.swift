@@ -1,21 +1,98 @@
 import PhotosUI
 import SwiftUI
 import UIKit
+import AVFoundation
 
 struct DailyMessageView: View {
-    @EnvironmentObject private var feedingStore: FeedingStore
-    @Environment(BabyProfileStore.self) private var profileStore
-    @State private var showRecord = false
-
     var body: some View {
-        BabyLiveIslandView(messages: liveMessages) {
-            showRecord = true
-        }
+        Color.clear
+            .ignoresSafeArea()
             .navigationBarBackButtonHidden(false)
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(isPresented: $showRecord) {
-                RecordView(showFeedSheet: .constant(false))
+    }
+}
+
+struct CompanionLiveView: View {
+    @EnvironmentObject private var feedingStore: FeedingStore
+    @EnvironmentObject private var companionStore: CompanionStore
+    @EnvironmentObject private var recruitmentStore: CompanionRecruitmentStore
+    @EnvironmentObject private var temperamentStore: TemperamentProfileStore
+    @Environment(BabyProfileStore.self) private var profileStore
+    let openFeedSheet: () -> Void
+    let openCompanionPicker: () -> Void
+    @Binding var activeYesterdayReport: YesterdayReport?
+
+    init(openFeedSheet: @escaping () -> Void, openCompanionPicker: @escaping () -> Void, activeYesterdayReport: Binding<YesterdayReport?> = .constant(nil)) {
+        self.openFeedSheet = openFeedSheet
+        self.openCompanionPicker = openCompanionPicker
+        _activeYesterdayReport = activeYesterdayReport
+    }
+
+    var body: some View {
+        BabyLiveIslandView(
+            messages: liveMessages,
+            subtitle: liveSubtitle,
+            hostCompanion: liveHostCompanion,
+            visitorCompanions: visitorCompanions,
+            showsDismissButton: false
+        ) {
+            openFeedSheet()
+        } openCompanionPicker: {
+            openCompanionPicker()
+        }
+        .overlay {
+            if let activeYesterdayReport {
+                YesterdayReportOverlay(report: activeYesterdayReport) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        self.activeYesterdayReport = nil
+                    }
+                }
+                .environmentObject(recruitmentStore)
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
             }
+        }
+        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: activeYesterdayReport?.id)
+    }
+
+    private var companionPresences: [CompanionAnimalPresence] {
+        BabyCompanion.companionPageAnimals(
+            selectedID: companionStore.selectedID,
+            temperamentAnimalID: temperamentStore.result?.animalID,
+            recruitedIDs: recruitmentStore.recruitedIDs
+        )
+    }
+
+    private var visitorCompanions: [BabyCompanion] {
+        if let activeYesterdayReport {
+            return activeYesterdayReport.visitorIDs.map { BabyCompanion.companion(for: $0) }
+        }
+        if let latestReport = recruitmentStore.latestReport(),
+           recruitmentStore.feedableBBBucks(for: latestReport) > 0 {
+            return latestReport.visitorIDs.map { BabyCompanion.companion(for: $0) }
+        }
+        let visitors = recruitmentStore.lockedVisitorCompanions(for: todaysVisitorKey)
+        if !visitors.isEmpty {
+            return visitors
+        }
+        return [companionStore.selected]
+    }
+
+    private var liveHostCompanion: BabyCompanion {
+        visitorCompanions.first ?? companionStore.selected
+    }
+
+    private var liveSubtitle: String {
+        let residentCount = companionPresences.filter(\.isResident).count
+        let visitorCount = companionPresences.count - residentCount
+        return "\(residentCount)只常驻，\(visitorCount)只来访"
+    }
+
+    private var todaysVisitorKey: String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
     }
 
     private var liveMessages: [LiveChatMessage] {
@@ -25,18 +102,22 @@ struct DailyMessageView: View {
             LiveChatMessage(
                 speaker: profile.name,
                 text: careText(for: session),
-                tint: Color(hex: "#FFE7A8"),
+                tint: Color(hex: "#FFF7B8"),
+                level: 16,
+                badge: "宝",
                 isCareLog: true
             )
         }
 
         return [
-            LiveChatMessage(speaker: "粉咕", text: "小木屋灯亮啦，今天的陪伴直播开始。", tint: Color(hex: "#FFD1DC")),
-            LiveChatMessage(speaker: "芬灵", text: "我在地图右边巡逻，看到好多发光小花。", tint: Color(hex: "#FFC692")),
-            LiveChatMessage(speaker: "柯噜", text: "如果宝宝刚吃饱，我们就把掌声开小一点。", tint: Color(hex: "#FFF19A"))
+            LiveChatMessage(speaker: liveHostCompanion.chineseName, text: "加入了直播间", tint: Color(hex: "#FFFFFF"), level: 34, isJoin: true),
+            LiveChatMessage(speaker: liveHostCompanion.chineseName, text: "我今天是随机来访的伙伴，可以用 BB Bucks 慢慢加深友情。", tint: Color(hex: "#FFF7B8"), level: 18, badge: "访"),
+            LiveChatMessage(speaker: "尤卡", text: "小木屋灯亮啦，今天的陪伴直播开始。", tint: Color(hex: "#D9F6FF"), level: 23),
+            LiveChatMessage(speaker: "芬灵", text: "我在地图右边巡逻，看到好多发光小花。", tint: Color(hex: "#D9F6FF"), level: 10, badge: "管"),
+            LiveChatMessage(speaker: "柯噜", text: "如果宝宝刚吃饱，我们就把掌声开小一点。", tint: Color(hex: "#FFFFFF"), level: 3)
         ] + careMessages + [
-            LiveChatMessage(speaker: "云朵", text: "今天也在稳定记录，照护节奏越来越清楚。", tint: Color(hex: "#D7E8FF")),
-            LiveChatMessage(speaker: "啾啾", text: "我给宝宝攒了一颗温柔星星。", tint: Color(hex: "#FFF1A8"))
+            LiveChatMessage(speaker: "摩耶", text: "今天也在稳定记录，照护节奏越来越清楚。", tint: Color(hex: "#D9F6FF"), level: 36),
+            LiveChatMessage(speaker: "奇比", text: "我给宝宝攒了一颗温柔星星。", tint: Color(hex: "#FFFFFF"), level: 8)
         ]
     }
 
@@ -58,244 +139,375 @@ struct DailyMessageView: View {
 struct BabyLiveIslandView: View {
     @Environment(\.dismiss) private var dismiss
     let messages: [LiveChatMessage]
+    let subtitle: String
+    let hostCompanion: BabyCompanion
+    let visitorCompanions: [BabyCompanion]
+    var showsDismissButton = true
     let openRecord: () -> Void
+    let openCompanionPicker: () -> Void
     @State private var liked = false
     @State private var heartBurst: [FloatingHeart] = []
+    @State private var chatDraft = ""
+    @State private var sentMessages: [LiveChatMessage] = []
+
+    init(
+        messages: [LiveChatMessage],
+        subtitle: String = "\(BabyCompanion.all.count)只小动物正在轻轻陪伴",
+        hostCompanion: BabyCompanion = BabyCompanion.all[3],
+        visitorCompanions: [BabyCompanion] = [],
+        showsDismissButton: Bool = true,
+        openRecord: @escaping () -> Void,
+        openCompanionPicker: @escaping () -> Void = {}
+    ) {
+        self.messages = messages
+        self.subtitle = subtitle
+        self.hostCompanion = hostCompanion
+        self.visitorCompanions = visitorCompanions
+        self.showsDismissButton = showsDismissButton
+        self.openRecord = openRecord
+        self.openCompanionPicker = openCompanionPicker
+    }
 
     var body: some View {
-        ZStack {
-            LiveIslandSceneView()
+        GeometryReader { proxy in
+            let metrics = LiveIslandLayoutMetrics(size: proxy.size)
 
-            LinearGradient(
-                colors: [
-                    .black.opacity(0.34),
-                    .clear,
-                    .black.opacity(0.42)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
+            ZStack {
+                LiveIslandSceneView()
+                    .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                liveHeader
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
+                LinearGradient(
+                    colors: [
+                        .black.opacity(0.30),
+                        .black.opacity(0.02),
+                        .black.opacity(0.40)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
-                Spacer()
+                VStack(spacing: 0) {
+                    liveHeader(metrics: metrics)
+                        .padding(.horizontal, metrics.horizontalPadding)
+                        .padding(.top, metrics.topPadding)
 
-                VStack(spacing: 12) {
-                    HStack(alignment: .bottom, spacing: 12) {
-                        chatStack
-                            .allowsHitTesting(false)
-                        Spacer(minLength: 10)
-                        liveActions
+                    Spacer(minLength: metrics.middleSpacing)
+
+                    VStack(spacing: metrics.composerSpacing) {
+                        HStack(alignment: .bottom, spacing: metrics.contentSpacing) {
+                            chatStack(metrics: metrics)
+                                .allowsHitTesting(false)
+                            Spacer(minLength: 6)
+                            liveActions(metrics: metrics)
+                        }
+
+                        liveComposer(metrics: metrics)
                     }
-
-                    liveComposer
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .padding(.bottom, metrics.bottomPadding)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 18)
-            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if !heartBurst.isEmpty {
-                FloatingHeartsView(hearts: heartBurst)
-                    .transition(.opacity)
-                    .allowsHitTesting(false)
-            }
-        }
-        .background(Color(hex: "#1AAE68"))
-        .ignoresSafeArea()
-    }
-
-    private var liveHeader: some View {
-        HStack(spacing: 10) {
-            Button {
-                dismiss()
-            } label: {
-                Circle()
-                    .fill(.black.opacity(0.3))
-                    .frame(width: 38, height: 38)
-                    .overlay(
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .heavy))
-                            .foregroundStyle(.white)
-                    )
-            }
-            .buttonStyle(ScaleButtonStyle())
-
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(colors: [Color(hex: "#FFE082"), Color(hex: "#FFA7C8")], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Text("🏡")
-                        .font(.system(size: 24))
-                }
-                .frame(width: 44, height: 44)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text("BabyBuddy 小木屋")
-                            .font(.system(size: 15, weight: .heavy, design: .rounded))
-                        Text("LIVE")
-                            .font(.system(size: 10, weight: .black, design: .rounded))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(Color(hex: "#FF3B63")))
-                    }
-                    .foregroundStyle(.white)
-
-                    Text("10只小动物正在陪伴宝宝")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.78))
+                if !heartBurst.isEmpty {
+                    FloatingHeartsView(hearts: heartBurst)
+                        .transition(.opacity)
+                        .allowsHitTesting(false)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(Capsule().fill(.black.opacity(0.32)))
-
-            Spacer()
-
-            HStack(spacing: 5) {
-                Image(systemName: "eye.fill")
-                Text("2.4k")
-            }
-            .font(.system(size: 13, weight: .heavy, design: .rounded))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(Capsule().fill(.black.opacity(0.28)))
+            .background(Color(hex: "#1AAE68").ignoresSafeArea())
         }
     }
 
-    private var chatStack: some View {
+    private func liveHeader(metrics: LiveIslandLayoutMetrics) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            livePrompt
+            HStack(spacing: 6) {
+                HStack(spacing: 7) {
+                    liveCompanionAvatar(hostCompanion, size: metrics.hostAvatarSize)
 
-            ForEach(messages.suffix(7)) { message in
-                liveMessageRow(message)
-            }
-        }
-        .frame(maxWidth: 292, alignment: .leading)
-    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("\(hostCompanion.chineseName)的小木屋")
+                            .font(BBBFont.font(size: metrics.headerTitleSize, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.70)
 
-    private var livePrompt: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "hand.draw.fill")
-            Text("拖动屏幕看看小动物在做什么")
-        }
-        .font(.system(size: 12, weight: .bold, design: .rounded))
-        .foregroundStyle(.white)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Capsule().fill(.white.opacity(0.18)))
-    }
-
-    private func liveMessageRow(_ message: LiveChatMessage) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 7) {
-            Text(message.speaker)
-                .font(.system(size: 12, weight: .heavy, design: .rounded))
-                .foregroundStyle(message.tint)
-
-            Text(message.text)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(2)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(message.isCareLog ? Color(hex: "#47351D").opacity(0.62) : .black.opacity(0.34))
-        )
-        .overlay(alignment: .leading) {
-            if message.isCareLog {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color(hex: "#FFE08A").opacity(0.42), lineWidth: 1)
-            }
-        }
-    }
-
-    private var liveActions: some View {
-        VStack(spacing: 14) {
-            liveActionButton(icon: "pawprint.fill", title: "动物")
-            liveActionButton(icon: "gift.fill", title: "贴纸")
-            Button {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
-                    liked.toggle()
-                    heartBurst = FloatingHeart.makeBurst()
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        heartBurst = []
+                        Text(subtitle)
+                            .font(BBBFont.font(size: metrics.headerSubtitleSize, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.86))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.70)
                     }
+
+                    Button {} label: {
+                        Text("关注")
+                            .font(BBBFont.font(size: metrics.followFontSize, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .frame(width: metrics.followButtonWidth, height: metrics.followButtonHeight)
+                            .background(Capsule().fill(Color(hex: "#FE3D76")))
+                    }
+                    .buttonStyle(ScaleButtonStyle())
                 }
-            } label: {
-                VStack(spacing: 5) {
-                    Circle()
-                        .fill(liked ? Color(hex: "#FF477E") : .white.opacity(0.92))
-                        .frame(width: 50, height: 50)
-                        .overlay(
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 23, weight: .heavy))
-                                .foregroundStyle(liked ? .white : Color(hex: "#FF477E"))
-                        )
-                    Text("喜欢")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                .padding(.leading, 4)
+                .padding(.trailing, 7)
+                .frame(height: metrics.headerPillHeight)
+                .background(Capsule().fill(.black.opacity(0.28)))
+
+                Spacer(minLength: 6)
+
+                if !metrics.isNarrowWidth {
+                    visitorAvatarStack(metrics: metrics)
+                }
+
+                Text("\(viewerCount)")
+                    .font(BBBFont.font(size: metrics.counterFontSize, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 11)
+                    .frame(height: metrics.headerIconButtonSize)
+                    .background(Capsule().fill(.black.opacity(0.22)))
+
+                Button {
+                    openCompanionPicker()
+                } label: {
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: metrics.headerIconSize, weight: .heavy))
                         .foregroundStyle(.white)
+                        .frame(width: metrics.headerIconButtonSize, height: metrics.headerIconButtonSize)
+                        .background(Circle().fill(.black.opacity(0.24)))
                 }
+                .buttonStyle(ScaleButtonStyle())
             }
-            .buttonStyle(ScaleButtonStyle())
+
+            HStack(spacing: 8) {
+                Text("小木屋第 1 名")
+                    .font(BBBFont.font(size: metrics.secondaryPillFontSize, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .frame(height: metrics.secondaryPillHeight)
+                    .background(Capsule().fill(.black.opacity(0.22)))
+
+                Spacer()
+
+                liveSquareEntry(metrics: metrics)
+            }
         }
     }
 
-    private var liveComposer: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "message.fill")
-                    .foregroundStyle(.white.opacity(0.7))
-                Text("和小动物说点什么...")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
-                Spacer()
+    private var viewerCount: Int {
+        800 + visitorCompanions.count * 7 + messages.count + sentMessages.count
+    }
+
+    private func liveSquareEntry(metrics: LiveIslandLayoutMetrics) -> some View {
+        Button {
+            openCompanionPicker()
+        } label: {
+            HStack(spacing: 6) {
+                Text("伙伴广场")
+                    .font(BBBFont.font(size: metrics.secondaryPillFontSize, weight: .heavy))
+                    .foregroundStyle(.white)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: metrics.secondaryChevronSize, weight: .heavy))
+                    .foregroundStyle(.white)
             }
             .padding(.horizontal, 14)
-            .frame(height: 44)
-            .background(Capsule().fill(.black.opacity(0.32)))
+            .frame(height: metrics.secondaryPillHeight)
+            .background(Capsule().fill(.black.opacity(0.20)))
+        }
+        .buttonStyle(ScaleButtonStyle())
+    }
+
+    private func visitorAvatarStack(metrics: LiveIslandLayoutMetrics) -> some View {
+        HStack(spacing: -8) {
+            ForEach(Array(visitorCompanions.prefix(metrics.visitorAvatarLimit).enumerated()), id: \.element.id) { _, companion in
+                liveCompanionAvatar(companion, size: metrics.visitorAvatarSize)
+            }
+        }
+    }
+
+    private func liveCompanionAvatar(_ companion: BabyCompanion, size: CGFloat) -> some View {
+        Image(companion.portraitAssetName)
+            .resizable()
+            .scaledToFit()
+            .padding(size * 0.06)
+            .frame(width: size, height: size)
+            .background(Circle().fill(.white.opacity(0.22)))
+            .clipShape(Circle())
+            .overlay(Circle().stroke(.white.opacity(0.68), lineWidth: 1.5))
+            .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+    }
+
+    private func chatStack(metrics: LiveIslandLayoutMetrics) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            joinMessage(metrics: metrics)
+
+            ForEach((messages + sentMessages).suffix(metrics.messageLimit)) { message in
+                liveMessageRow(message, metrics: metrics)
+            }
+        }
+        .frame(maxWidth: metrics.chatMaxWidth, alignment: .leading)
+    }
+
+    private func joinMessage(metrics: LiveIslandLayoutMetrics) -> some View {
+        HStack(spacing: 6) {
+            levelBadge(34, color: Color(hex: "#735DFF"))
+            Text("\(hostCompanion.chineseName) 加入了直播间")
+        }
+        .font(BBBFont.font(size: metrics.joinFontSize, weight: .heavy))
+        .foregroundStyle(.white)
+        .padding(.leading, 5)
+        .padding(.trailing, 12)
+        .frame(height: metrics.joinMessageHeight)
+        .background(Capsule().fill(Color(hex: "#415FEA").opacity(0.68)))
+        .shadow(color: .black.opacity(0.10), radius: 6, y: 3)
+    }
+
+    private func liveMessageRow(_ message: LiveChatMessage, metrics: LiveIslandLayoutMetrics) -> some View {
+        HStack(alignment: .center, spacing: 6) {
+            if let level = message.level {
+                levelBadge(level, color: message.isCareLog ? Color(hex: "#FF9B42") : Color(hex: "#6888FF"))
+            }
+
+            if let badge = message.badge {
+                Text(badge)
+                    .font(BBBFont.font(size: metrics.badgeFontSize, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(width: metrics.badgeSize, height: metrics.badgeSize)
+                    .background(Circle().fill(Color(hex: "#D7598B")))
+            }
+
+            Text(message.speaker)
+                .font(BBBFont.font(size: metrics.messageSpeakerSize, weight: .heavy))
+                .foregroundStyle(message.tint)
+                .lineLimit(1)
+
+            Text(message.isJoin ? "" : "：\(message.text)")
+                .font(BBBFont.font(size: metrics.messageBodySize, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+                .lineSpacing(1)
+        }
+        .padding(.leading, 6)
+        .padding(.trailing, 12)
+        .padding(.vertical, metrics.messageVerticalPadding)
+        .background(Capsule().fill(.black.opacity(message.isCareLog ? 0.24 : 0.18)))
+        .shadow(color: .black.opacity(0.06), radius: 5, y: 2)
+    }
+
+    private func levelBadge(_ level: Int, color: Color) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: "diamond.fill")
+                .font(.system(size: 7, weight: .heavy))
+            Text("\(level)")
+                .font(BBBFont.font(size: 10, weight: .heavy))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 6)
+        .frame(height: 19)
+        .background(Capsule().fill(color))
+    }
+
+    private func liveActions(metrics: LiveIslandLayoutMetrics) -> some View {
+        Color.clear
+            .frame(width: metrics.actionColumnWidth, height: 1)
+    }
+
+    private func liveComposer(metrics: LiveIslandLayoutMetrics) -> some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 6) {
+                TextField("说点什么...", text: $chatDraft)
+                    .font(BBBFont.font(size: metrics.composerFontSize, weight: .bold))
+                    .foregroundStyle(.white)
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.send)
+                    .onSubmit(sendChatMessage)
+                    .tint(.white)
+
+                Button {
+                    sendChatMessage()
+                } label: {
+                    Image(systemName: chatDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "face.smiling" : "paperplane.fill")
+                        .font(.system(size: metrics.composerIconSize, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .frame(width: metrics.composerButtonSize, height: metrics.composerButtonSize)
+                }
+                .buttonStyle(ScaleButtonStyle())
+            }
+            .padding(.leading, 15)
+            .padding(.trailing, 7)
+            .frame(height: metrics.composerHeight)
+            .background(Capsule().fill(.black.opacity(0.18)))
+            .overlay(Capsule().stroke(.white.opacity(0.09), lineWidth: 1))
+
+            Button {
+                likeLive()
+            } label: {
+                liveRoundAction(icon: "heart.fill", colors: [Color(hex: "#FF4A84"), Color(hex: "#7F5BFF")], metrics: metrics)
+            }
+            .buttonStyle(ScaleButtonStyle())
 
             Button {
                 openRecord()
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("记录")
-                }
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color(hex: "#3D2849"))
-                .padding(.horizontal, 16)
-                .frame(height: 44)
-                .background(Capsule().fill(Color(hex: "#FFE08A")))
+                liveRoundAction(icon: "gift.fill", colors: [Color(hex: "#FF4DB0"), Color(hex: "#FFB13B")], metrics: metrics)
+            }
+            .buttonStyle(ScaleButtonStyle())
+
+            Button {
+                openRecord()
+            } label: {
+                Image(systemName: "arrowshape.turn.up.right.fill")
+                    .font(.system(size: metrics.bottomIconSize, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(width: metrics.bottomActionSize, height: metrics.bottomActionSize)
+                    .background(Circle().fill(.black.opacity(0.22)))
             }
             .buttonStyle(ScaleButtonStyle())
         }
     }
 
-    private func liveActionButton(icon: String, title: String) -> some View {
-        VStack(spacing: 5) {
-            Circle()
-                .fill(.white.opacity(0.92))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Image(systemName: icon)
-                        .font(.system(size: 22, weight: .heavy))
-                        .foregroundStyle(Color(hex: "#6F55E8"))
-                )
-            Text(title)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+    private func liveRoundAction(icon: String, colors: [Color], metrics: LiveIslandLayoutMetrics) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: metrics.bottomIconSize, weight: .heavy))
+            .foregroundStyle(.white)
+            .frame(width: metrics.bottomActionSize, height: metrics.bottomActionSize)
+            .background(
+                Circle()
+                    .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .shadow(color: colors.first?.opacity(0.26) ?? .clear, radius: 10, y: 4)
+            )
+    }
+
+    private func likeLive() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+            liked.toggle()
+            heartBurst = FloatingHeart.makeBurst()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation(.easeOut(duration: 0.3)) {
+                heartBurst = []
+            }
         }
     }
+
+    private func sendChatMessage() {
+        let text = chatDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            likeLive()
+            return
+        }
+
+        sentMessages.append(
+            LiveChatMessage(
+                speaker: "我",
+                text: text,
+                tint: Color(hex: "#D9F6FF"),
+                level: 8
+            )
+        )
+        chatDraft = ""
+    }
+
 }
 
 struct LiveChatMessage: Identifiable {
@@ -303,7 +515,173 @@ struct LiveChatMessage: Identifiable {
     let speaker: String
     let text: String
     let tint: Color
+    var level: Int?
+    var badge: String?
     var isCareLog = false
+    var isJoin = false
+}
+
+private struct LiveIslandLayoutMetrics {
+    let size: CGSize
+
+    var isCompactHeight: Bool { size.height < 720 }
+    var isNarrowWidth: Bool { size.width < 390 }
+
+    var horizontalPadding: CGFloat {
+        isNarrowWidth ? 14 : 18
+    }
+
+    var topPadding: CGFloat {
+        isCompactHeight ? 8 : 12
+    }
+
+    var bottomPadding: CGFloat {
+        isCompactHeight ? 12 : 16
+    }
+
+    var middleSpacing: CGFloat {
+        isCompactHeight ? 12 : 22
+    }
+
+    var composerSpacing: CGFloat {
+        isCompactHeight ? 9 : 12
+    }
+
+    var contentSpacing: CGFloat {
+        isNarrowWidth ? 8 : 12
+    }
+
+    var messageLimit: Int {
+        isCompactHeight ? 3 : 3
+    }
+
+    var chatMaxWidth: CGFloat {
+        max(180, min(size.width - horizontalPadding * 2 - actionColumnWidth - contentSpacing - 6, isNarrowWidth ? 238 : 264))
+    }
+
+    var messageVerticalPadding: CGFloat {
+        isCompactHeight ? 5 : 6
+    }
+
+    var avatarSize: CGFloat {
+        isNarrowWidth ? 34 : 38
+    }
+
+    var hostAvatarSize: CGFloat {
+        avatarSize + 6
+    }
+
+    var visitorAvatarSize: CGFloat {
+        isNarrowWidth ? 30 : 34
+    }
+
+    var visitorAvatarLimit: Int {
+        isNarrowWidth ? 2 : 3
+    }
+
+    var headerTitleSize: CGFloat {
+        isNarrowWidth ? 12 : 13
+    }
+
+    var headerSubtitleSize: CGFloat {
+        isNarrowWidth ? 9 : 10
+    }
+
+    var followFontSize: CGFloat {
+        isNarrowWidth ? 12 : 13
+    }
+
+    var followButtonWidth: CGFloat {
+        isNarrowWidth ? 48 : 52
+    }
+
+    var followButtonHeight: CGFloat {
+        isNarrowWidth ? 30 : 32
+    }
+
+    var headerPillHeight: CGFloat {
+        isNarrowWidth ? 48 : 52
+    }
+
+    var headerIconButtonSize: CGFloat {
+        isNarrowWidth ? 36 : 38
+    }
+
+    var headerIconSize: CGFloat {
+        isNarrowWidth ? 15 : 16
+    }
+
+    var counterFontSize: CGFloat {
+        isNarrowWidth ? 14 : 15
+    }
+
+    var secondaryPillFontSize: CGFloat {
+        isNarrowWidth ? 13 : 14
+    }
+
+    var secondaryPillHeight: CGFloat {
+        isNarrowWidth ? 32 : 34
+    }
+
+    var secondaryChevronSize: CGFloat {
+        isNarrowWidth ? 12 : 13
+    }
+
+    var joinFontSize: CGFloat {
+        isNarrowWidth ? 13 : 14
+    }
+
+    var joinMessageHeight: CGFloat {
+        isNarrowWidth ? 30 : 32
+    }
+
+    var messageSpeakerSize: CGFloat {
+        isNarrowWidth ? 13 : 14
+    }
+
+    var messageBodySize: CGFloat {
+        isNarrowWidth ? 13 : 14
+    }
+
+    var badgeFontSize: CGFloat {
+        isNarrowWidth ? 9 : 10
+    }
+
+    var badgeSize: CGFloat {
+        isNarrowWidth ? 19 : 20
+    }
+
+    var bottomActionSize: CGFloat {
+        isCompactHeight || isNarrowWidth ? 40 : 44
+    }
+
+    var bottomIconSize: CGFloat {
+        isCompactHeight || isNarrowWidth ? 18 : 20
+    }
+
+    var actionButtonSize: CGFloat {
+        bottomActionSize
+    }
+
+    var actionColumnWidth: CGFloat {
+        1
+    }
+
+    var composerHeight: CGFloat {
+        isCompactHeight ? 40 : 44
+    }
+
+    var composerFontSize: CGFloat {
+        isNarrowWidth ? 13 : 14
+    }
+
+    var composerIconSize: CGFloat {
+        isNarrowWidth ? 19 : 20
+    }
+
+    var composerButtonSize: CGFloat {
+        isCompactHeight || isNarrowWidth ? 32 : 34
+    }
 }
 
 private struct FloatingHeartsView: View {
@@ -368,30 +746,20 @@ struct BabyAchievementsView: View {
 
     private let sections: [AchievementSection] = [
         .init(
-            title: "新人成就",
+            title: "第一次",
             achievements: [
-                .init(id: "first-empty-bottle", title: "第一次空罐", description: "宝宝第一次喝完一整瓶奶，值得收集成贴纸。", symbol: "babybottle.fill"),
-                .init(id: "first-diaper", title: "第一次尿布", description: "记录第一次尿布护理，保存这一刻。", symbol: "drop.fill"),
-                .init(id: "first-sleep", title: "第一次睡眠", description: "记录第一次睡眠成就。", symbol: "moon.fill"),
-                .init(id: "first-companion", title: "第一次陪伴", description: "和 Buddy 建立第一次陪伴记忆。", symbol: "heart.fill")
+                .init(id: "first-hug", title: "第一次拥抱", description: "第一次把宝宝稳稳抱进怀里，这一刻值得留下。", symbol: "figure.2.arms.open"),
+                .init(id: "first-big-smile", title: "第一次咧嘴笑", description: "宝宝第一次咧开嘴笑，家里的空气都变甜了。", symbol: "face.smiling.fill"),
+                .init(id: "first-formula-can", title: "第一次空罐", description: "宝宝第一次吃完一整罐奶粉，成长的进度又亮了一格。", symbol: "takeoutbag.and.cup.and.straw.fill"),
+                .init(id: "first-diaper", title: "第一次尿布", description: "完成第一次尿布护理，正式解锁照护日常。", symbol: "drop.fill")
             ]
         ),
         .init(
-            title: "照护成就",
+            title: "成长节点",
             achievements: [
-                .init(id: "three-day-streak", title: "连续记录 3 天", description: "连续三天记录宝宝照护。", symbol: "calendar.badge.checkmark"),
-                .init(id: "ten-feedings", title: "完成 10 次喂养", description: "累计完成十次喂养记录。", symbol: "10.circle.fill"),
-                .init(id: "growth-moment", title: "记录一次成长", description: "保存一个宝宝成长瞬间。", symbol: "sparkles"),
-                .init(id: "steady-rhythm", title: "稳定作息", description: "开始形成稳定的宝宝照护节奏。", symbol: "clock.badge.checkmark.fill")
-            ]
-        ),
-        .init(
-            title: "陪伴成就",
-            achievements: [
-                .init(id: "first-chat", title: "和 Buddy 聊天", description: "第一次和 Buddy 聊天。", symbol: "message.fill"),
-                .init(id: "switch-buddy", title: "切换陪伴伙伴", description: "选择一个新的陪伴伙伴。", symbol: "pawprint.fill"),
-                .init(id: "first-interaction", title: "完成一次互动", description: "和 Buddy 完成一次互动。", symbol: "hand.tap.fill"),
-                .init(id: "gentle-moment", title: "收集温柔时刻", description: "把一个温柔瞬间收进宝宝贴纸册。", symbol: "star.fill")
+                .init(id: "first-vaccine", title: "不疼不疼啊疼", description: "第一次带宝宝打针，心疼归心疼，也一起勇敢完成了。", symbol: "syringe.fill"),
+                .init(id: "first-head-lift", title: "看见更大的世界", description: "宝宝第一次努力抬头，视野从这一刻慢慢变高。", symbol: "eye.fill"),
+                .init(id: "one-month", title: "满月啦", description: "宝宝来到身边 30 天，正式收下第一枚月龄纪念。", symbol: "moon.stars.fill")
             ]
         )
     ]
@@ -401,13 +769,13 @@ struct BabyAchievementsView: View {
             DesignToken.bg.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 22) {
                     achievementHeader
 
                     LazyVGrid(
                         columns: [
-                            GridItem(.flexible(), spacing: 18),
-                            GridItem(.flexible(), spacing: 18)
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16)
                         ],
                         spacing: 22
                     ) {
@@ -423,8 +791,8 @@ struct BabyAchievementsView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .padding(.horizontal, 16)
+                .padding(.top, 24)
                 .padding(.bottom, 140)
             }
         }
@@ -441,7 +809,9 @@ struct BabyAchievementsView: View {
                 .environmentObject(stickerStore)
         }
         .sheet(item: $selectedAchievement) { achievement in
-            AchievementDetailView(achievement: achievement)
+            AchievementDetailView(achievement: achievement) {
+                selectedAchievement = nil
+            }
                 .environmentObject(stickerStore)
         }
     }
@@ -449,7 +819,7 @@ struct BabyAchievementsView: View {
     private var achievementHeader: some View {
         HStack(alignment: .center) {
             Text("宝宝成就")
-                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .font(BBBFont.font(size: 22, weight: .heavy))
                 .foregroundStyle(DesignToken.textPrimary)
                 .frame(height: 44, alignment: .center)
 
@@ -462,10 +832,10 @@ struct BabyAchievementsView: View {
     private var progressTag: some View {
         HStack(spacing: 4) {
             Text("\(unlockedCount)/\(totalCount)")
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .font(BBBFont.font(size: 14, weight: .heavy))
                 .foregroundStyle(.white)
             Text("已解锁")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(BBBFont.font(size: 11, weight: .bold))
                 .foregroundStyle(.white.opacity(0.82))
         }
         .frame(height: 34)
@@ -490,10 +860,10 @@ struct BabyAchievementsView: View {
             achievementCardShell {
                 VStack(spacing: 12) {
                     Image(systemName: "plus")
-                        .font(.system(size: 40, weight: .heavy))
+                        .font(.system(size: 32, weight: .heavy))
                         .foregroundStyle(DesignToken.primary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 136)
+                        .frame(height: 112)
 
                     VStack(spacing: 4) {
                         Text("自定义成就")
@@ -516,7 +886,7 @@ struct BabyAchievementsView: View {
                 VStack(spacing: 12) {
                     stickerImage(achievement)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 136)
+                        .frame(height: 112)
 
                     VStack(spacing: 4) {
                         Text(achievement.name)
@@ -563,13 +933,13 @@ struct BabyAchievementsView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(maxWidth: .infinity)
-                            .frame(height: 136)
+                            .frame(height: 112)
                     } else {
                         Image(systemName: achievement.symbol)
-                            .font(.system(size: 40, weight: .heavy))
+                            .font(.system(size: 32, weight: .heavy))
                             .foregroundStyle(DesignToken.textSecondary.opacity(0.58))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 136)
+                            .frame(height: 112)
                     }
 
                     VStack(spacing: 4) {
@@ -587,8 +957,8 @@ struct BabyAchievementsView: View {
 
     private func timestampText(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "M/d HH:mm"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.locale = Locale(identifier: "zh_Hans_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, inSameDayAs: Date()) ? "今天 HH:mm" : "M月d日 HH:mm"
         return formatter.string(from: date)
     }
 
@@ -612,6 +982,91 @@ struct BabyAchievementsView: View {
 
     private var allPresetAchievements: [Achievement] {
         sections.flatMap(\.achievements)
+    }
+}
+
+private func achievementDetailTimestampText(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "zh_Hans_CN")
+    formatter.dateFormat = Calendar.current.isDate(date, inSameDayAs: Date()) ? "今天 HH:mm" : "yyyy年M月d日 HH:mm"
+    return formatter.string(from: date)
+}
+
+private var achievementSoftBackground: some View {
+    ZStack {
+        LinearGradient(
+            colors: [
+                Color(hex: "#FAF7F3"),
+                Color(hex: "#F6F2F7"),
+                Color(hex: "#F9F7F2")
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+
+        LinearGradient(
+            colors: [
+                .white.opacity(0.42),
+                Color(hex: "#EDE7F7").opacity(0.22),
+                .clear
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+}
+
+private func achievementCircleButtonIcon(_ systemName: String, isEnabled: Bool = true) -> some View {
+    Image(systemName: systemName)
+        .font(.system(size: 20, weight: .semibold))
+        .foregroundStyle(isEnabled ? DesignToken.primary : Color(hex: "#C9C1CC"))
+        .frame(width: 48, height: 48)
+        .background(
+            Circle()
+                .fill(.white.opacity(0.78))
+                .shadow(color: Color(hex: "#8F817C").opacity(0.08), radius: 12, y: 5)
+        )
+}
+
+private func achievementStickerPlaceholder(symbol: String?) -> some View {
+    ZStack {
+        AchievementDoodleHalo()
+            .frame(width: 240, height: 240)
+            .opacity(0.48)
+
+        Circle()
+            .fill(.white.opacity(0.58))
+            .frame(width: 146, height: 146)
+
+        Image(systemName: symbol ?? "sparkles")
+            .font(.system(size: 54, weight: .semibold))
+            .foregroundStyle(Color(hex: "#C9BDEB").opacity(0.78))
+
+        Image(systemName: "camera.fill")
+            .font(.system(size: 18, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 42, height: 42)
+            .background(Circle().fill(DesignToken.primary.opacity(0.82)))
+            .offset(x: 54, y: 52)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+}
+
+private struct AchievementDoodleHalo: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.78), lineWidth: 12)
+                .blur(radius: 0.2)
+
+            Circle()
+                .stroke(Color(hex: "#D8D0CA").opacity(0.45), style: StrokeStyle(lineWidth: 9, lineCap: .round, dash: [20, 18]))
+                .rotationEffect(.degrees(-12))
+
+            Circle()
+                .stroke(Color.white.opacity(0.72), style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [2, 8]))
+                .scaleEffect(0.84)
+        }
     }
 }
 
@@ -652,7 +1107,7 @@ private extension Text {
         alignment: TextAlignment = .center
     ) -> some View {
         self
-            .font(.system(size: 15, weight: .heavy, design: .rounded))
+            .font(BBBFont.font(size: 14, weight: .heavy))
             .foregroundStyle(color)
             .multilineTextAlignment(alignment)
             .lineLimit(2)
@@ -664,7 +1119,7 @@ private extension Text {
         alignment: TextAlignment = .center
     ) -> some View {
         self
-            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .font(BBBFont.font(size: 10, weight: .bold))
             .foregroundStyle(DesignToken.textSecondary.opacity(opacity))
             .multilineTextAlignment(alignment)
     }
@@ -674,15 +1129,30 @@ private func achievementCardShell<Content: View>(@ViewBuilder content: () -> Con
     VStack(spacing: 0) {
         content()
     }
-    .padding(.horizontal, 16)
-    .padding(.top, 16)
-    .padding(.bottom, 12)
-    .frame(maxWidth: .infinity, minHeight: 214, alignment: .top)
+    .padding(.horizontal, 12)
+    .padding(.top, 18)
+    .padding(.bottom, 16)
+    .frame(maxWidth: .infinity, alignment: .top)
+    .aspectRatio(0.865, contentMode: .fit)
     .background(
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(.white)
-            .shadow(color: Color.black.opacity(0.04), radius: 14, y: 6)
+            .shadow(color: Color.black.opacity(0.035), radius: 12, y: 5)
     )
+}
+
+private enum AchievementDraftField: Hashable {
+    case name
+    case description
+    case note
+}
+
+private enum AchievementSheetTypography {
+    static let titleSize: CGFloat = 21
+    static let titleWeight: BBBFontWeight = .heavy
+    static let bodySize: CGFloat = 15
+    static let noteSize: CGFloat = 14
+    static let metaSize: CGFloat = 13
 }
 
 private struct CreateCustomAchievementView: View {
@@ -695,14 +1165,15 @@ private struct CreateCustomAchievementView: View {
     @State private var name = ""
     @State private var description = ""
     @State private var note = ""
-    @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var stickerPreview: UIImage?
     @State private var isGeneratingSticker = false
     @State private var showCamera = false
+    @State private var showNoteEditor = false
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var generationID = UUID()
+    @FocusState private var focusedField: AchievementDraftField?
 
     init(
         template: AchievementTemplate? = nil,
@@ -716,56 +1187,55 @@ private struct CreateCustomAchievementView: View {
         NavigationStack {
             GeometryReader { proxy in
                 ZStack {
-                    DesignToken.bg.ignoresSafeArea()
+                    achievementSoftBackground
+                        .ignoresSafeArea()
 
-                    VStack(spacing: 0) {
-                        VStack(spacing: 18) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 22) {
                             imagePickerCard(height: previewHeight(for: proxy.size.height))
                             formCard
+                            completionTimeText
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 22)
                         .padding(.top, 20)
-
-                        Spacer(minLength: 0)
+                        .padding(.bottom, 120)
                     }
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 mediaActionBar
             }
-            .navigationTitle(template == nil ? "自定义贴纸" : "完成成就")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(DesignToken.primary.opacity(0.72))
-                            .frame(width: 44, height: 44)
-                            .background(Circle().fill(.white.opacity(0.92)))
+                        achievementCircleButtonIcon("chevron.left")
                     }
                 }
 
-                if stickerPreview != nil {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button {
-                            saveAchievement()
-                        } label: {
-                            if isSaving {
-                                ProgressView()
-                                    .tint(DesignToken.primary)
-                                    .frame(width: 44, height: 44)
-                            } else {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 19, weight: .bold))
-                                    .foregroundStyle(canSaveAchievement ? DesignToken.primary : DesignToken.textSecondary.opacity(0.45))
-                                    .frame(width: 44, height: 44)
-                            }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        saveAchievement()
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                                .tint(DesignToken.primary)
+                                .frame(width: 48, height: 48)
+                        } else {
+                            achievementCircleButtonIcon("checkmark", isEnabled: canSaveAchievement)
                         }
-                        .disabled(!canSaveAchievement)
                     }
+                    .disabled(!canSaveAchievement)
+                }
+
+                ToolbarItem(placement: .principal) {
+                    Text(template == nil ? "自定义贴纸" : "完成成就")
+                        .font(BBBFont.font(size: 17, weight: .heavy))
+                        .foregroundStyle(Color(hex: "#6F605C"))
                 }
             }
             .alert("无法创建贴纸", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
@@ -773,9 +1243,8 @@ private struct CreateCustomAchievementView: View {
             } message: {
                 Text(errorMessage ?? "")
             }
-            .sheet(isPresented: $showCamera) {
-                CameraPicker(image: $selectedImage)
-                    .ignoresSafeArea()
+            .fullScreenCover(isPresented: $showCamera) {
+                AchievementCameraView(image: $selectedImage)
             }
             .onChange(of: selectedImage) { _, newImage in
                 generateStickerPreview(from: newImage)
@@ -790,104 +1259,158 @@ private struct CreateCustomAchievementView: View {
     }
 
     private func imagePickerCard(height: CGFloat) -> some View {
-        ZStack {
-            if let stickerPreview {
-                Image(uiImage: stickerPreview)
-                    .resizable()
-                    .scaledToFit()
-                    .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
-                    .padding(.horizontal, 8)
-            } else if isGeneratingSticker {
-                VStack(spacing: 12) {
-                    ProgressView()
-                        .tint(DesignToken.primary)
-                    Text("正在生成贴纸")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(DesignToken.textPrimary)
+        Button {
+            showCamera = true
+        } label: {
+            ZStack {
+                if let stickerPreview {
+                    Image(uiImage: stickerPreview)
+                        .resizable()
+                        .scaledToFit()
+                        .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
+                        .padding(.horizontal, 8)
+                } else if isGeneratingSticker {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .tint(DesignToken.primary)
+                        Text("正在生成贴纸")
+                            .font(BBBFont.font(size: 15, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#8A7D78"))
+                    }
+                } else {
+                    achievementStickerPlaceholder(symbol: template?.symbol)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                VStack(spacing: 10) {
-                    Image(systemName: "photo.badge.plus")
-                        .font(.system(size: 34, weight: .bold))
-                        .foregroundStyle(DesignToken.primary)
-                    Text("拍照或从相册选择一张照片")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(DesignToken.textPrimary)
-                    Text("生成一枚宝宝成就贴纸")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(DesignToken.textSecondary)
-                }
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(height: height)
+            .frame(maxWidth: .infinity)
         }
-        .frame(height: height)
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
     }
 
     private var formCard: some View {
-        VStack(spacing: 12) {
-            TextField("成就名称，例如：第一次空罐", text: $name)
-                .textFieldStyle(.plain)
-                .font(.headline.weight(.bold))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 13)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DesignToken.iconSoftBG))
+        VStack(alignment: .leading, spacing: 14) {
+            if template == nil {
+                TextField("成就名称", text: $name)
+                    .textFieldStyle(.plain)
+                    .focused($focusedField, equals: .name)
+                    .font(BBBFont.font(size: AchievementSheetTypography.titleSize, weight: AchievementSheetTypography.titleWeight))
+                    .foregroundStyle(Color(hex: "#6F605C"))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 15)
+                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(hex: "#F0EDF7").opacity(0.78)))
 
-            TextField("成就描述", text: $description, axis: .vertical)
-                .lineLimit(2, reservesSpace: true)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 13)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DesignToken.iconSoftBG))
+                TextField("写一句成就描述", text: $description, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .focused($focusedField, equals: .description)
+                    .lineLimit(3, reservesSpace: true)
+                    .font(BBBFont.font(size: AchievementSheetTypography.bodySize, weight: .medium))
+                    .foregroundStyle(Color(hex: "#81736E"))
+                    .lineSpacing(4)
+                    .padding(18)
+                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(hex: "#F0EDF7").opacity(0.78)))
+            } else {
+                Text(name)
+                    .font(BBBFont.font(size: AchievementSheetTypography.titleSize, weight: AchievementSheetTypography.titleWeight))
+                    .foregroundStyle(Color(hex: "#6F605C"))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.86)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            TextField("备注，可选", text: $note, axis: .vertical)
-                .lineLimit(2, reservesSpace: true)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 13)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DesignToken.iconSoftBG))
+                Text(description)
+                    .font(BBBFont.font(size: AchievementSheetTypography.bodySize, weight: .medium))
+                    .foregroundStyle(Color(hex: "#8B7B75"))
+                    .lineSpacing(5)
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(.white.opacity(0.64))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color(hex: "#DFD8D3").opacity(0.8), lineWidth: 1)
+                            )
+                    )
+            }
+
+            achievementNoteEditor
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(.white))
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(.white.opacity(0.84))
+                .shadow(color: Color(hex: "#8F817C").opacity(0.08), radius: 20, y: 10)
+        )
     }
 
     private var mediaActionBar: some View {
-        HStack(spacing: 12) {
-            Button {
-                showCamera = true
-            } label: {
-                Label("拍照", systemImage: "camera.fill")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(DesignToken.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Capsule().fill(DesignToken.iconSoftBG))
-            }
-            .buttonStyle(ScaleButtonStyle())
-
-            PhotosPicker(selection: $selectedItem, matching: .images) {
-                Label("相册", systemImage: "photo.on.rectangle.angled")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Capsule().fill(DesignToken.primaryGradient))
-            }
-            .onChange(of: selectedItem) { _, newItem in
-                Task {
-                    selectedImage = await loadImage(from: newItem)
-                }
-            }
+        Button {
+            showCamera = true
+        } label: {
+            Label(stickerPreview == nil ? "添加照片" : "更换照片", systemImage: "camera.fill")
+                .font(BBBFont.font(size: 17, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 58)
+                .background(Capsule().fill(DesignToken.primaryGradient))
+                .shadow(color: DesignToken.primary.opacity(0.22), radius: 18, y: 9)
         }
+        .buttonStyle(ScaleButtonStyle())
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 10)
-        .background(DesignToken.bg.opacity(0.96))
+        .background(.ultraThinMaterial.opacity(0.86))
+    }
+
+    private var achievementNoteEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    showNoteEditor.toggle()
+                    if showNoteEditor {
+                        focusedField = .note
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "添加备注" : note)
+                        .font(BBBFont.font(size: AchievementSheetTypography.noteSize, weight: .medium))
+                        .foregroundStyle(Color(hex: "#9A8E8A"))
+                        .lineLimit(1)
+                    Spacer()
+                    Image(systemName: showNoteEditor ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color(hex: "#B9AFAB"))
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 48)
+                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color(hex: "#F3F0F7").opacity(0.78)))
+            }
+            .buttonStyle(.plain)
+
+            if showNoteEditor {
+                TextField("写下这一刻的小故事", text: $note, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .focused($focusedField, equals: .note)
+                    .lineLimit(4, reservesSpace: true)
+                    .font(BBBFont.font(size: AchievementSheetTypography.noteSize, weight: .medium))
+                    .foregroundStyle(Color(hex: "#81736E"))
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color(hex: "#F3F0F7").opacity(0.78)))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var completionTimeText: some View {
+        Text(achievementDetailTimestampText(Date()))
+            .font(BBBFont.font(size: AchievementSheetTypography.metaSize, weight: .semibold))
+            .foregroundStyle(Color(hex: "#C1BAB6"))
+            .frame(maxWidth: .infinity)
     }
 
     private func saveAchievement() {
         guard let selectedImage, let stickerPreview else {
-            errorMessage = "请先选择一张照片"
+            errorMessage = "请先添加一张照片"
             return
         }
         isSaving = true
@@ -909,14 +1432,6 @@ private struct CreateCustomAchievementView: View {
         }
     }
 
-    private func loadImage(from item: PhotosPickerItem?) async -> UIImage? {
-        guard let item,
-              let data = try? await item.loadTransferable(type: Data.self) else {
-            return nil
-        }
-        return UIImage(data: data)
-    }
-
     private func generateStickerPreview(from image: UIImage?) {
         let currentGenerationID = UUID()
         generationID = currentGenerationID
@@ -927,7 +1442,7 @@ private struct CreateCustomAchievementView: View {
         }
         isGeneratingSticker = true
         Task.detached(priority: .userInitiated) {
-            let optimizedImage = image.optimizedForStickerInput()
+            let optimizedImage = image.optimizedForStickerInput(maxSide: StickerGenerator.stickerInputMaxSide)
             let sticker = StickerGenerator.generateSticker(from: optimizedImage)
             await MainActor.run {
                 guard generationID == currentGenerationID else { return }
@@ -938,11 +1453,12 @@ private struct CreateCustomAchievementView: View {
     }
 
     private func previewHeight(for availableHeight: CGFloat) -> CGFloat {
-        min(max(availableHeight * 0.28, 200), 280)
+        min(max(availableHeight * 0.30, 220), 310)
     }
 
     private var canSaveAchievement: Bool {
-        stickerPreview != nil && !isGeneratingSticker && !isSaving
+        let hasCopy = template != nil || !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return stickerPreview != nil && !isGeneratingSticker && !isSaving && hasCopy
     }
 }
 
@@ -950,27 +1466,86 @@ private struct AchievementDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var stickerStore: AchievementStickerStore
     let achievement: CustomAchievement
+    let onDeleted: () -> Void
     @State private var note = ""
+    @State private var showNoteEditor = false
+    @State private var selectedImage: UIImage?
+    @State private var isGeneratingSticker = false
+    @State private var showCamera = false
+    @State private var showDeleteConfirmation = false
+    @State private var errorMessage: String?
+    @State private var generationID = UUID()
 
     var body: some View {
         NavigationStack {
             ZStack {
-                DesignToken.bg.ignoresSafeArea()
+                achievementSoftBackground
+                    .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 18) {
+                    VStack(spacing: 22) {
                         stickerHero
                         detailCard
+                        Text(achievementDetailTimestampText(achievement.completedAt))
+                            .font(BBBFont.font(size: AchievementSheetTypography.metaSize, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#BFB7B3"))
+                            .frame(maxWidth: .infinity)
                     }
-                    .padding(20)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 18)
+                    .padding(.bottom, 72)
                 }
             }
-            .navigationTitle("成就详情")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        achievementCircleButtonIcon("chevron.left")
+                    }
                 }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Menu {
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Label("更换图片", systemImage: "camera.fill")
+                        }
+
+                        if achievement.templateID == nil {
+                            Button(role: .destructive) {
+                                showDeleteConfirmation = true
+                            } label: {
+                                Label("删除成就", systemImage: "trash")
+                            }
+                        }
+                    } label: {
+                        achievementCircleButtonIcon("ellipsis")
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                AchievementCameraView(image: $selectedImage)
+            }
+            .alert("无法更新成就", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+                Button("好", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+            .confirmationDialog("删除这个自定义成就？", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+                Button("删除", role: .destructive) {
+                    deleteAchievement()
+                }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("删除后，这张贴纸和备注会从宝宝成就中移除。")
+            }
+            .onChange(of: selectedImage) { _, newImage in
+                updateStickerImage(from: newImage)
             }
             .onAppear {
                 note = achievement.note
@@ -982,145 +1557,499 @@ private struct AchievementDetailView: View {
     }
 
     private var stickerHero: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 20) {
             ZStack {
-                Circle()
-                    .fill(DesignToken.primaryGradient)
-                    .frame(width: 220, height: 220)
-                    .opacity(0.22)
-                if let image = stickerStore.stickerImage(for: achievement) {
+                AchievementDoodleHalo()
+                    .frame(width: 260, height: 260)
+                    .opacity(0.72)
+
+                if isGeneratingSticker {
+                    ProgressView()
+                        .tint(DesignToken.primary)
+                        .frame(width: 236, height: 236)
+                } else if let image = stickerStore.stickerImage(for: achievement) {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 210, height: 210)
+                        .frame(width: 236, height: 236)
+                        .shadow(color: Color(hex: "#8F817C").opacity(0.14), radius: 14, y: 8)
                 }
             }
 
             Text(achievement.name)
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
-                .foregroundStyle(DesignToken.textPrimary)
+                .font(BBBFont.font(size: 23, weight: .heavy))
+                .foregroundStyle(Color(hex: "#786762"))
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.82)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 26)
-        .background(RoundedRectangle(cornerRadius: 30, style: .continuous).fill(.white.opacity(0.92)))
+        .padding(.top, 26)
     }
 
     private var detailCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            detailRow(title: "完成时间", value: achievement.completedAt.formatted(date: .abbreviated, time: .shortened), icon: "calendar.badge.checkmark")
-            detailRow(title: "描述", value: achievement.description, icon: "text.quote")
+        VStack(alignment: .leading, spacing: 14) {
+            Text(achievement.description)
+                .font(BBBFont.font(size: AchievementSheetTypography.bodySize, weight: .medium))
+                .foregroundStyle(Color(hex: "#8A7B76"))
+                .lineSpacing(5)
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(.white.opacity(0.62))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(Color(hex: "#DDD6D1").opacity(0.82), lineWidth: 1)
+                        )
+                )
 
-            VStack(alignment: .leading, spacing: 8) {
-                Label("备注", systemImage: "square.and.pencil")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(DesignToken.textPrimary)
-                TextField("写下这一刻的故事", text: $note, axis: .vertical)
-                    .lineLimit(4, reservesSpace: true)
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(DesignToken.iconSoftBG))
-            }
+            achievementDetailNoteEditor
         }
         .padding(18)
-        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(.white))
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(.white.opacity(0.78))
+                .shadow(color: Color(hex: "#8F817C").opacity(0.08), radius: 20, y: 10)
+        )
     }
 
-    private func detailRow(title: String, value: String, icon: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(DesignToken.primary)
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(DesignToken.iconSoftBG))
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(DesignToken.textSecondary)
-                Text(value)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(DesignToken.textPrimary)
+    private var achievementDetailNoteEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    showNoteEditor.toggle()
+                }
+            } label: {
+                HStack {
+                    Text(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "添加备注" : note)
+                        .font(BBBFont.font(size: AchievementSheetTypography.noteSize, weight: .medium))
+                        .foregroundStyle(Color(hex: "#9A8E8A"))
+                        .lineLimit(1)
+                    Spacer()
+                    Image(systemName: showNoteEditor ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color(hex: "#B9AFAB"))
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 48)
+                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color(hex: "#F3F0F7").opacity(0.72)))
             }
-            Spacer()
+            .buttonStyle(.plain)
+
+            if showNoteEditor {
+                TextField("写下这一刻的小故事", text: $note, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(4, reservesSpace: true)
+                    .font(BBBFont.font(size: AchievementSheetTypography.noteSize, weight: .medium))
+                    .foregroundStyle(Color(hex: "#81736E"))
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color(hex: "#F3F0F7").opacity(0.78)))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private func updateStickerImage(from image: UIImage?) {
+        let currentGenerationID = UUID()
+        generationID = currentGenerationID
+        guard let image else {
+            isGeneratingSticker = false
+            return
+        }
+        isGeneratingSticker = true
+        Task.detached(priority: .userInitiated) {
+            let optimizedImage = image.optimizedForStickerInput(maxSide: StickerGenerator.stickerInputMaxSide)
+            let sticker = StickerGenerator.generateSticker(from: optimizedImage)
+            await MainActor.run {
+                guard generationID == currentGenerationID else { return }
+                do {
+                    _ = try stickerStore.updateImage(
+                        for: achievement,
+                        sourceImage: optimizedImage,
+                        stickerImage: sticker
+                    )
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+                isGeneratingSticker = false
+            }
+        }
+    }
+
+    private func deleteAchievement() {
+        do {
+            try stickerStore.delete(achievement)
+            onDeleted()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }
 
-private struct CameraPicker: UIViewControllerRepresentable {
+private struct AchievementCameraView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var image: UIImage?
+    @StateObject private var camera = AchievementCameraModel()
+    @State private var selectedItem: PhotosPickerItem?
+    @State private var previewSize: CGSize = .zero
 
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
-        picker.delegate = context.coordinator
-        picker.allowsEditing = false
-        return picker
+    private let cropWidthRatio: CGFloat = 0.76
+    private let cropHeightRatio: CGFloat = 0.48
+
+    var body: some View {
+        ZStack {
+            achievementSoftBackground
+                .ignoresSafeArea()
+
+            VStack(spacing: 18) {
+                cameraPreview
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+
+                cameraControls
+                    .padding(.horizontal, 34)
+                    .padding(.bottom, 22)
+            }
+        }
+        .task {
+            await camera.configure()
+        }
+        .onDisappear {
+            camera.stop()
+        }
+        .onChange(of: selectedItem) { _, newItem in
+            Task {
+                if let loadedImage = await loadImage(from: newItem) {
+                    image = loadedImage
+                    dismiss()
+                }
+            }
+        }
     }
 
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    private var cameraPreview: some View {
+        GeometryReader { proxy in
+            ZStack {
+                RoundedRectangle(cornerRadius: 58, style: .continuous)
+                    .fill(Color.black.opacity(0.08))
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(parent: self)
+                if camera.isConfigured {
+                    CameraPreviewView(session: camera.session)
+                        .clipShape(RoundedRectangle(cornerRadius: 58, style: .continuous))
+                } else {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .tint(DesignToken.primary)
+                        Text("正在打开相机")
+                            .font(BBBFont.font(size: 15, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#8A7D78"))
+                    }
+                }
+
+                RoundedRectangle(cornerRadius: min(proxy.size.width, proxy.size.height) * 0.16, style: .continuous)
+                    .stroke(.white.opacity(0.64), style: StrokeStyle(lineWidth: 6, lineCap: .round, dash: [30, 24]))
+                    .frame(width: proxy.size.width * cropWidthRatio, height: proxy.size.height * cropHeightRatio)
+                    .allowsHitTesting(false)
+            }
+            .onAppear {
+                previewSize = proxy.size
+            }
+            .onChange(of: proxy.size) { _, newSize in
+                previewSize = newSize
+            }
+        }
+        .aspectRatio(0.56, contentMode: .fit)
     }
 
-    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-        let parent: CameraPicker
+    private var cameraControls: some View {
+        HStack(alignment: .center) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 27, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .frame(width: 74, height: 74)
+                    .background(Circle().fill(.white.opacity(0.86)))
+            }
+            .buttonStyle(ScaleButtonStyle())
 
-        init(parent: CameraPicker) {
-            self.parent = parent
+            Spacer()
+
+            Button {
+                let targetPreviewSize = previewSize
+                camera.capture { capturedImage in
+                    image = croppedStickerSource(from: capturedImage, previewSize: targetPreviewSize)
+                    dismiss()
+                }
+            } label: {
+                Circle()
+                    .fill(Color(hex: "#555153"))
+                    .frame(width: 74, height: 74)
+                    .overlay(
+                        Circle()
+                            .stroke(Color(hex: "#D8D0CA").opacity(0.72), style: StrokeStyle(lineWidth: 7, lineCap: .round, dash: [12, 8]))
+                            .frame(width: 90, height: 90)
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(!camera.isConfigured)
+
+            Spacer()
+
+            PhotosPicker(selection: $selectedItem, matching: .images) {
+                Image(systemName: "photo")
+                    .font(.system(size: 27, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .frame(width: 74, height: 74)
+                    .background(Circle().fill(.white.opacity(0.86)))
+            }
+        }
+    }
+
+    private func loadImage(from item: PhotosPickerItem?) async -> UIImage? {
+        guard let item,
+              let data = try? await item.loadTransferable(type: Data.self) else {
+            return nil
+        }
+        return UIImage(data: data)
+    }
+
+    private func croppedStickerSource(from capturedImage: UIImage, previewSize: CGSize) -> UIImage {
+        let normalizedImage = capturedImage.normalized()
+        guard previewSize.width > 1, previewSize.height > 1 else {
+            return normalizedImage
         }
 
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            parent.image = info[.originalImage] as? UIImage
-            parent.dismiss()
+        let cropFrame = CGRect(
+            x: previewSize.width * (1 - cropWidthRatio) / 2,
+            y: previewSize.height * (1 - cropHeightRatio) / 2,
+            width: previewSize.width * cropWidthRatio,
+            height: previewSize.height * cropHeightRatio
+        )
+
+        return normalizedImage.croppedToPreviewFrame(
+            cropFrame,
+            previewSize: previewSize,
+            videoGravity: .resizeAspectFill
+        ) ?? normalizedImage
+    }
+}
+
+private final class AchievementCameraModel: NSObject, ObservableObject {
+    let session = AVCaptureSession()
+    @MainActor @Published var isConfigured = false
+
+    private let sessionQueue = DispatchQueue(label: "babybuddy.achievement.camera.session")
+    private let output = AVCapturePhotoOutput()
+    private var captureCompletion: ((UIImage) -> Void)?
+
+    func configure() async {
+        let authorized = await requestAccessIfNeeded()
+        guard authorized else { return }
+
+        await withCheckedContinuation { continuation in
+            sessionQueue.async {
+                self.configureSession()
+                continuation.resume()
+            }
+        }
+    }
+
+    func stop() {
+        sessionQueue.async {
+            guard self.session.isRunning else { return }
+            self.session.stopRunning()
+        }
+    }
+
+    func capture(completion: @escaping (UIImage) -> Void) {
+        captureCompletion = completion
+        let settings = AVCapturePhotoSettings()
+        settings.photoQualityPrioritization = output.maxPhotoQualityPrioritization
+        if output.maxPhotoDimensions.width > 0, output.maxPhotoDimensions.height > 0 {
+            settings.maxPhotoDimensions = output.maxPhotoDimensions
+        }
+        output.capturePhoto(with: settings, delegate: self)
+    }
+
+    private func requestAccessIfNeeded() async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            return true
+        case .notDetermined:
+            return await AVCaptureDevice.requestAccess(for: .video)
+        default:
+            return false
+        }
+    }
+
+    private func configureSession() {
+        guard session.inputs.isEmpty, session.outputs.isEmpty else {
+            startSessionIfNeeded()
+            return
         }
 
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
+        guard
+            let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+            let input = try? AVCaptureDeviceInput(device: device),
+            session.canAddInput(input),
+            session.canAddOutput(output)
+        else {
+            return
+        }
+
+        session.beginConfiguration()
+        session.sessionPreset = .photo
+        session.addInput(input)
+        session.addOutput(output)
+        output.maxPhotoQualityPrioritization = .quality
+        if let maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.max(by: {
+            Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height)
+        }) {
+            output.maxPhotoDimensions = maxPhotoDimensions
+        }
+        session.commitConfiguration()
+
+        startSessionIfNeeded()
+    }
+
+    private func startSessionIfNeeded() {
+        guard !session.isRunning else {
+            Task { @MainActor in
+                isConfigured = true
+            }
+            return
+        }
+        session.startRunning()
+        Task { @MainActor in
+            isConfigured = true
+        }
+    }
+}
+
+extension AchievementCameraModel: @unchecked Sendable {}
+
+extension AchievementCameraModel: AVCapturePhotoCaptureDelegate {
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        guard let data = photo.fileDataRepresentation(),
+              let image = UIImage(data: data) else {
+            return
+        }
+        Task { @MainActor in
+            captureCompletion?(image)
+            captureCompletion = nil
+        }
+    }
+}
+
+private struct CameraPreviewView: UIViewRepresentable {
+    let session: AVCaptureSession
+
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.videoPreviewLayer.session = session
+        view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        return view
+    }
+
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.videoPreviewLayer.session = session
+    }
+
+    final class PreviewView: UIView {
+        override static var layerClass: AnyClass {
+            AVCaptureVideoPreviewLayer.self
+        }
+
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
+            layer as! AVCaptureVideoPreviewLayer
         }
     }
 }
 
 struct DiaperSheet: View {
     @EnvironmentObject private var activityStore: ActivityStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var isPresented: Bool
 
-    @State private var selectedType = "湿尿布"
+    @State private var selectedType: DiaperRecordType?
+    @State private var diaperTokens: [DiaperDropToken] = []
+    @State private var jarFrame: CGRect = .zero
     @State private var note = ""
     @State private var recordedAt = Date()
-
-    private let types = ["湿尿布", "便便", "混合"]
 
     var body: some View {
         NavigationStack {
             recordSheetContent(
                 title: "记录尿布",
-                subtitle: "选择尿布状态，保存后会加入今日记录",
-                icon: "drop.fill",
+                subtitle: "把尿布放进玻璃罐，再保存本次记录",
+                icon: "archivebox.fill",
                 accent: Color(hex: "#67C587")
             ) {
-                VStack(spacing: 16) {
-                    Picker("尿布状态", selection: $selectedType) {
-                        ForEach(types, id: \.self) { type in
-                            Text(type).tag(type)
+                VStack(spacing: 14) {
+                    DiaperGlassJarView(tokens: diaperTokens)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 268)
+                        .padding(.top, -2)
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(key: DiaperJarFramePreferenceKey.self, value: proxy.frame(in: .global))
+                            }
+                        )
+
+                    HStack(spacing: 12) {
+                        ForEach(DiaperRecordType.allCases) { type in
+                            DiaperDropButton(
+                                type: type,
+                                isSelected: selectedType == type,
+                                onTap: {
+                                    dropDiaper(type)
+                                },
+                                onDragEnded: { location in
+                                    guard jarFrame.contains(location) else {
+                                        return
+                                    }
+                                    dropDiaper(type)
+                                }
+                            )
                         }
                     }
-                    .pickerStyle(.segmented)
 
                     DatePicker("时间", selection: $recordedAt, displayedComponents: [.hourAndMinute])
-                        .font(.headline.weight(.semibold))
+                        .font(BBBFont.font(size: 17, weight: .semibold))
+                        .padding(14)
+                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white.opacity(0.94)))
 
                     notesField
 
-                    saveButton(title: "保存尿布记录", color: Color(hex: "#67C587")) {
-                        activityStore.recordDiaper(type: selectedType, note: note, recordedAt: recordedAt)
+                    Button {
+                        guard let selectedType else { return }
+                        activityStore.recordDiaper(type: selectedType.rawValue, note: note, recordedAt: recordedAt)
                         isPresented = false
+                    } label: {
+                        Label("保存尿布记录", systemImage: "checkmark.circle.fill")
+                            .font(BBBFont.font(size: 15, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                Capsule()
+                                    .fill(selectedType == nil ? Color.gray.opacity(0.36) : Color(hex: "#67C587"))
+                                    .shadow(color: Color(hex: "#67C587").opacity(selectedType == nil ? 0 : 0.16), radius: 14, y: 7)
+                            )
                     }
+                    .buttonStyle(ScaleButtonStyle())
+                    .disabled(selectedType == nil)
                 }
             }
             .navigationTitle("记录尿布")
             .navigationBarTitleDisplayMode(.inline)
+            .onPreferenceChange(DiaperJarFramePreferenceKey.self) { frame in
+                jarFrame = frame
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { isPresented = false }
@@ -1136,49 +2065,312 @@ struct DiaperSheet: View {
             .padding(14)
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
     }
+
+    private func dropDiaper(_ type: DiaperRecordType) {
+        selectedType = type
+        let token = DiaperDropToken(type: type, index: diaperTokens.count)
+        if reduceMotion {
+            diaperTokens.append(token.placed())
+        } else {
+            diaperTokens.append(token)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+                guard let tokenIndex = diaperTokens.firstIndex(where: { $0.id == token.id }) else { return }
+                withAnimation(.interpolatingSpring(stiffness: 230, damping: 18)) {
+                    diaperTokens[tokenIndex] = diaperTokens[tokenIndex].placed()
+                }
+            }
+        }
+        if diaperTokens.count > 7 {
+            diaperTokens.removeFirst(diaperTokens.count - 7)
+        }
+        UIImpactFeedbackGenerator(style: reduceMotion ? .light : .soft).impactOccurred(intensity: reduceMotion ? 0.45 : 0.7)
+    }
+}
+
+private struct DiaperJarFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
+private struct DiaperDropToken: Identifiable, Equatable {
+    let id = UUID()
+    let type: DiaperRecordType
+    let index: Int
+    var isPlaced = false
+
+    var pileSlot: Int { index % 7 }
+
+    var xOffset: CGFloat {
+        let offsets: [CGFloat] = [-56, -22, 24, 58, -40, 6, 44]
+        return offsets[pileSlot]
+    }
+
+    var yOffset: CGFloat {
+        let offsets: [CGFloat] = [72, 64, 68, 58, 38, 34, 30]
+        return offsets[pileSlot]
+    }
+
+    var rotation: Double {
+        let rotations: [Double] = [-18, 11, -7, 17, 5, -13, 9]
+        return rotations[pileSlot]
+    }
+
+    var scale: CGFloat {
+        let scales: [CGFloat] = [0.9, 0.84, 0.88, 0.82, 0.78, 0.8, 0.76]
+        return scales[pileSlot]
+    }
+
+    func placed() -> DiaperDropToken {
+        var copy = self
+        copy.isPlaced = true
+        return copy
+    }
+}
+
+private struct DiaperGlassJarView: View {
+    let tokens: [DiaperDropToken]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let jarWidth = min(proxy.size.width * 0.68, 236)
+            let jarHeight = min(proxy.size.height, 264)
+            let tokenSize = jarWidth * 0.34
+
+            ZStack {
+                jarShadow(width: jarWidth, height: jarHeight)
+
+                RoundedRectangle(cornerRadius: jarWidth * 0.24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.54),
+                                Color(hex: "#E9F8F0").opacity(0.22),
+                                Color.white.opacity(0.36)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: jarWidth * 0.24, style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.95), Color(hex: "#BDE8D8").opacity(0.36), .white.opacity(0.68)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                    )
+                    .overlay(alignment: .top) {
+                        Capsule()
+                            .fill(.white.opacity(0.74))
+                            .overlay(Capsule().stroke(Color(hex: "#BAE7D8").opacity(0.42), lineWidth: 1.4))
+                            .frame(width: jarWidth * 0.72, height: 22)
+                            .offset(y: -5)
+                    }
+                    .overlay(alignment: .bottom) {
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(hex: "#EAF8F1").opacity(0.62), Color.white.opacity(0.42)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(height: jarHeight * 0.28)
+                            .padding(.horizontal, 17)
+                            .padding(.bottom, 16)
+                    }
+                    .overlay {
+                        ZStack {
+                            ForEach(tokens) { token in
+                                DiaperTokenView(type: token.type, size: tokenSize)
+                                    .scaleEffect(token.isPlaced ? token.scale : 0.56)
+                                    .rotationEffect(.degrees(token.isPlaced ? token.rotation : token.rotation * 0.2))
+                                    .offset(
+                                        x: token.isPlaced ? token.xOffset : 0,
+                                        y: token.isPlaced ? token.yOffset : -jarHeight * 0.52
+                                    )
+                                    .opacity(token.isPlaced ? 1 : 0.34)
+                            }
+                        }
+                        .frame(width: jarWidth * 0.86, height: jarHeight * 0.86)
+                        .clipped()
+                    }
+                    .overlay(alignment: .leading) {
+                        Capsule()
+                            .fill(.white.opacity(0.64))
+                            .frame(width: 12, height: jarHeight * 0.62)
+                            .blur(radius: 0.2)
+                            .padding(.leading, jarWidth * 0.16)
+                            .padding(.top, jarHeight * 0.08)
+                    }
+                    .overlay(alignment: .trailing) {
+                        Capsule()
+                            .fill(Color(hex: "#82CDB5").opacity(0.13))
+                            .frame(width: 9, height: jarHeight * 0.56)
+                            .padding(.trailing, jarWidth * 0.14)
+                            .padding(.bottom, jarHeight * 0.12)
+                    }
+                    .frame(width: jarWidth, height: jarHeight)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityHidden(true)
+        }
+    }
+
+    private func jarShadow(width: CGFloat, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: width * 0.24, style: .continuous)
+            .fill(Color(hex: "#67C587").opacity(0.08))
+            .frame(width: width * 0.92, height: height * 0.16)
+            .blur(radius: 14)
+            .offset(y: height * 0.48)
+    }
+}
+
+private struct DiaperDropButton: View {
+    let type: DiaperRecordType
+    let isSelected: Bool
+    let onTap: () -> Void
+    let onDragEnded: (CGPoint) -> Void
+
+    @State private var dragOffset: CGSize = .zero
+
+    var body: some View {
+        GeometryReader { _ in
+            Button(action: onTap) {
+                VStack(spacing: 8) {
+                    DiaperTokenView(type: type, size: 74)
+                        .offset(dragOffset)
+                        .gesture(
+                            DragGesture(coordinateSpace: .global)
+                                .onChanged { value in
+                                    dragOffset = value.translation
+                                }
+                                .onEnded { value in
+                                    onDragEnded(value.location)
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                                        dragOffset = .zero
+                                    }
+                                }
+                        )
+
+                    Text(type.rawValue)
+                        .font(BBBFont.font(size: 15, weight: .heavy))
+                        .foregroundStyle(DesignToken.textPrimary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(isSelected ? type.softFill.opacity(0.88) : Color.white.opacity(0.92))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(isSelected ? type.accent.opacity(0.62) : .white.opacity(0.86), lineWidth: 1.4)
+                        )
+                )
+                .shadow(color: type.accent.opacity(isSelected ? 0.16 : 0.07), radius: isSelected ? 14 : 9, y: 6)
+            }
+            .buttonStyle(ScaleButtonStyle())
+        }
+        .frame(height: 128)
+    }
+}
+
+private struct DiaperTokenView: View {
+    let type: DiaperRecordType
+    let size: CGFloat
+
+    var body: some View {
+        Image("rhythm_diaper_icon")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .overlay(
+                type.softFill
+                    .blendMode(.multiply)
+                    .opacity(type == .pee ? 0.32 : 0.42)
+                    .mask(
+                        Image("rhythm_diaper_icon")
+                            .resizable()
+                            .scaledToFit()
+                    )
+            )
+            .overlay(alignment: .topTrailing) {
+                Circle()
+                    .fill(type.accent.opacity(type == .pee ? 0.74 : 0.86))
+                    .frame(width: size * 0.18, height: size * 0.18)
+                    .overlay(
+                        Circle()
+                            .stroke(.white.opacity(0.84), lineWidth: 1)
+                    )
+                    .offset(x: -size * 0.14, y: size * 0.18)
+            }
+            .overlay(alignment: .bottomLeading) {
+                if type == .poop {
+                    Capsule()
+                        .fill(Color(hex: "#9A6A3E").opacity(0.7))
+                        .frame(width: size * 0.28, height: size * 0.1)
+                        .rotationEffect(.degrees(-12))
+                        .offset(x: size * 0.26, y: -size * 0.2)
+                } else {
+                    Capsule()
+                        .fill(Color.white.opacity(0.72))
+                        .frame(width: size * 0.32, height: size * 0.08)
+                        .rotationEffect(.degrees(-18))
+                        .offset(x: size * 0.24, y: -size * 0.22)
+                }
+            }
+            .shadow(color: Color.black.opacity(0.07), radius: size * 0.08, y: size * 0.04)
+            .accessibilityLabel(type.rawValue)
+    }
 }
 
 struct SleepSheet: View {
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var sleepDraftStore: SleepDraftStore
     @Binding var isPresented: Bool
 
-    @State private var startTime = Date()
-    @State private var duration = 30.0
-    @State private var note = ""
+    @State private var manualStartTime = Date().addingTimeInterval(-30 * 60)
+    @State private var manualEndTime = Date()
+    @State private var manualNote = ""
+    @State private var timerTick = Date()
+
+    private var activeStartTime: Date? {
+        sleepDraftStore.activeSleepStartAt
+    }
+
+    private var activeElapsedMinutes: Int {
+        guard let activeStartTime else { return 0 }
+        return max(Int(timerTick.timeIntervalSince(activeStartTime) / 60), 0)
+    }
+
+    private var manualDurationMinutes: Int {
+        max(Int(manualEndTime.timeIntervalSince(manualStartTime) / 60), 0)
+    }
+
+    private var canSaveManualSleep: Bool {
+        manualDurationMinutes > 0
+    }
 
     var body: some View {
         NavigationStack {
             recordSheetContent(
                 title: "记录睡眠",
-                subtitle: "记录宝宝本次睡眠时长和时间",
-                icon: "moon.fill",
+                subtitle: activeStartTime == nil ? "开始计时，或补录已经结束的睡眠" : "宝宝还在睡，醒来后保存本次睡眠",
+                icon: "moon.zzz.fill",
                 accent: Color(hex: "#6DA5F2")
             ) {
                 VStack(spacing: 16) {
-                    DatePicker("开始时间", selection: $startTime, displayedComponents: [.hourAndMinute])
-                        .font(.headline.weight(.semibold))
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Label("睡眠时长", systemImage: "timer")
-                                .font(.headline.weight(.bold))
-                            Spacer()
-                            Text("\(Int(duration)) 分钟")
-                                .font(.headline.weight(.heavy))
-                        }
-                        .foregroundStyle(DesignToken.textPrimary)
-
-                        Slider(value: $duration, in: 5...240, step: 5)
-                            .tint(Color(hex: "#6DA5F2"))
-                    }
-                    .padding(16)
-                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
-
-                    notesField
-
-                    saveButton(title: "保存睡眠记录", color: Color(hex: "#6DA5F2")) {
-                        activityStore.recordSleep(durationMinutes: Int(duration), note: note, startTime: startTime)
-                        isPresented = false
+                    if activeStartTime == nil {
+                        idleSleepCard
+                        manualSleepCard
+                    } else {
+                        activeSleepCard
                     }
                 }
             }
@@ -1191,17 +2383,181 @@ struct SleepSheet: View {
             }
         }
         .presentationDragIndicator(.visible)
+        .onAppear {
+            timerTick = Date()
+            if manualEndTime <= manualStartTime {
+                manualEndTime = manualStartTime.addingTimeInterval(30 * 60)
+            }
+        }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
+            timerTick = date
+            sleepDraftStore.updateCurrentTime(date)
+        }
     }
 
-    private var notesField: some View {
-        TextField("备注：比如入睡状态、醒来原因", text: $note, axis: .vertical)
-            .lineLimit(3, reservesSpace: true)
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+    private var idleSleepCard: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "#6DA5F2").opacity(0.12))
+                    .frame(width: 128, height: 128)
+
+                Image(systemName: "moon.stars.fill")
+                    .font(.system(size: 48, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#6DA5F2"))
+            }
+
+            Text("准备入睡")
+                .font(BBBFont.font(size: 22, weight: .heavy))
+                .foregroundStyle(DesignToken.textPrimary)
+
+            Button {
+                let now = Date()
+                sleepDraftStore.start(at: now)
+                timerTick = now
+            } label: {
+                Label("开始睡眠", systemImage: "play.fill")
+                    .font(BBBFont.font(size: 17, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        Capsule()
+                            .fill(Color(hex: "#6DA5F2"))
+                            .shadow(color: Color(hex: "#6DA5F2").opacity(0.2), radius: 16, y: 8)
+                    )
+            }
+            .buttonStyle(ScaleButtonStyle())
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white.opacity(0.94)))
+    }
+
+    private var activeSleepCard: some View {
+        VStack(spacing: 16) {
+            Text(SleepRecordFormatter.durationText(minutes: activeElapsedMinutes))
+                .font(BBBFont.font(size: 42, weight: .heavy))
+                .foregroundStyle(Color(hex: "#4D68D8"))
+                .monospacedDigit()
+
+            if let startBinding = activeStartBinding {
+                DatePicker("入睡", selection: startBinding, displayedComponents: [.hourAndMinute])
+                    .font(BBBFont.font(size: 17, weight: .semibold))
+                    .padding(14)
+                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(hex: "#F4F6FF")))
+            }
+
+            activeNotesField
+
+            Button {
+                guard let startTime = activeStartTime else { return }
+                let endTime = max(Date(), startTime.addingTimeInterval(60))
+                activityStore.recordSleep(startTime: startTime, endTime: endTime, note: sleepDraftStore.note)
+                sleepDraftStore.resetDraft()
+                isPresented = false
+            } label: {
+                Label("醒了，保存", systemImage: "checkmark.circle.fill")
+                    .font(BBBFont.font(size: 17, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Capsule().fill(Color(hex: "#6DA5F2")))
+            }
+            .buttonStyle(ScaleButtonStyle())
+
+            Button(role: .destructive) {
+                sleepDraftStore.resetDraft()
+            } label: {
+                Text("取消计时")
+                    .font(BBBFont.font(size: 15, weight: .heavy))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(ScaleButtonStyle())
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white.opacity(0.94)))
+    }
+
+    private var manualSleepCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("补录睡眠")
+                .font(BBBFont.font(size: 18, weight: .heavy))
+                .foregroundStyle(DesignToken.textPrimary)
+
+            DatePicker("入睡", selection: $manualStartTime, displayedComponents: [.hourAndMinute])
+                .font(BBBFont.font(size: 17, weight: .semibold))
+
+            DatePicker("醒来", selection: $manualEndTime, displayedComponents: [.hourAndMinute])
+                .font(BBBFont.font(size: 17, weight: .semibold))
+
+            HStack {
+                Label("睡眠时长", systemImage: "timer")
+                    .font(BBBFont.font(size: 15, weight: .bold))
+                Spacer()
+                Text(SleepRecordFormatter.durationText(minutes: manualDurationMinutes))
+                    .font(BBBFont.font(size: 17, weight: .heavy))
+                    .foregroundStyle(canSaveManualSleep ? Color(hex: "#4D68D8") : Color.red.opacity(0.8))
+            }
+
+            TextField("备注：比如入睡状态、醒来原因", text: $manualNote, axis: .vertical)
+                .lineLimit(3, reservesSpace: true)
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(hex: "#F8F9FF")))
+
+            Button {
+                guard canSaveManualSleep else { return }
+                activityStore.recordSleep(startTime: manualStartTime, endTime: manualEndTime, note: manualNote)
+                isPresented = false
+            } label: {
+                Label("保存补录睡眠", systemImage: "checkmark.circle.fill")
+                    .font(BBBFont.font(size: 15, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Capsule().fill(canSaveManualSleep ? Color(hex: "#6DA5F2") : Color.gray.opacity(0.36)))
+            }
+            .buttonStyle(ScaleButtonStyle())
+            .disabled(!canSaveManualSleep)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white.opacity(0.94)))
+        .onChange(of: manualStartTime) { _, newValue in
+            if manualEndTime <= newValue {
+                manualEndTime = newValue.addingTimeInterval(30 * 60)
+            }
+        }
+    }
+
+    private var activeNotesField: some View {
+        TextField(
+            "备注：比如入睡状态、醒来原因",
+            text: Binding(
+                get: { sleepDraftStore.note },
+                set: { sleepDraftStore.updateNote($0) }
+            ),
+            axis: .vertical
+        )
+        .lineLimit(3, reservesSpace: true)
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(hex: "#F8F9FF")))
+    }
+
+    private var activeStartBinding: Binding<Date>? {
+        guard activeStartTime != nil else { return nil }
+        return Binding {
+            sleepDraftStore.activeSleepStartAt ?? Date()
+        } set: { newValue in
+            let capped = min(newValue, Date().addingTimeInterval(-60))
+            sleepDraftStore.updateStartTime(capped)
+            timerTick = Date()
+        }
     }
 }
 
-private func recordSheetContent<Content: View>(
+func recordSheetContent<Content: View>(
     title: String,
     subtitle: String,
     icon: String,
@@ -1209,28 +2565,53 @@ private func recordSheetContent<Content: View>(
     @ViewBuilder content: () -> Content
 ) -> some View {
     ZStack {
-        Color(hex: "#F8F7FB").ignoresSafeArea()
+        LinearGradient(
+            colors: [
+                Color(hex: "#FBF9FF"),
+                Color(hex: "#F7F3FF"),
+                Color(hex: "#FFF7FB")
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
                     Image(systemName: icon)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 52, height: 52)
-                        .background(Circle().fill(accent))
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(accent)
+                        .frame(width: 42, height: 42)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(accent.opacity(0.12))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(.white.opacity(0.9), lineWidth: 1)
+                        )
 
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(title)
-                            .font(.system(size: 28, weight: .bold))
+                            .font(BBBFont.font(size: 22, weight: .heavy))
                             .foregroundStyle(DesignToken.textPrimary)
                         Text(subtitle)
-                            .font(.subheadline.weight(.medium))
+                            .font(BBBFont.font(size: 12, weight: .semibold))
                             .foregroundStyle(DesignToken.textSecondary)
+                            .lineLimit(2)
                     }
                 }
-                .padding(18)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(.white))
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(.white.opacity(0.94))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(.white.opacity(0.84), lineWidth: 1.2)
+                        )
+                        .shadow(color: Color(hex: "#7E5DE8").opacity(0.06), radius: 12, y: 5)
+                )
 
                 content()
             }
@@ -1239,14 +2620,18 @@ private func recordSheetContent<Content: View>(
     }
 }
 
-private func saveButton(title: String, color: Color, action: @escaping () -> Void) -> some View {
+func saveButton(title: String, color: Color, action: @escaping () -> Void) -> some View {
     Button(action: action) {
         Label(title, systemImage: "checkmark.circle.fill")
-            .font(.headline.weight(.bold))
+            .font(BBBFont.font(size: 15, weight: .heavy))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(Capsule().fill(color))
+            .padding(.vertical, 14)
+            .background(
+                Capsule()
+                    .fill(DesignToken.primaryGradient)
+                    .shadow(color: Color(hex: "#7E5DE8").opacity(0.16), radius: 14, y: 7)
+            )
     }
     .buttonStyle(ScaleButtonStyle())
 }
@@ -1256,17 +2641,18 @@ private func simplePage(icon: String, title: String, subtitle: String) -> some V
         DesignToken.bg.ignoresSafeArea()
         VStack(spacing: 18) {
             Image(systemName: icon)
-                .font(.system(size: 72, weight: .semibold))
+                .font(.system(size: 46, weight: .semibold))
                 .foregroundStyle(DesignToken.primary)
             Text(title)
-                .font(.system(size: 34, weight: .bold))
+                .font(BBBFont.font(size: 24, weight: .bold))
                 .foregroundStyle(DesignToken.textPrimary)
             Text(subtitle)
-                .font(.system(size: 20, weight: .medium))
+                .font(BBBFont.font(size: 15, weight: .medium))
                 .foregroundStyle(DesignToken.textSecondary)
+                .multilineTextAlignment(.center)
         }
-        .padding(40)
+        .padding(28)
         .cardStyle()
-        .padding(36)
+        .padding(28)
     }
 }

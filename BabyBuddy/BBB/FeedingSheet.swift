@@ -9,22 +9,27 @@ struct FeedingSheet: View {
 
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showManualBreastInput = false
+    @State private var showCustomBottleAmount = false
+    @State private var showMoreInfo = false
+    @State private var selectedKind: FeedingKind = .nursing
     @State private var manualLeftMinutes = 0.0
     @State private var manualRightMinutes = 0.0
+    @State private var customBottleAmountText = ""
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
+    private let bottleRange: ClosedRange<Double> = 0...330
+    private var isCompactHeight: Bool {
+        UIScreen.main.bounds.height < 760
+    }
 
     private var type: FeedingType {
         get { draftStore.type }
         nonmutating set { draftStore.type = newValue }
     }
-    private var typeBinding: Binding<FeedingType> { binding(\.type) }
     private var mood: BabyMood {
         get { draftStore.mood }
         nonmutating set { draftStore.mood = newValue }
     }
-    private var moodBinding: Binding<BabyMood> { binding(\.mood) }
     private var entries: [FeedingEntry] {
         get { draftStore.entries }
         nonmutating set { draftStore.entries = newValue }
@@ -50,7 +55,6 @@ struct FeedingSheet: View {
         get { draftStore.breastMode }
         nonmutating set { draftStore.breastMode = newValue }
     }
-    private var breastModeBinding: Binding<BreastFeedingMode> { binding(\.breastMode) }
     private var leftBaseSeconds: Int {
         get { draftStore.leftBaseSeconds }
         nonmutating set { draftStore.leftBaseSeconds = newValue }
@@ -71,11 +75,6 @@ struct FeedingSheet: View {
         get { draftStore.hitMilestones }
         nonmutating set { draftStore.hitMilestones = newValue }
     }
-    private var expressedAmount: Double {
-        get { draftStore.expressedAmount }
-        nonmutating set { draftStore.expressedAmount = newValue }
-    }
-    private var expressedAmountBinding: Binding<Double> { binding(\.expressedAmount) }
     private var milkType: MilkType {
         get { draftStore.milkType }
         nonmutating set { draftStore.milkType = newValue }
@@ -90,11 +89,6 @@ struct FeedingSheet: View {
         get { draftStore.bottleMinutes }
         nonmutating set { draftStore.bottleMinutes = newValue }
     }
-    private var bottleIsTimed: Bool {
-        get { draftStore.bottleIsTimed }
-        nonmutating set { draftStore.bottleIsTimed = newValue }
-    }
-    private var bottleIsTimedBinding: Binding<Bool> { binding(\.bottleIsTimed) }
     private var bottleTimerStartedAt: Date? {
         get { draftStore.bottleTimerStartedAt }
         nonmutating set { draftStore.bottleTimerStartedAt = newValue }
@@ -126,23 +120,29 @@ struct FeedingSheet: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Color(hex: "#F8F7FB").ignoresSafeArea()
-                backgroundBubbles
+                LinearGradient(
+                    colors: [
+                        Color(hex: "#FBF9FF"),
+                        Color(hex: "#F7F3FF"),
+                        Color(hex: "#FFF7FB")
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        headerCard
-                        sharedInfo
-                        feedingInput
-                        notesCard
+                VStack(spacing: isCompactHeight ? 8 : 12) {
+                        topSummary
+                        Spacer(minLength: 0)
+                        stageArea
                         entriesPreview
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 10)
-                    .padding(.bottom, 112)
+                        Spacer(minLength: 0)
                 }
+                .padding(.horizontal, isCompactHeight ? 14 : 16)
+                .padding(.top, isCompactHeight ? 8 : 16)
+                .padding(.bottom, isCompactHeight ? 132 : 152)
 
-                bottomStatus
+                bottomDock
             }
             .navigationTitle("记录喂养")
             .navigationBarTitleDisplayMode(.inline)
@@ -163,6 +163,8 @@ struct FeedingSheet: View {
         }
         .onAppear {
             restoreDraft()
+            if type == .breast { breastMode = .nursing }
+            selectedKind = FeedingKind.kindFor(type: type, solidFood: solidFood)
             draftStore.didSave = false
             draftStore.updateCurrentTime(Date())
         }
@@ -178,291 +180,100 @@ struct FeedingSheet: View {
         .sheet(isPresented: $showManualBreastInput) {
             manualBreastInputSheet
         }
-    }
-
-    private var backgroundBubbles: some View {
-        ZStack {
-            Circle()
-                .fill(Color(hex: "#B7D5FF").opacity(0.18))
-                .frame(width: 220, height: 220)
-                .blur(radius: 24)
-                .offset(x: -180, y: -310)
-            Circle()
-                .fill(Color(hex: "#F4C7D9").opacity(0.18))
-                .frame(width: 280, height: 280)
-                .blur(radius: 28)
-                .offset(x: 210, y: 150)
+        .sheet(isPresented: $showCustomBottleAmount) {
+            customBottleAmountSheet
+        }
+        .popover(isPresented: $showMoreInfo, attachmentAnchor: .point(.bottomTrailing), arrowEdge: .bottom) {
+            moreInfoPopover
+                .presentationCompactAdaptation(.popover)
         }
     }
 
-    private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("记录喂养")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(Color(hex: "#4D4B70"))
-                }
-                Spacer()
-                Image(systemName: "fork.knife.circle.fill")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(appGradient))
-            }
+    private var topSummary: some View {
+        VStack(spacing: 6) {
+            Text(primarySummary)
+                .font(BBBFont.font(size: isCompactHeight ? 34 : 40, weight: .heavy))
+                .foregroundStyle(selectedKind.accent)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
 
-            Picker("喂养类型", selection: typeBinding) {
-                Label("母乳", systemImage: "heart.fill").tag(FeedingType.breast)
-                Label("奶瓶", systemImage: "babybottle.fill").tag(FeedingType.bottle)
-                Label("辅食", systemImage: "fork.knife").tag(FeedingType.solid)
-            }
-            .pickerStyle(.segmented)
+            Text(secondarySummary)
+                .font(BBBFont.font(size: isCompactHeight ? 13 : 15, weight: .bold))
+                .foregroundStyle(DesignToken.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
         }
-        .padding(18)
-        .background(cardBackground)
-    }
-
-    private var sharedInfo: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label(timeString(currentTime), systemImage: "clock.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#4D4B70"))
-                Spacer()
-                Text(lastIntervalText)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#8B88A0"))
-            }
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("宝宝反应")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#8B88A0"))
-                HStack(spacing: 10) {
-                    ForEach(BabyMood.allCases, id: \.self) { item in
-                        Button {
-                            mood = item
-                        } label: {
-                            Text(item.rawValue)
-                                .font(.system(size: 28))
-                                .frame(width: 54, height: 44)
-                                .background(Capsule().fill(mood == item ? Color(hex: "#EEE8FF") : Color(hex: "#F3F1F7")))
-                                .overlay(Capsule().stroke(mood == item ? DesignToken.primary.opacity(0.55) : .clear, lineWidth: 1.5))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .background(cardBackground)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
-    private var feedingInput: some View {
-        switch type {
-        case .breast:
-            breastCard
+    private var stageArea: some View {
+        switch selectedKind {
+        case .nursing:
+            breastStage
         case .bottle:
-            bottleCard
-        case .solid:
-            solidCard
+            bottleStage
+        default:
+            solidStage
         }
     }
 
-    private var breastCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionHeader(title: "母乳", icon: "heart.fill")
-
-            Picker("母乳方式", selection: breastModeBinding) {
-                ForEach(BreastFeedingMode.allCases) { mode in
-                    Label(mode.displayName, systemImage: mode.systemImage).tag(mode)
-                }
+    private var breastStage: some View {
+        VStack(spacing: isCompactHeight ? 10 : 14) {
+            HStack(spacing: 12) {
+                breastTimer(.left, seconds: leftSeconds)
+                breastTimer(.right, seconds: rightSeconds)
             }
-            .pickerStyle(.segmented)
 
-            if breastMode == .expressedBottle {
-                amountInputCard(
-                    title: "瓶喂母乳",
-                    value: expressedAmountBinding,
-                    range: 10...300,
-                    step: 10,
-                    unit: "ml",
-                    systemImage: "drop.fill",
-                    color: FeedingType.breast.accent
-                )
-                Button { addExpressedBreastEntry() } label: {
-                    primaryActionLabel("加入本次记录", systemImage: "plus.circle.fill", color: FeedingType.breast.accent)
-                }
-            } else {
-                HStack(spacing: 12) {
-                    breastTimer(.left, seconds: leftSeconds)
-                    breastTimer(.right, seconds: rightSeconds)
-                }
-
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(breastMode == .pumping ? "本次吸乳" : "本次亲喂")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#8B88A0"))
-                        Text("合计 \(durationText(leftSeconds + rightSeconds)) · 左 \(durationText(leftSeconds)) / 右 \(durationText(rightSeconds))")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color(hex: "#4D4B70"))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-                    }
-                    Spacer()
-                    if activeBreastSide != nil {
-                        Label("已保留", systemImage: "checkmark.circle.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#34C759"))
-                            .labelStyle(.titleAndIcon)
-                    }
-                }
-
-                breastSuggestion
-
-                HStack(spacing: 12) {
-                    Button {
-                        manualLeftMinutes = Double(max(leftSeconds / 60, 0))
-                        manualRightMinutes = Double(max(rightSeconds / 60, 0))
-                        showManualBreastInput = true
-                    } label: {
-                        secondaryActionLabel("手动输入", systemImage: "square.and.pencil")
-                    }
-
-                    Button { addBreastEntry() } label: {
-                        primaryActionLabel("加入本次记录", systemImage: "plus.circle.fill", color: FeedingType.breast.accent)
-                    }
-                    .disabled(leftSeconds + rightSeconds == 0)
-                    .opacity(leftSeconds + rightSeconds == 0 ? 0.45 : 1)
-                }
-
-                Text("保存时会自动带上当前计时。")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#8B88A0"))
-            }
+            Text("左边 \(durationText(leftSeconds))，右边 \(durationText(rightSeconds))")
+                .font(BBBFont.font(size: 13, weight: .semibold))
+                .foregroundStyle(DesignToken.textSecondary)
+                .lineLimit(1)
         }
-        .padding(16)
+        .padding(isCompactHeight ? 10 : 14)
         .background(cardBackground)
     }
 
-    private var breastSuggestion: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "arrow.left.arrow.right.circle.fill")
-                .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(FeedingType.breast.accent)
-            Text(breastSwitchSuggestion)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color(hex: "#6E6B83"))
-            Spacer()
-        }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: "#FFF5EA")))
-    }
-
-    private var bottleCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionHeader(title: "奶瓶", icon: "waterbottle.fill")
-
+    private var bottleStage: some View {
+        VStack(spacing: isCompactHeight ? 8 : 12) {
             Picker("奶瓶类型", selection: milkTypeBinding) {
                 ForEach(MilkType.allCases) { item in
                     Text(item.displayName).tag(item)
                 }
             }
             .pickerStyle(.segmented)
+            .padding(.horizontal, 18)
 
-            amountInputCard(
-                title: milkType == .formula ? "奶粉量" : "母乳量",
-                value: bottleAmountBinding,
-                range: 10...300,
-                step: 10,
-                unit: "ml",
-                systemImage: "drop.degreesign.fill",
-                color: FeedingType.bottle.accent
-            )
+            InteractiveBottleView(amount: bottleAmountBinding, range: bottleRange, step: 10, tint: selectedKind.accent)
+                .frame(width: isCompactHeight ? 230 : 280, height: isCompactHeight ? 230 : 280)
+                .frame(maxWidth: .infinity)
 
-            DisclosureGroup(isExpanded: bottleIsTimedBinding) {
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("喂奶时长")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#8B88A0"))
-                        Spacer()
-                        Text("\(Int(totalBottleMinutes)) 分钟")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(FeedingType.bottle.accent)
-                    }
-                    Slider(value: binding(\.bottleMinutes), in: 0...60, step: 1)
-                        .tint(FeedingType.bottle.accent)
-                    HStack {
-                        Button { bottleMinutes = max(0, bottleMinutes - 1) } label: {
-                            Image(systemName: "minus.circle.fill").font(.system(size: 32))
-                        }
-                        Spacer()
-                        Button { toggleBottleTimer() } label: {
-                            Label(bottleTimerStartedAt == nil ? "开始计时" : "暂停计时", systemImage: bottleTimerStartedAt == nil ? "play.fill" : "pause.fill")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(FeedingType.bottle.accent)
-                        Spacer()
-                        Button { bottleMinutes = min(60, bottleMinutes + 1) } label: {
-                            Image(systemName: "plus.circle.fill").font(.system(size: 32))
-                        }
-                    }
-                    .foregroundStyle(FeedingType.bottle.accent)
-                }
-                .padding(.top, 8)
-            } label: {
-                Label("添加喂奶时长", systemImage: "timer")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#4D4B70"))
-            }
-
-            Button { addBottleEntry() } label: {
-                primaryActionLabel("加入本次记录", systemImage: "plus.circle.fill", color: FeedingType.bottle.accent)
-            }
+            BottleAmountScrubber(amount: bottleAmountBinding, range: bottleRange, step: 10, tint: selectedKind.accent)
         }
-        .padding(16)
+        .padding(.vertical, isCompactHeight ? 10 : 14)
+        .padding(.horizontal, 14)
         .background(cardBackground)
     }
 
-    private var solidCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionHeader(title: "辅食", icon: "fork.knife")
+    private var solidStage: some View {
+        VStack(spacing: isCompactHeight ? 9 : 14) {
+            VStack(spacing: isCompactHeight ? 5 : 8) {
+                Text(selectedKind.emoji)
+                    .font(.system(size: isCompactHeight ? 38 : 48))
+                    .frame(width: isCompactHeight ? 78 : 102, height: isCompactHeight ? 78 : 102)
+                    .background(Circle().fill(selectedKind.accent.opacity(0.14)))
 
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(SolidFood.allCases) { food in
-                    Button {
-                        solidFood = food
-                        solidUnit = food.suggestedUnit
-                    } label: {
-                        VStack(spacing: 6) {
-                            Text(food.emoji)
-                                .font(.system(size: 24))
-                            Text(food.displayName)
-                                .font(.system(size: 12, weight: .semibold))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(Color(hex: "#4D4B70"))
-                        .frame(maxWidth: .infinity, minHeight: 68)
-                        .background(RoundedRectangle(cornerRadius: 16).fill(solidFood == food ? Color(hex: "#EAF8ED") : Color(hex: "#F3F1F7")))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(solidFood == food ? FeedingType.solid.accent.opacity(0.55) : .clear, lineWidth: 1.5))
-                    }
-                    .buttonStyle(.plain)
-                }
+                Text(selectedKind.label)
+                    .font(BBBFont.font(size: 14, weight: .semibold))
+                    .foregroundStyle(DesignToken.textSecondary)
             }
 
-            amountInputCard(
-                title: "分量",
+            AmountStepperControl(
                 value: solidAmountBinding,
                 range: 5...300,
                 step: 5,
-                unit: solidUnit.rawValue,
-                systemImage: "scalemass.fill",
-                color: FeedingType.solid.accent
+                unit: solidUnit.displayName,
+                tint: selectedKind.accent
             )
 
             Picker("单位", selection: solidUnitBinding) {
@@ -471,60 +282,156 @@ struct FeedingSheet: View {
                 }
             }
             .pickerStyle(.menu)
-            .tint(FeedingType.solid.accent)
-
-            Button { addSolidEntry() } label: {
-                primaryActionLabel("加入本次记录", systemImage: "plus.circle.fill", color: FeedingType.solid.accent)
-            }
+            .tint(selectedKind.accent)
         }
-        .padding(16)
+        .padding(.vertical, isCompactHeight ? 10 : 16)
+        .padding(.horizontal, 14)
         .background(cardBackground)
     }
 
-    private var notesCard: some View {
+    private var kindCarousel: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(FeedingKind.allCases) { kind in
+                    Button {
+                        selectKind(kind)
+                    } label: {
+                        VStack(spacing: 7) {
+                            Text(kind.emoji)
+                                .font(.system(size: isCompactHeight ? 20 : 23))
+                            Text(kind.label)
+                                .font(BBBFont.font(size: isCompactHeight ? 11 : 12, weight: .heavy))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(selectedKind == kind ? .white : DesignToken.textSecondary)
+                        .frame(width: isCompactHeight ? 62 : 70, height: isCompactHeight ? 56 : 64)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(selectedKind == kind ? kind.accent : .white)
+                                .shadow(color: Color(hex: "#4D4B70").opacity(selectedKind == kind ? 0.12 : 0.05), radius: 12, y: 6)
+                        )
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                }
+            }
+            .padding(.horizontal, isCompactHeight ? 14 : 16)
+            .padding(.vertical, 4)
+        }
+        .padding(.horizontal, isCompactHeight ? -14 : -16)
+    }
+
+    private var moreInfoPopover: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("更多信息")
+                    .font(BBBFont.font(size: 15, weight: .bold))
+                    .foregroundStyle(DesignToken.textPrimary)
+                Spacer()
+                Button {
+                    showMoreInfo = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(DesignToken.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(DesignToken.iconSoftBG))
+                }
+                .buttonStyle(ScaleButtonStyle())
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                extraActionButton(title: manualButtonTitle, icon: "square.and.pencil") {
+                    showMoreInfo = false
+                    openManualEntry()
+                }
+
+                if selectedKind == .bottle {
+                    extraActionButton(
+                        title: bottleTimerStartedAt == nil ? "开始计时" : "暂停计时",
+                        icon: bottleTimerStartedAt == nil ? "play.fill" : "pause.fill"
+                    ) {
+                        toggleBottleTimer()
+                    }
+                }
+            }
+
+            Divider()
+
+            moodSelector
+            notesAndPhoto
+        }
+        .padding(16)
+        .frame(maxWidth: 320)
+        .background(Color(hex: "#F8F7FB"))
+    }
+
+    private func extraActionButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(BBBFont.font(size: 14, weight: .semibold))
+                .foregroundStyle(DesignToken.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 11)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.white))
+        }
+        .buttonStyle(ScaleButtonStyle())
+    }
+
+    private var moodSelector: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("宝宝反应")
+                .font(BBBFont.font(size: 14, weight: .semibold))
+                .foregroundStyle(DesignToken.textSecondary)
+            HStack(spacing: 10) {
+                ForEach(BabyMood.allCases, id: \.self) { item in
+                    Button {
+                        mood = item
+                    } label: {
+                        Text(item.rawValue)
+                            .font(.system(size: 28))
+                            .frame(width: 50, height: 40)
+                            .background(Capsule().fill(mood == item ? DesignToken.primary.opacity(0.16) : DesignToken.iconSoftBG))
+                            .overlay(Capsule().stroke(mood == item ? DesignToken.primary.opacity(0.55) : .clear, lineWidth: 1.5))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var notesAndPhoto: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("备注", systemImage: "note.text")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color(hex: "#4D4B70"))
+                .font(BBBFont.font(size: 15, weight: .bold))
+                .foregroundStyle(DesignToken.textPrimary)
 
             TextField("吐奶、拒奶、过敏、喜欢程度等", text: noteBinding, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
 
-            HStack(spacing: 12) {
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    Label(imageData == nil ? "添加图片" : "已选择图片", systemImage: "photo.fill")
-                }
-                .buttonStyle(.bordered)
-
-                Button {} label: {
-                    Label("语音输入", systemImage: "mic.fill")
-                }
-                .buttonStyle(.bordered)
-                .disabled(true)
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Label(imageData == nil ? "添加图片" : "已选择图片", systemImage: "photo.fill")
             }
+            .buttonStyle(.bordered)
             .tint(DesignToken.primary)
         }
-        .padding(16)
-        .background(cardBackground)
     }
 
     private var entriesPreview: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("本次记录", systemImage: "list.bullet.clipboard.fill")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color(hex: "#4D4B70"))
-                Spacer()
-                Text("\(entries.count) 条")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#8B88A0"))
-            }
+        Group {
+            if !entries.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Label("本次记录", systemImage: "list.bullet.clipboard.fill")
+                            .font(BBBFont.font(size: 15, weight: .bold))
+                            .foregroundStyle(DesignToken.textPrimary)
+                        Spacer()
+                        Text("\(entries.count) 条")
+                            .font(BBBFont.font(size: 14, weight: .semibold))
+                            .foregroundStyle(DesignToken.textSecondary)
+                    }
 
-            if entries.isEmpty {
-                ContentUnavailableView("还没有记录", systemImage: "tray", description: Text("添加条目或直接保存。"))
-                    .frame(minHeight: 116)
-            } else {
                 ForEach(entries) { entry in
                     HStack(spacing: 12) {
                         Image(systemName: entryIcon(entry))
@@ -534,11 +441,11 @@ struct FeedingSheet: View {
                             .background(Circle().fill(entryColor(entry).opacity(0.14)))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entrySummary(entry))
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#4D4B70"))
+                                .font(BBBFont.font(size: 15, weight: .semibold))
+                                .foregroundStyle(DesignToken.textPrimary)
                             Text("本次喂养")
-                                .font(.caption)
-                                .foregroundStyle(Color(hex: "#8B88A0"))
+                                .font(BBBFont.font(size: 12, weight: .regular))
+                                .foregroundStyle(DesignToken.textSecondary)
                         }
                         Spacer()
                         Button(role: .destructive) {
@@ -549,13 +456,14 @@ struct FeedingSheet: View {
                         }
                         .buttonStyle(.borderless)
                     }
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(hex: "#F8F7FB")))
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(DesignToken.iconSoftBG))
                 }
+                }
+                .padding(14)
+                .background(cardBackground)
             }
         }
-        .padding(16)
-        .background(cardBackground)
     }
 
     private var manualBreastInputSheet: some View {
@@ -576,7 +484,7 @@ struct FeedingSheet: View {
                         showManualBreastInput = false
                     } label: {
                         Text("应用到当前计时")
-                            .font(.system(size: 17, weight: .bold))
+                            .font(BBBFont.font(size: 17, weight: .bold))
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -586,6 +494,54 @@ struct FeedingSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { showManualBreastInput = false }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var customBottleAmountSheet: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                VStack(spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        TextField("0", text: $customBottleAmountText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(BBBFont.font(size: 42, weight: .heavy))
+                            .foregroundStyle(DesignToken.textPrimary)
+                            .frame(width: 128)
+                        Text("ml")
+                            .font(BBBFont.font(size: 30, weight: .heavy))
+                            .foregroundStyle(DesignToken.textPrimary)
+                    }
+
+                    Text("自定义量")
+                        .font(BBBFont.font(size: 14, weight: .bold))
+                        .foregroundStyle(DesignToken.textSecondary)
+                }
+                .padding(.top, 24)
+
+                Button {
+                    applyCustomBottleAmount()
+                } label: {
+                    Label("应用自定义量", systemImage: "checkmark.circle.fill")
+                        .font(BBBFont.font(size: 17, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(Capsule(style: .continuous).fill(selectedKind.accent))
+                }
+                .buttonStyle(ScaleButtonStyle())
+
+                Spacer()
+            }
+            .padding(.horizontal, 28)
+            .navigationTitle("自定义量")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭") { showCustomBottleAmount = false }
                 }
             }
         }
@@ -608,46 +564,62 @@ struct FeedingSheet: View {
         }
     }
 
-    private var bottomStatus: some View {
-        VStack(spacing: 0) {
-            Divider()
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(currentTime, format: .dateTime.month().day().weekday())
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(bottomSummary)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color(hex: "#8B88A0"))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-                Spacer()
-                Button { save() } label: {
-                    Text("保存")
-                        .font(.system(size: 18, weight: .bold))
+    private var bottomDock: some View {
+        VStack(spacing: isCompactHeight ? 6 : 10) {
+            kindCarousel
+
+            HStack(spacing: 12) {
+                Button {
+                    save()
+                } label: {
+                    Label("保存记录", systemImage: "checkmark.circle.fill")
+                        .font(BBBFont.font(size: 16, weight: .heavy))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 26)
-                        .padding(.vertical, 13)
-                        .background(Capsule().fill(canSave ? appGradient : LinearGradient(colors: [.gray.opacity(0.6), .gray.opacity(0.6)], startPoint: .leading, endPoint: .trailing)))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: isCompactHeight ? 48 : 54)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(canSave ? appGradient : LinearGradient(colors: [.gray.opacity(0.58), .gray.opacity(0.58)], startPoint: .leading, endPoint: .trailing))
+                        )
                 }
                 .disabled(!canSave)
+                .buttonStyle(ScaleButtonStyle())
+
+                Button {
+                    showMoreInfo = true
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 22, weight: .heavy))
+                        .foregroundStyle(DesignToken.textSecondary)
+                        .frame(width: isCompactHeight ? 48 : 54, height: isCompactHeight ? 48 : 54)
+                        .background(Circle().fill(.white.opacity(0.94)))
+                }
+                .buttonStyle(ScaleButtonStyle())
             }
-            .foregroundStyle(Color(hex: "#4D4B70"))
-            .padding(.horizontal, 18)
-            .padding(.top, 12)
-            .padding(.bottom, 14)
-            .background(.regularMaterial)
+            .padding(isCompactHeight ? 6 : 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(Capsule(style: .continuous).stroke(.white.opacity(0.7), lineWidth: 1))
+                    .shadow(color: Color(hex: "#4D4B70").opacity(0.15), radius: 18, y: 8)
+            )
         }
+        .padding(.horizontal, isCompactHeight ? 14 : 16)
+        .padding(.bottom, isCompactHeight ? 8 : 12)
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24)
-            .fill(.white)
-            .shadow(color: Color(hex: "#4D4B70").opacity(0.05), radius: 18, y: 8)
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(.white.opacity(0.94))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(.white.opacity(0.84), lineWidth: 1.2)
+            )
+            .shadow(color: Color(hex: "#7E5DE8").opacity(0.06), radius: 12, y: 5)
     }
 
     private var appGradient: LinearGradient {
-        LinearGradient(colors: [Color(hex: "#BDA6F2"), Color(hex: "#E9B2D1")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        DesignToken.primaryGradient
     }
 
     private var leftSeconds: Int { breastSeconds(for: .left) }
@@ -655,11 +627,52 @@ struct FeedingSheet: View {
     private var totalBottleMinutes: Double { draftStore.totalBottleMinutes }
 
     private var canSave: Bool {
-        !entries.isEmpty || leftSeconds + rightSeconds > 0 || (type == .bottle && bottleAmount > 0) || (type == .solid && solidAmount > 0) || (type == .breast && breastMode == .expressedBottle && expressedAmount > 0)
+        !entries.isEmpty || leftSeconds + rightSeconds > 0 || (type == .bottle && bottleAmount > 0) || (type == .solid && solidAmount > 0)
     }
 
-    private var bottomSummary: String {
-        "今日 母乳\(feedingStore.breastCount)次 / 奶粉\(feedingStore.formulaML)ml / 瓶喂母乳\(feedingStore.expressedMilkML)ml / 辅食\(feedingStore.solidsGram)g"
+    private var manualButtonTitle: String {
+        switch selectedKind {
+        case .nursing: return "手动输入"
+        case .bottle: return "自定义量"
+        default: return "调整分量"
+        }
+    }
+
+    private var primarySummary: String {
+        switch selectedKind {
+        case .nursing:
+            return durationText(leftSeconds + rightSeconds)
+        case .bottle:
+            return "\(Int(bottleAmount))ml"
+        default:
+            return "\(Int(solidAmount))\(solidUnit.displayName)"
+        }
+    }
+
+    private var secondarySummary: String {
+        switch selectedKind {
+        case .nursing:
+            return "亲喂时长 · \(lastIntervalText)"
+        case .bottle:
+            let duration = totalBottleMinutes > 0 ? " · \(max(Int(totalBottleMinutes), 1))分钟" : ""
+            return "\(milkType.displayName)量\(duration) · \(lastIntervalText)"
+        default:
+            return "\(selectedKind.label)分量 · \(lastIntervalText)"
+        }
+    }
+
+    private var moreInfoSummary: String {
+        var parts: [String] = []
+        if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("有备注")
+        }
+        if imageData != nil {
+            parts.append("有图片")
+        }
+        if mood != .happy {
+            parts.append("已选反应")
+        }
+        return parts.isEmpty ? "可选" : parts.joined(separator: " · ")
     }
 
     private var lastIntervalText: String {
@@ -667,32 +680,6 @@ struct FeedingSheet: View {
         let minutes = max(Int(currentTime.timeIntervalSince(last) / 60), 0)
         if minutes < 60 { return "距上次 \(minutes) 分钟" }
         return "距上次 \(minutes / 60)小时\(minutes % 60)分"
-    }
-
-    private var breastSwitchSuggestion: String {
-        if activeBreastSide == nil { return "可从上次较少的一侧开始。" }
-        let activeSeconds = activeBreastSide == .left ? leftSeconds : rightSeconds
-        if activeSeconds >= 15 * 60 {
-            return "已超过 15 分钟，可换侧或结束。"
-        }
-        if activeSeconds >= 10 * 60 {
-            return "已超过 10 分钟，注意宝宝节奏。"
-        }
-        return "计时中，你可以离开本页，进度不会丢失。"
-    }
-
-    private func sectionHeader(title: String, icon: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 38, height: 38)
-                .background(Circle().fill(appGradient))
-            Text(title)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(Color(hex: "#4D4B70"))
-            Spacer()
-        }
     }
 
     private func breastTimer(_ side: BreastSide, seconds: Int) -> some View {
@@ -706,69 +693,23 @@ struct FeedingSheet: View {
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 5) {
                         Text(side.displayName)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color(hex: "#8B88A0"))
+                            .font(BBBFont.font(size: 14, weight: .bold))
+                            .foregroundStyle(DesignToken.textSecondary)
                         Text(durationText(seconds))
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(Color(hex: "#4D4B70"))
+                            .font(BBBFont.font(size: 20, weight: .bold))
+                            .foregroundStyle(DesignToken.textPrimary)
                         Image(systemName: activeBreastSide == side ? "pause.fill" : "play.fill")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(FeedingType.breast.accent)
                     }
                 }
-                .frame(height: 138)
+                .frame(height: 120)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 20).fill(activeBreastSide == side ? Color(hex: "#FFF5EA") : Color(hex: "#F8F7FB")))
+            .padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(activeBreastSide == side ? DesignToken.primary.opacity(0.12) : DesignToken.iconSoftBG))
         }
         .buttonStyle(.plain)
-    }
-
-    private func amountInputCard(title: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, unit: String, systemImage: String, color: Color) -> some View {
-        VStack(spacing: 14) {
-            HStack {
-                Label(title, systemImage: systemImage)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color(hex: "#4D4B70"))
-                Spacer()
-                Text("\(Int(value.wrappedValue)) \(unit)")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(color)
-            }
-            Slider(value: value, in: range, step: step)
-                .tint(color)
-            HStack {
-                Button { value.wrappedValue = max(range.lowerBound, value.wrappedValue - step) } label: {
-                    Image(systemName: "minus.circle.fill").font(.system(size: 32))
-                }
-                Spacer()
-                Button { value.wrappedValue = min(range.upperBound, value.wrappedValue + step) } label: {
-                    Image(systemName: "plus.circle.fill").font(.system(size: 32))
-                }
-            }
-            .foregroundStyle(color)
-        }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 18).fill(Color(hex: "#F8F7FB")))
-    }
-
-    private func primaryActionLabel(_ title: String, systemImage: String, color: Color) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13)
-            .background(RoundedRectangle(cornerRadius: 16).fill(color))
-    }
-
-    private func secondaryActionLabel(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(Color(hex: "#4D4B70"))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13)
-            .background(RoundedRectangle(cornerRadius: 16).fill(Color(hex: "#F3F1F7")))
     }
 
     private func timeString(_ date: Date) -> String {
@@ -839,44 +780,58 @@ struct FeedingSheet: View {
         persistDraft()
     }
 
-    private func addBreastEntry() {
-        commitActiveBreastElapsed()
-        if leftSeconds > 0 {
-            entries.append(FeedingEntry(type: .breast, breastMode: breastMode, breastSide: .left, breastDuration: max(leftSeconds / 60, 1)))
+    private func openManualInput() {
+        guard type == .breast else { return }
+        manualLeftMinutes = Double(max(leftSeconds / 60, 0))
+        manualRightMinutes = Double(max(rightSeconds / 60, 0))
+        showManualBreastInput = true
+    }
+
+    private func openManualEntry() {
+        switch selectedKind {
+        case .nursing:
+            openManualInput()
+        case .bottle:
+            customBottleAmountText = "\(Int(bottleAmount))"
+            showCustomBottleAmount = true
+        default:
+            solidAmount = min(300, solidAmount + 5)
+            persistDraft()
         }
-        if rightSeconds > 0 {
-            entries.append(FeedingEntry(type: .breast, breastMode: breastMode, breastSide: .right, breastDuration: max(rightSeconds / 60, 1)))
+    }
+
+    private func selectKind(_ kind: FeedingKind) {
+        if kind != .nursing {
+            commitActiveBreastElapsed()
+            activeBreastSide = nil
+            activeBreastStartAt = nil
         }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        leftBaseSeconds = 0
-        rightBaseSeconds = 0
-        activeBreastSide = nil
-        hitMilestones.removeAll()
+
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+            selectedKind = kind
+            switch kind {
+            case .nursing:
+                type = .breast
+                breastMode = .nursing
+            case .bottle:
+                type = .bottle
+            case .rice, .porridge, .vegetable, .fruit, .meat, .fish, .egg, .noodle, .yogurt:
+                type = .solid
+                if let food = kind.solidFood {
+                    solidFood = food
+                    solidUnit = food.suggestedUnit
+                }
+            }
+        }
         persistDraft()
     }
 
-    private func addExpressedBreastEntry() {
-        entries.append(FeedingEntry(type: .bottle, milkType: .expressed, bottleAmount: Int(expressedAmount)))
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        expressedAmount = 0
+    private func applyCustomBottleAmount() {
+        let filtered = customBottleAmountText.filter(\.isNumber)
+        let value = Double(filtered) ?? 0
+        bottleAmount = min(max(value, bottleRange.lowerBound), bottleRange.upperBound)
         persistDraft()
-    }
-
-    private func addBottleEntry() {
-        if bottleTimerStartedAt != nil { commitBottleElapsed() }
-        entries.append(FeedingEntry(type: .bottle, milkType: milkType, bottleAmount: Int(bottleAmount), bottleDuration: totalBottleMinutes > 0 ? max(Int(totalBottleMinutes), 1) : nil))
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        bottleTimerStartedAt = nil
-        bottleMinutes = 0
-        bottleAmount = 0
-        persistDraft()
-    }
-
-    private func addSolidEntry() {
-        entries.append(FeedingEntry(type: .solid, solidFood: solidFood, solidAmount: solidAmount, solidUnit: solidUnit))
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        solidAmount = 0
-        persistDraft()
+        showCustomBottleAmount = false
     }
 
     private func entrySummary(_ entry: FeedingEntry) -> String {
@@ -930,14 +885,12 @@ struct FeedingSheet: View {
         if bottleTimerStartedAt != nil { commitBottleElapsed() }
         var finalEntries = entries
 
-        if type == .breast, breastMode == .expressedBottle, expressedAmount > 0 {
-            finalEntries.append(FeedingEntry(type: .bottle, milkType: .expressed, bottleAmount: Int(expressedAmount)))
-        } else {
+        if type == .breast {
             if leftSeconds > 0 {
-                finalEntries.append(FeedingEntry(type: .breast, breastMode: breastMode, breastSide: .left, breastDuration: max(leftSeconds / 60, 1)))
+                finalEntries.append(FeedingEntry(type: .breast, breastMode: .nursing, breastSide: .left, breastDuration: max(leftSeconds / 60, 1)))
             }
             if rightSeconds > 0 {
-                finalEntries.append(FeedingEntry(type: .breast, breastMode: breastMode, breastSide: .right, breastDuration: max(rightSeconds / 60, 1)))
+                finalEntries.append(FeedingEntry(type: .breast, breastMode: .nursing, breastSide: .right, breastDuration: max(rightSeconds / 60, 1)))
             }
         }
 
@@ -955,6 +908,276 @@ struct FeedingSheet: View {
         draftStore.resetDraft()
         didSave = true
         isPresented = false
+    }
+}
+
+private enum FeedingKind: String, CaseIterable, Identifiable {
+    case nursing
+    case bottle
+    case rice
+    case porridge
+    case vegetable
+    case fruit
+    case meat
+    case fish
+    case egg
+    case noodle
+    case yogurt
+
+    var id: String { rawValue }
+
+    var emoji: String {
+        switch self {
+        case .nursing: return "🤱"
+        case .bottle: return "🍼"
+        case .rice: return "🍚"
+        case .porridge: return "🥣"
+        case .vegetable: return "🥬"
+        case .fruit: return "🍎"
+        case .meat: return "🥩"
+        case .fish: return "🐟"
+        case .egg: return "🥚"
+        case .noodle: return "🍜"
+        case .yogurt: return "🥛"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .nursing: return "亲喂"
+        case .bottle: return "瓶喂"
+        case .rice: return "米糊"
+        case .porridge: return "粥"
+        case .vegetable: return "蔬菜"
+        case .fruit: return "水果"
+        case .meat: return "肉泥"
+        case .fish: return "鱼肉"
+        case .egg: return "鸡蛋"
+        case .noodle: return "面条"
+        case .yogurt: return "酸奶"
+        }
+    }
+
+    var title: String {
+        "\(emoji) \(label)"
+    }
+
+    var accent: Color {
+        switch self {
+        case .nursing: return FeedingType.breast.accent
+        case .bottle: return FeedingType.bottle.accent
+        default: return FeedingType.solid.accent
+        }
+    }
+
+    var solidFood: SolidFood? {
+        switch self {
+        case .nursing, .bottle:
+            return nil
+        case .rice:
+            return .rice
+        case .porridge:
+            return .porridge
+        case .vegetable:
+            return .vegetable
+        case .fruit:
+            return .fruit
+        case .meat:
+            return .meat
+        case .fish:
+            return .fish
+        case .egg:
+            return .egg
+        case .noodle:
+            return .noodle
+        case .yogurt:
+            return .yogurt
+        }
+    }
+
+    static func kindFor(type: FeedingType, solidFood: SolidFood) -> FeedingKind {
+        switch type {
+        case .breast:
+            return .nursing
+        case .bottle:
+            return .bottle
+        case .solid:
+            switch solidFood {
+            case .rice: return .rice
+            case .porridge: return .porridge
+            case .vegetable: return .vegetable
+            case .fruit: return .fruit
+            case .meat: return .meat
+            case .fish: return .fish
+            case .egg: return .egg
+            case .noodle: return .noodle
+            case .yogurt: return .yogurt
+            case .bread, .other: return .rice
+            }
+        }
+    }
+}
+
+private struct InteractiveBottleView: View {
+    @Binding var amount: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let tint: Color
+
+    private let bottleFillTop: CGFloat = 0.302
+    private let bottleFillBottom: CGFloat = 0.954
+
+    private var progress: Double {
+        guard range.upperBound > range.lowerBound else { return 0 }
+        return min(max((amount - range.lowerBound) / (range.upperBound - range.lowerBound), 0), 1)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .bottom) {
+                Image("feeding_bottle_empty")
+                    .resizable()
+                    .scaledToFit()
+                    .opacity(0.92)
+
+                Image("feeding_bottle_full")
+                    .resizable()
+                    .scaledToFit()
+                    .mask(alignment: .bottom) {
+                        BottleMilkMask(
+                            progress: progress,
+                            topRatio: bottleFillTop,
+                            bottomRatio: bottleFillBottom
+                        )
+                    }
+                    .opacity(0.96)
+                    .allowsHitTesting(false)
+
+                Image("feeding_bottle_empty")
+                    .resizable()
+                    .scaledToFit()
+                    .blendMode(.multiply)
+                    .opacity(0.34)
+                    .allowsHitTesting(false)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let fillTop = proxy.size.height * bottleFillTop
+                        let fillBottom = proxy.size.height * bottleFillBottom
+                        let ratio = 1 - min(max((value.location.y - fillTop) / max(fillBottom - fillTop, 1), 0), 1)
+                        let rawValue = range.lowerBound + ratio * (range.upperBound - range.lowerBound)
+                        amount = snapped(rawValue)
+                    }
+            )
+        }
+        .accessibilityLabel("奶瓶量")
+        .accessibilityValue("\(Int(amount))ml")
+    }
+
+    private func snapped(_ value: Double) -> Double {
+        let snappedValue = (value / step).rounded() * step
+        return min(max(snappedValue, range.lowerBound), range.upperBound)
+    }
+}
+
+private struct BottleMilkMask: Shape {
+    let progress: Double
+    let topRatio: CGFloat
+    let bottomRatio: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let clamped = min(max(progress, 0), 1)
+        let fillTopLimit = rect.minY + rect.height * topRatio
+        let fillBottom = rect.minY + rect.height * bottomRatio
+        let fillTop = fillBottom - (fillBottom - fillTopLimit) * clamped
+        let wave = rect.height * 0.01
+
+        path.move(to: CGPoint(x: rect.minX, y: fillBottom))
+        path.addLine(to: CGPoint(x: rect.minX, y: fillTop))
+        path.addCurve(
+            to: CGPoint(x: rect.maxX, y: fillTop),
+            control1: CGPoint(x: rect.minX + rect.width * 0.38, y: fillTop + wave),
+            control2: CGPoint(x: rect.minX + rect.width * 0.62, y: fillTop - wave)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: fillBottom))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct BottleAmountScrubber: View {
+    @Binding var amount: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Button {
+                amount = max(range.lowerBound, amount - step)
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.system(size: 29, weight: .bold))
+            }
+
+            Text("\(Int(amount))ml")
+                .font(BBBFont.font(size: UIScreen.main.bounds.height < 760 ? 24 : 28, weight: .heavy))
+                .foregroundStyle(DesignToken.textPrimary)
+                .frame(minWidth: UIScreen.main.bounds.height < 760 ? 92 : 112)
+
+            Button {
+                amount = min(range.upperBound, amount + step)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 29, weight: .bold))
+            }
+        }
+        .foregroundStyle(tint)
+        .gesture(
+            DragGesture(minimumDistance: 12)
+                .onEnded { value in
+                    if value.translation.width < -18 {
+                        amount = min(range.upperBound, amount + step)
+                    } else if value.translation.width > 18 {
+                        amount = max(range.lowerBound, amount - step)
+                    }
+                }
+        )
+    }
+}
+
+private struct AmountStepperControl: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let unit: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Button {
+                value = max(range.lowerBound, value - step)
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.system(size: 29, weight: .bold))
+            }
+
+            Text("\(Int(value))\(unit)")
+                .font(BBBFont.font(size: UIScreen.main.bounds.height < 760 ? 24 : 28, weight: .heavy))
+                .foregroundStyle(DesignToken.textPrimary)
+                .frame(minWidth: UIScreen.main.bounds.height < 760 ? 92 : 112)
+
+            Button {
+                value = min(range.upperBound, value + step)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 29, weight: .bold))
+            }
+        }
+        .foregroundStyle(tint)
     }
 }
 

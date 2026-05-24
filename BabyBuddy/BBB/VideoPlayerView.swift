@@ -49,17 +49,17 @@ struct VideoPlayerView: View {
 
             VStack(spacing: 12) {
                 Image(systemName: "pawprint.fill")
-                    .font(.system(size: 42))
+                    .font(.system(size: 34))
                     .foregroundStyle(DesignToken.primary)
                     .symbolEffect(.pulse)
                 Text("等待视频资源")
-                    .font(.headline)
+                    .font(BBBFont.font(size: 15, weight: .semibold))
                     .foregroundStyle(style == .fullscreen ? .white : DesignToken.textPrimary)
                 Text("\(videoFileName).mp4")
-                    .font(.caption)
+                    .font(BBBFont.font(size: 12, weight: .regular))
                     .foregroundStyle(style == .fullscreen ? .white.opacity(0.65) : .secondary)
                 Text("请将视频放入 Videos/ 子目录或 App Bundle 根目录")
-                    .font(.caption2)
+                    .font(BBBFont.font(size: 11, weight: .regular))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(style == .fullscreen ? .white.opacity(0.55) : .secondary)
             }
