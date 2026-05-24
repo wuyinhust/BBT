@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "companion_moye_portrait.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

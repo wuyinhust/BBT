@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "companion_chippy_portrait.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
