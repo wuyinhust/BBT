@@ -35,6 +35,8 @@
 		PV001BLD0000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV001REF0000000000000001 /* ProfileView.swift */; };
 		RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = RES01REF000000000000001 /* RecordEditSheets.swift */; };
 		RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RHV01REF000000000000001 /* RecordHomeView.swift */; };
+		WRP01BLD000000000000001 /* WeeklyRhythmPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WRP01REF000000000000001 /* WeeklyRhythmPlayerView.swift */; };
+		WRC01BLD000000000000001 /* WeeklyRhythmComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = WRC01REF000000000000001 /* WeeklyRhythmComposer.swift */; };
 		SDS01BLD000000000000001 /* SleepDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = SDS01REF000000000000001 /* SleepDraftStore.swift */; };
 		VID01BLD000000000000001 /* Videos in Resources */ = {isa = PBXBuildFile; fileRef = VID01REF000000000000001 /* Videos */; };
 /* End PBXBuildFile section */
@@ -89,6 +91,8 @@
 		RHV01REF000000000000001 /* RecordHomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordHomeView.swift; path = BBB/RecordHomeView.swift; sourceTree = "<group>"; };
 		SDS01REF000000000000001 /* SleepDraftStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SleepDraftStore.swift; path = BBB/SleepDraftStore.swift; sourceTree = "<group>"; };
 		VID01REF000000000000001 /* Videos */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Videos; path = BBB/Videos; sourceTree = "<group>"; };
+		WRP01REF000000000000001 /* WeeklyRhythmPlayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WeeklyRhythmPlayerView.swift; path = BBB/WeeklyRhythmPlayerView.swift; sourceTree = "<group>"; };
+		WRC01REF000000000000001 /* WeeklyRhythmComposer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WeeklyRhythmComposer.swift; path = BBB/WeeklyRhythmComposer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +156,8 @@
 				LIS01REF000000000000001 /* LiveIslandSceneView.swift */,
 				BCV01REF000000000000001 /* BuddyChatView.swift */,
 				RHV01REF000000000000001 /* RecordHomeView.swift */,
+				WRP01REF000000000000001 /* WeeklyRhythmPlayerView.swift */,
+				WRC01REF000000000000001 /* WeeklyRhythmComposer.swift */,
 				RES01REF000000000000001 /* RecordEditSheets.swift */,
 				PV001REF0000000000000001 /* ProfileView.swift */,
 				CPV01REF000000000000001 /* CompanionPickerView.swift */,
@@ -284,6 +290,8 @@
 				LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */,
 				BCV01BLD000000000000001 /* BuddyChatView.swift in Sources */,
 				RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */,
+				WRP01BLD000000000000001 /* WeeklyRhythmPlayerView.swift in Sources */,
+				WRC01BLD000000000000001 /* WeeklyRhythmComposer.swift in Sources */,
 				RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */,
 				PV001BLD0000000000000001 /* ProfileView.swift in Sources */,
 				CPV01BLD000000000000001 /* CompanionPickerView.swift in Sources */,
