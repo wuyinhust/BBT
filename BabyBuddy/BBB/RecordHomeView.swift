@@ -292,6 +292,20 @@ struct RecordHomeView: View {
                     .font(BBBFont.font(size: 12, weight: .bold))
                     .foregroundStyle(DesignToken.textPrimary)
                 Spacer()
+                NavigationLink {
+                    WeeklyRhythmPlayerView()
+                } label: {
+                    Text("本周节奏曲")
+                        .font(BBBFont.font(size: 11, weight: .bold))
+                        .foregroundStyle(DesignToken.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(DesignToken.primary.opacity(0.12))
+                        )
+                }
+                .buttonStyle(.plain)
             }
 
             rhythmGrid
