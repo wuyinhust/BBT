@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 final class FeedingDraftStore: ObservableObject {
-    @Published var type: FeedingType = .breast
+    @Published var type: FeedingType = .bottle
     @Published var mood: BabyMood = .happy
     @Published var entries: [FeedingEntry] = []
     @Published var note = ""
@@ -26,29 +26,27 @@ final class FeedingDraftStore: ObservableObject {
     @Published var bottleTimerStartedAt: Date?
 
     @Published var solidFood: SolidFood = .rice
+    @Published var solidFoods: [SolidFood] = [.rice]
     @Published var solidAmount = 30.0
     @Published var solidUnit: SolidUnit = .g
 
     private let draftKey = "feeding_sheet_draft_v4"
 
     var hasDraft: Bool {
+        hasRecordDraft
+    }
+
+    private var hasRecordDraft: Bool {
         !entries.isEmpty ||
-        leftSeconds > 0 ||
-        rightSeconds > 0 ||
-        activeBreastSide != nil ||
-        bottleTimerStartedAt != nil ||
-        hasMetadataDraft ||
+        hasBreastDraft ||
         hasBottleDraft ||
         hasSolidDraft
     }
 
     var isRecording: Bool {
-        (type == .breast && activeBreastSide != nil) ||
+        (type == .breast && (activeBreastSide != nil || leftSeconds + rightSeconds > 0)) ||
         bottleTimerStartedAt != nil ||
-        !entries.isEmpty ||
-        hasMetadataDraft ||
-        hasBottleDraft ||
-        hasSolidDraft
+        totalBottleMinutes > 0
     }
 
     private var hasMetadataDraft: Bool {
@@ -57,14 +55,31 @@ final class FeedingDraftStore: ObservableObject {
         mood != .happy
     }
 
+    private var hasBreastDraft: Bool {
+        type == .breast &&
+        (leftSeconds > 0 || rightSeconds > 0 || activeBreastSide != nil)
+    }
+
     private var hasBottleDraft: Bool {
         type == .bottle &&
-        (totalBottleMinutes > 0 || milkType != .formula || bottleAmount != 60)
+        (
+            totalBottleMinutes > 0 ||
+            bottleTimerStartedAt != nil ||
+            milkType != .formula ||
+            bottleAmount != 60 ||
+            (hasMetadataDraft && bottleAmount > 0)
+        )
     }
 
     private var hasSolidDraft: Bool {
         type == .solid &&
-        (solidFood != .rice || solidAmount != 30 || solidUnit != .g)
+        (
+            solidFood != .rice ||
+            solidFoods != [.rice] ||
+            solidAmount != 30 ||
+            solidUnit != .g ||
+            (hasMetadataDraft && solidAmount > 0)
+        )
     }
 
     var leftSeconds: Int {
@@ -136,11 +151,18 @@ final class FeedingDraftStore: ObservableObject {
     }
 
     func persistDraftIfNeeded() {
-        guard activeBreastSide != nil || bottleTimerStartedAt != nil || hasDraft else { return }
+        guard activeBreastSide != nil || bottleTimerStartedAt != nil || hasDraft else {
+            clearPersistedDraft()
+            return
+        }
         persistDraft()
     }
 
     func persistDraft() {
+        guard hasDraft else {
+            clearPersistedDraft()
+            return
+        }
         let draft = FeedingDraft(
             type: type,
             mood: mood,
@@ -160,6 +182,7 @@ final class FeedingDraftStore: ObservableObject {
             bottleIsTimed: bottleIsTimed,
             bottleTimerStartedAt: bottleTimerStartedAt,
             solidFood: solidFood,
+            solidFoods: solidFoods,
             solidAmount: solidAmount,
             solidUnit: solidUnit,
             updatedAt: Date()
@@ -192,12 +215,17 @@ final class FeedingDraftStore: ObservableObject {
         bottleIsTimed = draft.bottleIsTimed
         bottleTimerStartedAt = draft.bottleTimerStartedAt
         solidFood = draft.solidFood
+        solidFoods = Self.normalizedSolidFoods(draft.solidFoods ?? [draft.solidFood])
+        solidFood = solidFoods.first ?? draft.solidFood
         solidAmount = draft.solidAmount
         solidUnit = draft.solidUnit
+        if !hasDraft {
+            resetDraft()
+        }
     }
 
     func resetDraft() {
-        type = .breast
+        type = .bottle
         mood = .happy
         entries = []
         note = ""
@@ -217,6 +245,7 @@ final class FeedingDraftStore: ObservableObject {
         bottleIsTimed = false
         bottleTimerStartedAt = nil
         solidFood = .rice
+        solidFoods = [.rice]
         solidAmount = 30
         solidUnit = .g
         clearPersistedDraft()
@@ -229,6 +258,12 @@ final class FeedingDraftStore: ObservableObject {
 
     private func durationText(_ seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private static func normalizedSolidFoods(_ foods: [SolidFood]) -> [SolidFood] {
+        var seen: Set<SolidFood> = []
+        let normalized = foods.filter { seen.insert($0).inserted }
+        return normalized.isEmpty ? [.rice] : normalized
     }
 }
 
@@ -251,6 +286,7 @@ private struct FeedingDraft: Codable {
     var bottleIsTimed: Bool
     var bottleTimerStartedAt: Date?
     var solidFood: SolidFood
+    var solidFoods: [SolidFood]?
     var solidAmount: Double
     var solidUnit: SolidUnit
     var updatedAt: Date

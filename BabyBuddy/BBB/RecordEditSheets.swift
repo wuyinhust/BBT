@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FeedingEditSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(BabyProfileStore.self) private var profileStore
     @EnvironmentObject private var feedingStore: FeedingStore
     let session: FeedingSession
 
@@ -24,12 +25,12 @@ struct FeedingEditSheet: View {
         NavigationStack {
             recordEditSheetContent(
                 title: "修改喂养",
-                subtitle: "调整时间、明细和备注",
+                subtitle: "调整时间和明细",
                 icon: "fork.knife.circle.fill",
                 accent: DesignToken.primary
             ) {
                 VStack(spacing: 16) {
-                    DatePicker("时间", selection: $recordedAt, displayedComponents: [.hourAndMinute])
+                    DatePicker("时间", selection: $recordedAt, in: ...Date(), displayedComponents: [.hourAndMinute])
                         .font(BBBFont.font(size: 17, weight: .semibold))
                         .padding(16)
                         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
@@ -42,15 +43,10 @@ struct FeedingEditSheet: View {
                         }
                     }
 
-                    TextField("备注", text: $note, axis: .vertical)
-                        .lineLimit(3, reservesSpace: true)
-                        .padding(14)
-                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
-
                     recordEditSaveButton(title: "保存修改", color: DesignToken.primary) {
                         save()
                     }
-                    .disabled(entries.isEmpty)
+                    .disabled(!canSave)
                 }
             }
             .navigationTitle("修改喂养")
@@ -89,16 +85,36 @@ struct FeedingEditSheet: View {
     }
 
     private func save() {
+        guard canSave else { return }
+        let base = FeedingSession(
+            id: session.id,
+            entries: entries,
+            notes: session.notes,
+            imageData: imageData,
+            babyMood: mood,
+            createdAt: recordedAt,
+            startAt: session.startAt,
+            endAt: session.endAt,
+            timeSpanSource: session.timeSpanSource
+        )
+        let resolvedSpan = base.resolvedTimeSpan(ageMonths: profileStore.currentProfile.ageMonths)
         let updated = FeedingSession(
             id: session.id,
             entries: entries,
-            notes: note,
+            notes: session.notes,
             imageData: imageData,
             babyMood: mood,
-            createdAt: recordedAt
+            createdAt: recordedAt,
+            startAt: resolvedSpan.endAt > resolvedSpan.startAt ? resolvedSpan.startAt : nil,
+            endAt: resolvedSpan.endAt > resolvedSpan.startAt ? resolvedSpan.endAt : nil,
+            timeSpanSource: resolvedSpan.source
         )
         feedingStore.updateSession(updated)
         dismiss()
+    }
+
+    private var canSave: Bool {
+        !entries.isEmpty && recordedAt <= Date()
     }
 }
 
@@ -172,8 +188,10 @@ private struct FeedingEntryEditRow: View {
 
     private var title: String {
         switch entry.type {
-        case .breast: return "母乳"
-        case .bottle: return "奶瓶"
+        case .breast: return "母乳（亲喂）"
+        case .bottle:
+            if entry.milkType == .expressed { return "母乳（瓶喂）" }
+            return "奶粉（瓶喂）"
         case .solid: return "辅食"
         }
     }
@@ -300,6 +318,8 @@ struct CareRecordEditSheet: View {
             switch record.kind {
             case .diaper:
                 diaperContent
+            case .activity:
+                activityContent
             case .sleep:
                 sleepContent
             }
@@ -307,12 +327,38 @@ struct CareRecordEditSheet: View {
         .presentationDragIndicator(.visible)
     }
 
+    private var activityContent: some View {
+        recordEditSheetContent(
+            title: "修改活动",
+            subtitle: "调整活动时间",
+            icon: "sparkles",
+            accent: DesignToken.easyActivity
+        ) {
+            VStack(spacing: 16) {
+                DatePicker("时间", selection: $recordedAt, in: ...Date(), displayedComponents: [.hourAndMinute])
+                    .font(BBBFont.font(size: 17, weight: .semibold))
+
+                recordEditSaveButton(title: "保存修改", color: DesignToken.easyActivity) {
+                    activityStore.updateActivityRecord(record, recordedAt: recordedAt)
+                    dismiss()
+                }
+            }
+        }
+        .navigationTitle("修改活动")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("取消") { dismiss() }
+            }
+        }
+    }
+
     private var diaperContent: some View {
         recordEditSheetContent(
             title: "修改尿布",
-            subtitle: "调整尿布状态、时间和备注",
+            subtitle: "调整尿布状态和时间",
             icon: "drop.fill",
-            accent: Color(hex: "#67C587")
+            accent: DesignToken.activityDiaper
         ) {
             VStack(spacing: 16) {
                 Picker("尿布状态", selection: $diaperType) {
@@ -322,15 +368,15 @@ struct CareRecordEditSheet: View {
                 }
                 .pickerStyle(.segmented)
 
-                DatePicker("时间", selection: $recordedAt, displayedComponents: [.hourAndMinute])
+                DatePicker("时间", selection: $recordedAt, in: ...Date(), displayedComponents: [.hourAndMinute])
                     .font(BBBFont.font(size: 17, weight: .semibold))
 
-                notesField("备注：比如颜色、量或护理情况")
-
-                recordEditSaveButton(title: "保存修改", color: Color(hex: "#67C587")) {
-                    activityStore.updateDiaperRecord(record, type: diaperType, note: note, recordedAt: recordedAt)
+                recordEditSaveButton(title: "保存修改", color: DesignToken.activityDiaper) {
+                    guard canSaveDiaper else { return }
+                    activityStore.updateDiaperRecord(record, type: diaperType, detail: record.detail, note: record.note, recordedAt: recordedAt)
                     dismiss()
                 }
+                .disabled(!canSaveDiaper)
             }
         }
         .navigationTitle("修改尿布")
@@ -345,15 +391,15 @@ struct CareRecordEditSheet: View {
     private var sleepContent: some View {
         recordEditSheetContent(
             title: "修改睡眠",
-            subtitle: "调整睡眠时长、时间和备注",
+            subtitle: "调整睡眠时长和时间",
             icon: "moon.fill",
-            accent: Color(hex: "#6DA5F2")
+            accent: DesignToken.easySleep
         ) {
             VStack(spacing: 16) {
-                DatePicker("入睡", selection: $recordedAt, displayedComponents: [.hourAndMinute])
+                DatePicker("入睡", selection: $recordedAt, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
                     .font(BBBFont.font(size: 17, weight: .semibold))
 
-                DatePicker("醒来", selection: $sleepEndAt, displayedComponents: [.hourAndMinute])
+                DatePicker("醒来", selection: $sleepEndAt, in: recordedAt...Date(), displayedComponents: [.date, .hourAndMinute])
                     .font(BBBFont.font(size: 17, weight: .semibold))
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -363,17 +409,15 @@ struct CareRecordEditSheet: View {
                         Spacer()
                         Text(SleepRecordFormatter.durationText(minutes: sleepDurationMinutes))
                             .font(BBBFont.font(size: 17, weight: .heavy))
-                            .foregroundStyle(canSaveSleep ? Color(hex: "#4D68D8") : Color.red.opacity(0.8))
+                            .foregroundStyle(canSaveSleep ? DesignToken.easySleep : Color.red.opacity(0.8))
                     }
                 }
                 .padding(16)
                 .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
 
-                notesField("备注：比如入睡状态、醒来原因")
-
                 Button {
                     guard canSaveSleep else { return }
-                    activityStore.updateSleepRecord(record, startTime: recordedAt, endTime: sleepEndAt, note: note)
+                    activityStore.updateSleepRecord(record, startTime: recordedAt, endTime: sleepEndAt, note: record.note)
                     dismiss()
                 } label: {
                     Label("保存修改", systemImage: "checkmark.circle.fill")
@@ -381,7 +425,7 @@ struct CareRecordEditSheet: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Capsule().fill(canSaveSleep ? Color(hex: "#6DA5F2") : Color.gray.opacity(0.36)))
+                        .background(Capsule().fill(canSaveSleep ? DesignToken.easySleep : Color.gray.opacity(0.36)))
                 }
                 .buttonStyle(ScaleButtonStyle())
                 .disabled(!canSaveSleep)
@@ -391,7 +435,7 @@ struct CareRecordEditSheet: View {
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: recordedAt) { _, newValue in
             if sleepEndAt <= newValue {
-                sleepEndAt = newValue.addingTimeInterval(30 * 60)
+                sleepEndAt = min(Date(), newValue.addingTimeInterval(30 * 60))
             }
         }
         .toolbar {
@@ -416,9 +460,100 @@ struct CareRecordEditSheet: View {
         sleepDurationMinutes > 0
     }
 
+    private var canSaveDiaper: Bool {
+        recordedAt <= Date()
+    }
+
     private static func initialSleepEndAt(from record: CareRecord) -> Date {
         let minutes = SleepRecordFormatter.durationMinutes(from: record.detail) ?? 30
         return SleepRecordFormatter.endTime(start: record.recordedAt, durationMinutes: minutes)
+    }
+}
+
+struct GrowthMetricEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var growthMetricStore: GrowthMetricStore
+    let record: GrowthMetricRecord
+
+    @State private var value: Double
+    @State private var note: String
+    @State private var recordedAt: Date
+
+    init(record: GrowthMetricRecord) {
+        self.record = record
+        _value = State(initialValue: record.value)
+        _note = State(initialValue: record.note)
+        _recordedAt = State(initialValue: record.recordedAt)
+    }
+
+    var body: some View {
+        NavigationStack {
+            recordEditSheetContent(
+                title: "修改\(record.kind.title)",
+                subtitle: "调整数值、时间和备注",
+                icon: record.kind.icon,
+                accent: record.kind.accent
+            ) {
+                VStack(spacing: 16) {
+                    VStack(spacing: 10) {
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text(String(format: "%.1f", value))
+                                .font(BBBFont.font(size: 42, weight: .heavy))
+                                .foregroundStyle(DesignToken.textPrimary)
+                                .monospacedDigit()
+                            Text(record.kind.unit)
+                                .font(BBBFont.font(size: 22, weight: .heavy))
+                                .foregroundStyle(DesignToken.textPrimary)
+                        }
+
+                        Slider(value: $value, in: valueRange, step: 0.1)
+                            .tint(record.kind.accent)
+
+                        Stepper("调整\(record.kind.title)", value: $value, in: valueRange, step: 0.1)
+                            .labelsHidden()
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+
+                    DatePicker("时间", selection: $recordedAt, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
+                        .font(BBBFont.font(size: 17, weight: .semibold))
+                        .padding(16)
+                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+
+                    TextField("备注", text: $note, axis: .vertical)
+                        .lineLimit(3, reservesSpace: true)
+                        .padding(14)
+                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+
+                    recordEditSaveButton(title: "保存修改", color: record.kind.accent) {
+                        save()
+                    }
+                    .disabled(!canSave)
+                }
+            }
+            .navigationTitle("修改\(record.kind.title)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+
+    private var valueRange: ClosedRange<Double> {
+        record.kind == .weight ? 0.5...40 : 20...130
+    }
+
+    private var canSave: Bool {
+        value > 0 && recordedAt <= Date()
+    }
+
+    private func save() {
+        guard canSave else { return }
+        growthMetricStore.updateRecord(record, value: value, note: note, recordedAt: recordedAt)
+        dismiss()
     }
 }
 

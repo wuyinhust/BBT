@@ -1,6 +1,8 @@
 .DS_Store
 .DerivedData/
 DerivedData/
+.swift-module-cache/
+BabyBuddy/build/
 xcuserdata/
 *.xcuserstate
 *.zip

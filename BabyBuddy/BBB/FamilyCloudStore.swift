@@ -41,9 +41,11 @@ struct FamilyCloudSnapshot: Codable {
     var profile: BabyProfileData
     var feedingSessions: [FeedingSession]
     var careRecords: [CareRecord]
+    var growthMetricRecords: [GrowthMetricRecord]?
     var achievements: [CustomAchievement]
     var deletedFeedingSessionIDs: [UUID]?
     var deletedCareRecordIDs: [UUID]?
+    var deletedGrowthMetricRecordIDs: [UUID]?
     var deletedAchievementIDs: [UUID]?
     var selectedCompanionID: String
     var temperamentResult: BabyTemperamentResult?
@@ -116,12 +118,13 @@ final class FamilyCloudStore: ObservableObject {
         }
     }
 
-    private let container = CKContainer(identifier: "iCloud.v.babybuddy")
+    private lazy var container = CKContainer(identifier: "iCloud.v.babybuddy")
     private let localLocatorKey = "family_cloud_baby_space_locator_v1"
     private let localSnapshotUpdatedAtKey = "family_cloud_local_snapshot_updated_at_v1"
     private let localSnapshotDirtyKey = "family_cloud_local_snapshot_dirty_v1"
     private let deletedFeedingSessionIDsKey = "family_cloud_deleted_feeding_session_ids_v1"
     private let deletedCareRecordIDsKey = "family_cloud_deleted_care_record_ids_v1"
+    private let deletedGrowthMetricRecordIDsKey = "family_cloud_deleted_growth_metric_record_ids_v1"
     private let deletedAchievementIDsKey = "family_cloud_deleted_achievement_ids_v1"
     private let zoneName = "BabyBuddySharedZone"
     private let syncDebounce: TimeInterval = 1.4
@@ -129,6 +132,7 @@ final class FamilyCloudStore: ObservableObject {
 
     private weak var feedingStore: FeedingStore?
     private weak var activityStore: ActivityStore?
+    private weak var growthMetricStore: GrowthMetricStore?
     private weak var achievementStore: AchievementStickerStore?
     private weak var companionStore: CompanionStore?
     private weak var temperamentStore: TemperamentProfileStore?
@@ -142,10 +146,19 @@ final class FamilyCloudStore: ObservableObject {
         isApplyingRemoteSnapshot
     }
 
+    private static var canUseCloudKitContainer: Bool {
+        #if targetEnvironment(simulator) && arch(x86_64)
+        false
+        #else
+        true
+        #endif
+    }
+
     func configure(
         profileStore: BabyProfileStore,
         feedingStore: FeedingStore,
         activityStore: ActivityStore,
+        growthMetricStore: GrowthMetricStore,
         achievementStore: AchievementStickerStore,
         companionStore: CompanionStore,
         temperamentStore: TemperamentProfileStore
@@ -153,6 +166,7 @@ final class FamilyCloudStore: ObservableObject {
         self.profileStore = profileStore
         self.feedingStore = feedingStore
         self.activityStore = activityStore
+        self.growthMetricStore = growthMetricStore
         self.achievementStore = achievementStore
         self.companionStore = companionStore
         self.temperamentStore = temperamentStore
@@ -161,6 +175,10 @@ final class FamilyCloudStore: ObservableObject {
 
     func bootstrapIfNeeded() async {
         guard isConfigured else { return }
+        guard Self.canUseCloudKitContainer else {
+            state = .iCloudUnavailable
+            return
+        }
         state = .checkingAccount
         do {
             guard try await accountIsAvailable() else {
@@ -180,6 +198,7 @@ final class FamilyCloudStore: ObservableObject {
 
     func makeInviteController() async throws -> UICloudSharingController {
         guard isConfigured else { throw FamilyCloudError.notConfigured }
+        guard Self.canUseCloudKitContainer else { throw FamilyCloudError.iCloudUnavailable }
         guard try await accountIsAvailable() else { throw FamilyCloudError.iCloudUnavailable }
         state = .syncing
 
@@ -201,6 +220,7 @@ final class FamilyCloudStore: ObservableObject {
 
     func syncNow() async {
         guard isConfigured, let locator = storedLocator() else { return }
+        guard Self.canUseCloudKitContainer else { return }
         let previousState = state
         state = .syncing
         do {
@@ -284,12 +304,21 @@ final class FamilyCloudStore: ObservableObject {
         scheduleUpload(reason: "care-delete")
     }
 
+    func markGrowthMetricRecordDeleted(_ id: UUID) {
+        addDeletedID(id, key: deletedGrowthMetricRecordIDsKey)
+        scheduleUpload(reason: "growth-delete")
+    }
+
     func markAchievementDeleted(_ id: UUID) {
         addDeletedID(id, key: deletedAchievementIDsKey)
         scheduleUpload(reason: "achievement-delete")
     }
 
     func acceptShare(metadata: CKShare.Metadata) async {
+        guard Self.canUseCloudKitContainer else {
+            state = .iCloudUnavailable
+            return
+        }
         state = .syncing
         do {
             try await accept(metadata: metadata)
@@ -335,6 +364,7 @@ final class FamilyCloudStore: ObservableObject {
         guard let profileStore,
               let feedingStore,
               let activityStore,
+              let growthMetricStore,
               let achievementStore,
               let companionStore else {
             throw FamilyCloudError.notConfigured
@@ -346,10 +376,13 @@ final class FamilyCloudStore: ObservableObject {
                 .filter { !deletedFeedingSessionIDs().contains($0.id) },
             careRecords: activityStore.exportCareRecords()
                 .filter { !deletedCareRecordIDs().contains($0.id) },
+            growthMetricRecords: growthMetricStore.exportRecords()
+                .filter { !deletedGrowthMetricRecordIDs().contains($0.id) },
             achievements: achievementStore.exportAchievements()
                 .filter { !deletedAchievementIDs().contains($0.id) },
             deletedFeedingSessionIDs: Array(deletedFeedingSessionIDs()),
             deletedCareRecordIDs: Array(deletedCareRecordIDs()),
+            deletedGrowthMetricRecordIDs: Array(deletedGrowthMetricRecordIDs()),
             deletedAchievementIDs: Array(deletedAchievementIDs()),
             selectedCompanionID: companionStore.selectedID,
             temperamentResult: temperamentStore?.exportResult(),
@@ -361,6 +394,7 @@ final class FamilyCloudStore: ObservableObject {
         guard let profileStore,
               let feedingStore,
               let activityStore,
+              let growthMetricStore,
               let achievementStore,
               let companionStore else {
             throw FamilyCloudError.notConfigured
@@ -370,6 +404,7 @@ final class FamilyCloudStore: ObservableObject {
         defer { isApplyingRemoteSnapshot = false }
         setDeletedFeedingSessionIDs(Set(snapshot.deletedFeedingSessionIDs ?? []))
         setDeletedCareRecordIDs(Set(snapshot.deletedCareRecordIDs ?? []))
+        setDeletedGrowthMetricRecordIDs(Set(snapshot.deletedGrowthMetricRecordIDs ?? []))
         setDeletedAchievementIDs(Set(snapshot.deletedAchievementIDs ?? []))
         profileStore.importProfile(snapshot.profile)
         feedingStore.importSessions(
@@ -377,6 +412,9 @@ final class FamilyCloudStore: ObservableObject {
         )
         activityStore.importCareRecords(
             snapshot.careRecords.filter { !(snapshot.deletedCareRecordIDs ?? []).contains($0.id) }
+        )
+        growthMetricStore.importRecords(
+            (snapshot.growthMetricRecords ?? []).filter { !(snapshot.deletedGrowthMetricRecordIDs ?? []).contains($0.id) }
         )
         companionStore.importSelectedID(snapshot.selectedCompanionID)
         temperamentStore?.importResult(snapshot.temperamentResult)
@@ -417,6 +455,8 @@ final class FamilyCloudStore: ObservableObject {
             .union(remote.deletedFeedingSessionIDs ?? [])
         let deletedCareRecordIDs = Set(local.deletedCareRecordIDs ?? [])
             .union(remote.deletedCareRecordIDs ?? [])
+        let deletedGrowthMetricRecordIDs = Set(local.deletedGrowthMetricRecordIDs ?? [])
+            .union(remote.deletedGrowthMetricRecordIDs ?? [])
         let deletedAchievementIDs = Set(local.deletedAchievementIDs ?? [])
             .union(remote.deletedAchievementIDs ?? [])
         return FamilyCloudSnapshot(
@@ -435,6 +475,13 @@ final class FamilyCloudStore: ObservableObject {
                 preferRemote: preferRemoteFields,
                 sortedBy: { $0.recordedAt > $1.recordedAt }
             ),
+            growthMetricRecords: mergedByID(
+                local.growthMetricRecords ?? [],
+                remote.growthMetricRecords ?? [],
+                deletedIDs: deletedGrowthMetricRecordIDs,
+                preferRemote: preferRemoteFields,
+                sortedBy: { $0.recordedAt > $1.recordedAt }
+            ),
             achievements: mergedByID(
                 local.achievements,
                 remote.achievements,
@@ -444,6 +491,7 @@ final class FamilyCloudStore: ObservableObject {
             ),
             deletedFeedingSessionIDs: Array(deletedFeedingSessionIDs),
             deletedCareRecordIDs: Array(deletedCareRecordIDs),
+            deletedGrowthMetricRecordIDs: Array(deletedGrowthMetricRecordIDs),
             deletedAchievementIDs: Array(deletedAchievementIDs),
             selectedCompanionID: fieldSource.selectedCompanionID,
             temperamentResult: fieldSource.temperamentResult,
@@ -744,6 +792,10 @@ final class FamilyCloudStore: ObservableObject {
         deletedIDs(for: deletedCareRecordIDsKey)
     }
 
+    private func deletedGrowthMetricRecordIDs() -> Set<UUID> {
+        deletedIDs(for: deletedGrowthMetricRecordIDsKey)
+    }
+
     private func deletedAchievementIDs() -> Set<UUID> {
         deletedIDs(for: deletedAchievementIDsKey)
     }
@@ -754,6 +806,10 @@ final class FamilyCloudStore: ObservableObject {
 
     private func setDeletedCareRecordIDs(_ ids: Set<UUID>) {
         setDeletedIDs(ids, key: deletedCareRecordIDsKey)
+    }
+
+    private func setDeletedGrowthMetricRecordIDs(_ ids: Set<UUID>) {
+        setDeletedIDs(ids, key: deletedGrowthMetricRecordIDsKey)
     }
 
     private func setDeletedAchievementIDs(_ ids: Set<UUID>) {

@@ -15,8 +15,38 @@ struct BaByBuddyWidgetBundle: WidgetBundle {
 enum WidgetStorageKey {
     static let appGroupID = "group.73AUQDMCJ2.babybuddy"
     static let feedingSessions = "feeding_sessions"
+    static let careRecords = "care_records_v1"
     static let babyInfo = "baby_info"
     static let lastFeedingWidgetKind = "v.babybuddy.LastFeeding"
+}
+
+enum WidgetEASYPalette {
+    // E/A/S/Y flower colors: Iris, Camellia, Delphinium, Viburnum.
+    static let eat = "#7C5CFF"
+    static let eatSoft = "#EDE7FF"
+    static let eatText = "#4936A8"
+
+    static let activity = "#FF7A90"
+    static let activitySoft = "#FFE8EE"
+    static let activityText = "#9B3147"
+
+    static let diaper = "#F59A6B"
+    static let diaperSoft = "#FFF0E6"
+    static let diaperText = "#8C4930"
+
+    static let sleep = "#2F80ED"
+    static let sleepSoft = "#E7F1FF"
+    static let sleepText = "#1856B6"
+
+    static let yearning = "#29B87A"
+    static let yearningSoft = "#E4F8EE"
+
+    static let canvas = "#FAFAFC"
+    static let surface = "#FFFFFF"
+    static let surfaceSoft = "#F6F2FF"
+    static let borderSubtle = "#E5E3EC"
+    static let textStrong = "#282738"
+    static let textMuted = "#737286"
 }
 
 struct WidgetBabyInfo: Decodable {
@@ -38,252 +68,576 @@ struct WidgetFeedingSession: Decodable {
 
     var entries: [Entry]
     var createdAt: Date
+
+    var summaryText: String {
+        if let bottleAmount = entries.compactMap(\.bottleAmount).first {
+            return "\(bottleAmount)ml"
+        }
+        let breastMinutes = entries.compactMap(\.breastDuration).reduce(0, +)
+        if breastMinutes > 0 {
+            return "\(breastMinutes)分钟"
+        }
+        if let solidAmount = entries.compactMap(\.solidAmount).first {
+            return "\(Int(solidAmount))g"
+        }
+        return "已记录"
+    }
 }
 
-struct FeedingWidgetEntry: TimelineEntry {
-    var date: Date
-    var lastFeedingDate: Date?
-    var babyInfo: WidgetBabyInfo?
+enum WidgetCareRecordKind: String, Decodable {
+    case diaper
+    case sleep
 }
 
-struct FeedingWidgetProvider: TimelineProvider {
-    func placeholder(in context: Context) -> FeedingWidgetEntry {
-        FeedingWidgetEntry(date: Date(), lastFeedingDate: Date().addingTimeInterval(-3 * 3600), babyInfo: nil)
+struct WidgetCareRecord: Decodable {
+    var kind: WidgetCareRecordKind
+    var title: String
+    var detail: String
+    var note: String
+    var recordedAt: Date
+}
+
+enum RecentCareActivityKind: String, CaseIterable {
+    case feeding
+    case diaper
+    case sleep
+
+    var title: String {
+        switch self {
+        case .feeding: return "喂养"
+        case .diaper: return "尿布"
+        case .sleep: return "睡眠"
+        }
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (FeedingWidgetEntry) -> Void) {
+    var fullTitle: String {
+        switch self {
+        case .feeding: return "最近喂养"
+        case .diaper: return "最近尿布"
+        case .sleep: return "最近睡眠"
+        }
+    }
+
+    var imageResource: ImageResource {
+        switch self {
+        case .feeding: return .rhythmFeedingIcon
+        case .diaper: return .rhythmDiaperIcon
+        case .sleep: return .rhythmSleepIcon
+        }
+    }
+
+    var accentHex: String {
+        switch self {
+        case .feeding: return WidgetEASYPalette.eat
+        case .diaper: return WidgetEASYPalette.diaper
+        case .sleep: return WidgetEASYPalette.sleep
+        }
+    }
+
+    var lightHex: String {
+        switch self {
+        case .feeding: return WidgetEASYPalette.eatSoft
+        case .diaper: return WidgetEASYPalette.diaperSoft
+        case .sleep: return WidgetEASYPalette.sleepSoft
+        }
+    }
+
+    var textHex: String {
+        switch self {
+        case .feeding: return WidgetEASYPalette.eatText
+        case .diaper: return WidgetEASYPalette.diaperText
+        case .sleep: return WidgetEASYPalette.sleepText
+        }
+    }
+}
+
+struct RecentCareActivity: Identifiable {
+    let kind: RecentCareActivityKind
+    let lastDate: Date?
+    let detail: String
+
+    var id: String { kind.rawValue }
+}
+
+struct CareActivityWidgetEntry: TimelineEntry {
+    var date: Date
+    var babyInfo: WidgetBabyInfo?
+    var activities: [RecentCareActivity]
+
+    func activity(_ kind: RecentCareActivityKind) -> RecentCareActivity {
+        activities.first { $0.kind == kind } ?? RecentCareActivity(kind: kind, lastDate: nil, detail: "暂无记录")
+    }
+}
+
+struct CareActivityWidgetProvider: TimelineProvider {
+    func placeholder(in context: Context) -> CareActivityWidgetEntry {
+        let now = Date()
+        return CareActivityWidgetEntry(
+            date: now,
+            babyInfo: WidgetBabyInfo(name: "33", birthDate: Calendar.current.date(byAdding: .day, value: -22, to: now) ?? now),
+            activities: [
+                RecentCareActivity(kind: .feeding, lastDate: now.addingTimeInterval(-2 * 3600 - 12 * 60), detail: "120ml"),
+                RecentCareActivity(kind: .diaper, lastDate: now.addingTimeInterval(-55 * 60), detail: "尿了"),
+                RecentCareActivity(kind: .sleep, lastDate: now.addingTimeInterval(-4 * 3600 - 20 * 60), detail: "小睡")
+            ]
+        )
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (CareActivityWidgetEntry) -> Void) {
         completion(loadEntry())
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<FeedingWidgetEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<CareActivityWidgetEntry>) -> Void) {
         let entry = loadEntry()
-        completion(Timeline(entries: timelineEntries(from: entry), policy: nextPolicy(for: entry)))
+        completion(Timeline(entries: [entry], policy: .after(entry.date.addingTimeInterval(60))))
     }
 
-    private func loadEntry() -> FeedingWidgetEntry {
+    private func loadEntry(date: Date = Date()) -> CareActivityWidgetEntry {
         let defaults = UserDefaults(suiteName: WidgetStorageKey.appGroupID)
         let sessions = defaults?.data(forKey: WidgetStorageKey.feedingSessions)
             .flatMap { try? JSONDecoder().decode([WidgetFeedingSession].self, from: $0) } ?? []
         let babyInfo = defaults?.data(forKey: WidgetStorageKey.babyInfo)
             .flatMap { try? JSONDecoder().decode(WidgetBabyInfo.self, from: $0) }
-        return FeedingWidgetEntry(date: Date(), lastFeedingDate: sessions.sorted { $0.createdAt > $1.createdAt }.first?.createdAt, babyInfo: babyInfo)
+        let careRecords = defaults?.data(forKey: WidgetStorageKey.careRecords)
+            .flatMap { try? JSONDecoder().decode([WidgetCareRecord].self, from: $0) } ?? []
+        let latestFeeding = sessions.max { $0.createdAt < $1.createdAt }
+        let latestDiaper = careRecords.filter { $0.kind == .diaper }.max { $0.recordedAt < $1.recordedAt }
+        let latestSleep = careRecords.filter { $0.kind == .sleep }.max { $0.recordedAt < $1.recordedAt }
+
+        return CareActivityWidgetEntry(
+            date: date,
+            babyInfo: babyInfo,
+            activities: [
+                RecentCareActivity(kind: .feeding, lastDate: latestFeeding?.createdAt, detail: latestFeeding?.summaryText ?? "暂无记录"),
+                RecentCareActivity(kind: .diaper, lastDate: latestDiaper?.recordedAt, detail: latestDiaper.map { DiaperRecordTitle.normalized($0.title) } ?? "暂无记录"),
+                RecentCareActivity(kind: .sleep, lastDate: latestSleep?.recordedAt, detail: latestSleep?.title ?? "暂无记录")
+            ]
+        )
     }
 
-    private func nextPolicy(for entry: FeedingWidgetEntry) -> TimelineReloadPolicy {
-        guard let lastFeedingDate = entry.lastFeedingDate else {
-            return .after(Date().addingTimeInterval(30 * 60))
-        }
-
-        let months = entry.babyInfo?.ageMonths(asOf: entry.date)
-        let thresholds = FeedingIntervalStatus.thresholds(for: months)
-        let checkpoints = [
-            thresholds.justFed,
-            thresholds.tooSoon,
-            thresholds.safe,
-            thresholds.maybeHungry,
-            thresholds.definitelyHungry
-        ]
-
-        let elapsedHours = entry.date.timeIntervalSince(lastFeedingDate) / 3600
-        if let nextHour = checkpoints.first(where: { $0 > elapsedHours }) {
-            let refreshDate = lastFeedingDate.addingTimeInterval(nextHour * 3600 + 5)
-            return .after(max(refreshDate, entry.date.addingTimeInterval(60)))
-        }
-
-        return .after(entry.date.addingTimeInterval(60 * 60))
-    }
-
-    private func timelineEntries(from entry: FeedingWidgetEntry) -> [FeedingWidgetEntry] {
-        guard let lastFeedingDate = entry.lastFeedingDate else {
-            return [entry]
-        }
-
-        let months = entry.babyInfo?.ageMonths(asOf: entry.date)
-        let thresholds = FeedingIntervalStatus.thresholds(for: months)
-        let checkpoints = [
-            thresholds.justFed,
-            thresholds.tooSoon,
-            thresholds.safe,
-            thresholds.maybeHungry,
-            thresholds.definitelyHungry
-        ]
-
-        let futureEntries = checkpoints
-            .map { lastFeedingDate.addingTimeInterval($0 * 3600 + 5) }
-            .filter { $0 > entry.date }
-            .map { FeedingWidgetEntry(date: $0, lastFeedingDate: lastFeedingDate, babyInfo: entry.babyInfo) }
-
-        return [entry] + futureEntries
-    }
 }
 
 struct BaByBuddyWidget: Widget {
     let kind = WidgetStorageKey.lastFeedingWidgetKind
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: FeedingWidgetProvider()) { entry in
-            LastFeedingWidgetView(entry: entry)
+        StaticConfiguration(kind: kind, provider: CareActivityWidgetProvider()) { entry in
+            CareActivityWidgetView(entry: entry)
                 .containerBackground(for: .widget) {
-                    Color(hex: "#F8F4FA")
+                    Color.clear
                 }
         }
         .configurationDisplayName("BabyBuddy")
-        .description("查看距上次喂养时间")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .description("查看最近喂养、尿布和睡眠")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
     }
 }
 
-struct LastFeedingWidgetView: View {
-    @Environment(\.widgetFamily) private var family
-    let entry: FeedingWidgetEntry
-
-    private var status: FeedingIntervalStatus {
-        guard let lastFeedingDate = entry.lastFeedingDate else { return .warning }
-        return FeedingIntervalStatus(
-            lastFeedingDate: lastFeedingDate,
-            babyAgeMonths: entry.babyInfo?.ageMonths(asOf: entry.date),
-            now: entry.date
-        )
+private enum DiaperRecordTitle {
+    static func normalized(_ title: String) -> String {
+        switch title {
+        case "湿尿布":
+            return "尿了"
+        case "便便", "混合":
+            return "拉了"
+        default:
+            return title
+        }
     }
+}
+
+struct CareActivityWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: CareActivityWidgetEntry
 
     var body: some View {
         switch family {
         case .systemSmall:
-            compactCard
+            smallWidget
+        case .systemMedium:
+            mediumWidget
         default:
-            mediumCard
+            largeWidget
         }
     }
 
-    private var compactCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
-                Text("BaByBuddy")
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color(hex: "#4D4B70"))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.9)
-            }
-            Spacer(minLength: 12)
-            HStack(alignment: .center, spacing: 10) {
-                statusEmojiBadge(size: 42, fontSize: 24)
+    private var smallWidget: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            widgetHeader(titleSize: 12, subtitleSize: 8, showsSubtitle: false)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(status.label)
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color(hex: status.accentColorHex))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.82)
-                    Text(shortStatusTag)
+            HStack(spacing: 7) {
+                activityTile(entry.activity(.feeding), style: .hero)
+                VStack(spacing: 7) {
+                    activityTile(entry.activity(.diaper), style: .mini)
+                    activityTile(entry.activity(.sleep), style: .mini)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(10)
+        .widgetRecordBackground()
+    }
+
+    private var mediumWidget: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            widgetHeader(titleSize: 17, subtitleSize: 9, showsSubtitle: true)
+
+            HStack(spacing: 8) {
+                ForEach(RecentCareActivityKind.allCases, id: \.rawValue) { kind in
+                    activityTile(entry.activity(kind), style: .medium)
+                }
+            }
+        }
+        .padding(14)
+        .widgetRecordBackground()
+    }
+
+    private var largeWidget: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            widgetHeader(titleSize: 21, subtitleSize: 10, showsSubtitle: true)
+
+            HStack(spacing: 8) {
+                ForEach(RecentCareActivityKind.allCases, id: \.rawValue) { kind in
+                    let activity = entry.activity(kind)
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color(hex: kind.accentHex))
+                            .frame(width: 7, height: 7)
+                        Text(kind.title)
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Color(hex: WidgetEASYPalette.textMuted))
+                            .lineLimit(1)
+                        Text(elapsedText(for: activity, compact: true))
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Color(hex: kind.textHex))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.76)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 7)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color(hex: kind.lightHex).opacity(0.72))
+                            .overlay {
+                                Capsule(style: .continuous)
+                                    .stroke(Color.white.opacity(0.82), lineWidth: 1)
+                            }
+                    )
+                }
+            }
+
+            VStack(spacing: 9) {
+                ForEach(RecentCareActivityKind.allCases, id: \.rawValue) { kind in
+                    activityRow(entry.activity(kind))
+                }
+            }
+        }
+        .padding(16)
+        .widgetRecordBackground()
+    }
+
+    private func widgetHeader(titleSize: CGFloat, subtitleSize: CGFloat, showsSubtitle: Bool) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(entry.babyInfo?.name ?? "宝宝")的最近照护")
+                    .font(.system(size: titleSize, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(hex: WidgetEASYPalette.textStrong))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                if showsSubtitle {
+                    Text("Eat · Activity · Sleep · You")
+                        .font(.system(size: subtitleSize, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color(hex: WidgetEASYPalette.textMuted))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                }
+            }
+
+            Spacer(minLength: 6)
+
+            easyBadge
+        }
+    }
+
+    private var easyBadge: some View {
+        HStack(spacing: 3) {
+            Circle().fill(Color(hex: WidgetEASYPalette.eat))
+            Circle().fill(Color(hex: WidgetEASYPalette.activity))
+            Circle().fill(Color(hex: WidgetEASYPalette.sleep))
+            Circle().fill(Color(hex: WidgetEASYPalette.yearning))
+        }
+        .frame(width: 34, height: 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.72))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(Color(hex: WidgetEASYPalette.borderSubtle), lineWidth: 1)
+                }
+        )
+    }
+
+    private func activityTile(_ activity: RecentCareActivity, style: ActivityTileStyle) -> some View {
+        VStack(alignment: .leading, spacing: style.spacing) {
+            activityIcon(activity.kind, size: style.iconSize)
+
+            Spacer(minLength: 0)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(activity.kind.title)
+                    .font(.system(size: style.titleSize, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(hex: WidgetEASYPalette.textMuted))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                Text(elapsedText(for: activity, compact: style.usesCompactElapsedText))
+                    .font(.system(size: style.valueSize, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(hex: activity.kind.textHex))
+                    .lineLimit(style.valueLines)
+                    .minimumScaleFactor(0.58)
+                if style.showsDetail {
+                    Text(activity.detail)
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(hex: "#A29FBB"))
+                        .foregroundStyle(Color(hex: WidgetEASYPalette.textMuted))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.74)
                 }
             }
-            Spacer(minLength: 0)
-            HStack(spacing: 5) {
-                Image(systemName: "clock.fill")
-                    .font(.system(size: 10, weight: .bold))
-                Text(lastTimeText + " 上次喂养")
-                    .lineLimit(1)
-            }
-            .font(.system(size: 11, weight: .bold, design: .rounded))
-            .foregroundStyle(Color(hex: "#8E8AA8"))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
+        .padding(style.padding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                .fill(tileFill(for: activity.kind))
+                .overlay {
+                    RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                        .stroke(Color.white.opacity(0.88), lineWidth: 1.2)
+                }
+                .overlay(alignment: .topTrailing) {
+                    Circle()
+                        .fill(Color(hex: activity.kind.accentHex).opacity(0.13))
+                        .frame(width: style.iconSize * 2.2, height: style.iconSize * 2.2)
+                        .offset(x: style.iconSize * 0.7, y: -style.iconSize * 0.8)
+                }
+                .shadow(color: Color(hex: activity.kind.accentHex).opacity(0.10), radius: 10, y: 5)
+        )
     }
 
-    private var mediumCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
-                Text("BaByBuddy")
-                    .font(.system(size: 17, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color(hex: "#4D4B70"))
-                Spacer()
-                HStack(spacing: 5) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 10, weight: .bold))
-                    Text(lastTimeText + " 上次喂养")
-                }
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(hex: "#8E8AA8"))
-            }
-            Spacer(minLength: 14)
-            HStack(alignment: .center, spacing: 14) {
-                statusEmojiBadge(size: 62, fontSize: 34)
+    private func activityRow(_ activity: RecentCareActivity) -> some View {
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(Color(hex: activity.kind.accentHex))
+                .frame(width: 4)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(status.label)
-                        .font(.system(size: 26, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color(hex: status.accentColorHex))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    Text(shortStatusDetail)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color(hex: "#8E8AA8"))
-                        .lineLimit(1)
-                }
+            activityIcon(activity.kind, size: 34)
+                .frame(width: 42)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(activity.kind.fullTitle)
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(hex: WidgetEASYPalette.textMuted))
+                    .lineLimit(1)
+                Text(elapsedText(for: activity))
+                    .font(.system(size: 25, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(hex: activity.kind.textHex))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
-            Spacer(minLength: 0)
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(activity.detail)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(hex: WidgetEASYPalette.textStrong))
+                    .lineLimit(1)
+                Text(clockText(for: activity))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(hex: WidgetEASYPalette.textMuted))
+                    .lineLimit(1)
+            }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 27, style: .continuous)
+                .fill(tileFill(for: activity.kind))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 27, style: .continuous)
+                        .stroke(Color.white.opacity(0.88), lineWidth: 1.2)
+                )
+                .shadow(color: Color(hex: activity.kind.accentHex).opacity(0.08), radius: 12, y: 6)
+        )
     }
 
-    private var shortStatusDetail: String {
-        switch status {
-        case .justFed:
-            return "刚完成喂养，暂时不用着急。"
-        case .tooSoon:
-            return "还不太饿，继续观察就可以。"
-        case .safe:
-            return "状态正好，按当前节奏陪伴。"
-        case .maybeHungry:
-            return "可以开始留意饥饿信号。"
-        case .definitelyHungry:
-            return "宝宝已经饿了，建议准备喂养。"
-        case .warning:
-            return "建议尽快安排下一次喂养。"
+    private func activityIcon(_ kind: RecentCareActivityKind, size: CGFloat) -> some View {
+        Image(kind.imageResource)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size * 1.18, height: size * 1.18)
+            .shadow(color: Color(hex: kind.textHex).opacity(0.18), radius: 5, y: 2)
+            .padding(max(size * 0.18, 5))
+            .background(
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.96),
+                                Color(hex: kind.lightHex).opacity(0.90)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color(hex: kind.accentHex).opacity(0.34), lineWidth: 1.2)
+                    )
+            )
+    }
+
+    private func tileFill(for kind: RecentCareActivityKind) -> LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: kind.lightHex).opacity(0.96),
+                Color(hex: WidgetEASYPalette.surface).opacity(0.74)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private func elapsedText(for activity: RecentCareActivity, compact: Bool = false) -> String {
+        guard let lastDate = activity.lastDate else { return "暂无" }
+        let minutes = max(Int(entry.date.timeIntervalSince(lastDate) / 60), 0)
+        if minutes < 1 {
+            return "刚刚"
         }
-    }
-
-    private var shortStatusTag: String {
-        switch status {
-        case .justFed:
-            return "轻松陪伴"
-        case .tooSoon:
-            return "继续观察"
-        case .safe:
-            return "状态稳定"
-        case .maybeHungry:
-            return "留意信号"
-        case .definitelyHungry:
-            return "准备喂养"
-        case .warning:
-            return "尽快安排"
+        if minutes < 60 {
+            return compact ? "\(minutes)分" : "\(minutes)分钟前"
         }
-    }
-
-    private func statusEmojiBadge(size: CGFloat, fontSize: CGFloat) -> some View {
-        ZStack {
-            Circle()
-                .fill(Color(hex: status.backgroundColorHex).opacity(0.92))
-            Circle()
-                .stroke(Color.white.opacity(0.65), lineWidth: 1)
-            Text(status.emoji)
-                .font(.system(size: fontSize))
+        if minutes < 24 * 60 {
+            let hours = minutes / 60
+            let remaining = minutes % 60
+            if compact {
+                return remaining == 0 ? "\(hours)时" : "\(hours)时\(remaining)分"
+            }
+            return remaining == 0 ? "\(hours)小时前" : "\(hours)小时\(remaining)分前"
         }
-        .frame(width: size, height: size)
+        let days = minutes / (24 * 60)
+        let hours = (minutes % (24 * 60)) / 60
+        if compact {
+            return hours == 0 ? "\(days)天" : "\(days)天\(hours)时"
+        }
+        return hours == 0 ? "\(days)天前" : "\(days)天\(hours)小时前"
     }
 
-    private var lastTimeText: String {
-        guard let last = entry.lastFeedingDate else { return "--:--" }
+    private func clockText(for activity: RecentCareActivity) -> String {
+        guard let lastDate = activity.lastDate else { return "--:--" }
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        return formatter.string(from: last)
+        return formatter.string(from: lastDate)
     }
+}
 
+private struct ActivityTileStyle {
+    let padding: EdgeInsets
+    let iconSize: CGFloat
+    let titleSize: CGFloat
+    let valueSize: CGFloat
+    let spacing: CGFloat
+    let cornerRadius: CGFloat
+    let valueLines: Int
+    let showsDetail: Bool
+    let usesCompactElapsedText: Bool
+
+    static let hero = ActivityTileStyle(
+        padding: EdgeInsets(top: 11, leading: 11, bottom: 11, trailing: 9),
+        iconSize: 25,
+        titleSize: 12,
+        valueSize: 19,
+        spacing: 5,
+        cornerRadius: 24,
+        valueLines: 2,
+        showsDetail: false,
+        usesCompactElapsedText: true
+    )
+
+    static let mini = ActivityTileStyle(
+        padding: EdgeInsets(top: 8, leading: 9, bottom: 8, trailing: 7),
+        iconSize: 16,
+        titleSize: 10,
+        valueSize: 13,
+        spacing: 3,
+        cornerRadius: 19,
+        valueLines: 2,
+        showsDetail: false,
+        usesCompactElapsedText: true
+    )
+
+    static let medium = ActivityTileStyle(
+        padding: EdgeInsets(top: 11, leading: 12, bottom: 11, trailing: 10),
+        iconSize: 22,
+        titleSize: 12,
+        valueSize: 17,
+        spacing: 5,
+        cornerRadius: 23,
+        valueLines: 2,
+        showsDetail: true,
+        usesCompactElapsedText: true
+    )
+}
+
+private extension View {
+    func widgetRecordBackground() -> some View {
+        background {
+            WidgetRecordBackground()
+        }
+    }
+}
+
+private struct WidgetRecordBackground: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(hex: WidgetEASYPalette.surface).opacity(0.92),
+                        Color(hex: WidgetEASYPalette.surfaceSoft).opacity(0.84),
+                        Color(hex: WidgetEASYPalette.canvas).opacity(0.78)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(alignment: .topTrailing) {
+                Circle()
+                    .fill(Color(hex: WidgetEASYPalette.yearningSoft).opacity(0.72))
+                    .frame(width: 96, height: 96)
+                    .blur(radius: 18)
+                    .offset(x: 28, y: -34)
+            }
+            .overlay(alignment: .bottomLeading) {
+                Circle()
+                    .fill(Color(hex: WidgetEASYPalette.eatSoft).opacity(0.78))
+                    .frame(width: 118, height: 118)
+                    .blur(radius: 22)
+                    .offset(x: -34, y: 34)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(Color.white.opacity(0.82), lineWidth: 1.2)
+            )
+            .shadow(color: Color(hex: WidgetEASYPalette.sleep).opacity(0.12), radius: 18, y: 9)
+    }
 }
 
 struct FeedingLiveActivity: Widget {
@@ -457,9 +811,10 @@ private struct DynamicCompactStatusLabel: View {
     let babyAgeMonths: Int?
 
     var body: some View {
-        ElapsedFeedingTimerText(lastFeedingDate: lastFeedingDate)
-            .font(.system(.caption2, design: .rounded).weight(.bold))
-            .lineLimit(1)
+        Image(systemName: "heart.fill")
+            .font(.system(size: 11, weight: .heavy))
+            .foregroundStyle(Color(hex: "#C2B7FF"))
+            .frame(width: 18, height: 18)
     }
 }
 

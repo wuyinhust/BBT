@@ -1,14 +1,11 @@
 import SwiftUI
 
 struct HomeView: View {
-    @Environment(BabyProfileStore.self) private var profileStore
-
     @Binding var selectedTab: RootTab
     @Binding var showBabyInfo: Bool
     @Binding var showCompanionPicker: Bool
     @State private var showChat = false
     @State private var showProfile = false
-    @State private var now = Date()
 
     var body: some View {
         GeometryReader { proxy in
@@ -44,88 +41,23 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
                     .padding(.bottom, 8)
         }
-        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { date in
-            now = date
-        }
         .navigationDestination(isPresented: $showChat) {
             BuddyChatView(showFeedSheet: .constant(false), showCompanionPicker: $showCompanionPicker)
         }
         .navigationDestination(isPresented: $showProfile) {
-            ProfileView(showBabyInfo: $showBabyInfo)
+            MyPageView()
         }
     }
 
     private var homeBackground: some View {
-        return ZStack {
-            LinearGradient(
-                colors: [
-                    Color(hex: "#F5F1FA"),
-                    Color(hex: "#F8F7FB"),
-                    Color(hex: "#EEF6FB")
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    .white.opacity(0.36),
-                    .clear,
-                    Color(hex: "#F4ECFA").opacity(0.28)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    Color(hex: "#FFFFFF").opacity(0.46),
-                    Color(hex: "#FFFFFF").opacity(0.0)
-                ],
-                center: .top,
-                startRadius: 20,
-                endRadius: 380
-            )
-            .ignoresSafeArea()
-        }
+        HomeSoftBackground()
     }
 
     private var topControls: some View {
         HStack(alignment: .top, spacing: 8) {
-            babyAgeSummaryCard
-                .layoutPriority(1)
-            Spacer(minLength: 4)
+            Spacer(minLength: 0)
             shortcutRow
         }
-    }
-
-    private var babyAgeSummaryCard: some View {
-        Button {
-            showProfile = true
-        } label: {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(todayDateText)
-                    .font(BBBFont.font(size: 12, weight: .semibold))
-                    .foregroundStyle(DesignToken.textSecondary)
-                    .lineLimit(1)
-
-                Text("\(profileStore.currentProfile.name)今天\(babyAgeText)了")
-                    .font(BBBFont.font(size: 16, weight: .bold))
-                    .foregroundStyle(DesignToken.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
-            .padding(.horizontal, 14)
-            .frame(minWidth: 190, maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(.white.opacity(0.9))
-                    .shadow(color: Color(hex: "#4D4B70").opacity(0.08), radius: 12, y: 6)
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
     }
 
     private var greetingText: some View {
@@ -235,28 +167,43 @@ struct HomeView: View {
         .buttonStyle(ScaleButtonStyle())
     }
 
-    private var todayDateText: String {
-        let components = Calendar.current.dateComponents([.month, .day], from: now)
-        return "今天是\(components.month ?? 1)月\(components.day ?? 1)日"
-    }
+}
 
-    private var babyAgeText: String {
-        let profile = profileStore.currentProfile
-        let calendar = Calendar.current
-        let startOfBirthDate = calendar.startOfDay(for: profile.birthDate)
-        let startOfToday = calendar.startOfDay(for: now)
-        let components = calendar.dateComponents([.year, .month, .day], from: startOfBirthDate, to: startOfToday)
-        let years = max(components.year ?? 0, 0)
-        let months = max(components.month ?? 0, 0)
-        let days = max(components.day ?? 0, 0)
+struct HomeSoftBackground: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(hex: "#F5F1FA"),
+                    Color(hex: "#F8F7FB"),
+                    Color(hex: "#EEF6FB")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-        if years > 0 {
-            return "\(years)岁"
+            LinearGradient(
+                colors: [
+                    .white.opacity(0.36),
+                    .clear,
+                    Color(hex: "#F4ECFA").opacity(0.28)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color(hex: "#FFFFFF").opacity(0.46),
+                    Color(hex: "#FFFFFF").opacity(0.0)
+                ],
+                center: .top,
+                startRadius: 20,
+                endRadius: 380
+            )
+            .ignoresSafeArea()
         }
-        if months > 0 {
-            return "\(months)月\(days)天"
-        }
-
-        return "\(days)天"
     }
 }

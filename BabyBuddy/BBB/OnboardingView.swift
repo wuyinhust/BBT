@@ -4,6 +4,7 @@ struct OnboardingView: View {
     @Environment(BabyProfileStore.self) private var profileStore
     @EnvironmentObject private var companionStore: CompanionStore
     @EnvironmentObject private var temperamentStore: TemperamentProfileStore
+    @AppStorage(RecordHomeMode.storageKey) private var recordHomeModeRaw = RecordHomeMode.basic.rawValue
 
     let onComplete: () -> Void
     private let prefillFromProfile: Bool
@@ -30,6 +31,10 @@ struct OnboardingView: View {
         !babyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var totalSteps: Int {
+        prefillFromProfile ? 3 : 4
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -41,8 +46,10 @@ struct OnboardingView: View {
                         profilePage
                     case 1:
                         quizPage
-                    default:
+                    case 2:
                         resultPage
+                    default:
+                        homeModePage
                     }
                 }
                 .animation(.spring(response: 0.32, dampingFraction: 0.86), value: step)
@@ -60,7 +67,7 @@ struct OnboardingView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Text("\(step + 1)/3")
+                    Text("\(step + 1)/\(totalSteps)")
                         .font(BBBFont.font(size: 13, weight: .bold))
                         .foregroundStyle(DesignToken.textSecondary)
                 }
@@ -212,9 +219,13 @@ struct OnboardingView: View {
                         )
                     )
                     companionStore.selectedID = selectedCompanion.id
-                    onComplete()
+                    if prefillFromProfile {
+                        onComplete()
+                    } else {
+                        step = 3
+                    }
                 } label: {
-                    Text("进入 BabyBuddy")
+                    Text(prefillFromProfile ? "保存并返回" : "选择首页模式")
                         .frame(maxWidth: .infinity)
                 }
                 .primaryButtonStyle()
@@ -222,6 +233,78 @@ struct OnboardingView: View {
             }
             .padding(22)
         }
+    }
+
+    private var homeModePage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                header(
+                    title: "选择首页模式",
+                    subtitle: "之后可以在设置里随时切换，所有记录数据都会保持一致。"
+                )
+
+                VStack(spacing: 12) {
+                    ForEach(RecordHomeMode.allCases) { mode in
+                        homeModeOption(mode)
+                    }
+                }
+
+                Button {
+                    onComplete()
+                } label: {
+                    Text("进入 BabyBuddy")
+                        .frame(maxWidth: .infinity)
+                }
+                .primaryButtonStyle()
+                .font(BBBFont.font(size: 17, weight: .bold))
+                .padding(.top, 8)
+            }
+            .padding(22)
+        }
+    }
+
+    private func homeModeOption(_ mode: RecordHomeMode) -> some View {
+        let isSelected = recordHomeModeRaw == mode.rawValue
+        return Button {
+            recordHomeModeRaw = mode.rawValue
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: mode == .easy ? "repeat.circle.fill" : "list.bullet.rectangle.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(isSelected ? .white : DesignToken.primary)
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(isSelected ? DesignToken.primary : DesignToken.primary.opacity(0.12)))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(mode.title)
+                        .font(BBBFont.font(size: 17, weight: .heavy))
+                        .foregroundStyle(DesignToken.textPrimary)
+                    Text(mode.subtitle)
+                        .font(BBBFont.font(size: 13, weight: .semibold))
+                        .foregroundStyle(DesignToken.textSecondary)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(DesignToken.primary)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(.white.opacity(0.9))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(isSelected ? DesignToken.primary.opacity(0.62) : DesignToken.line.opacity(0.38), lineWidth: isSelected ? 1.8 : 1)
+                    )
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
     }
 
     private func resultCard(companion: BabyCompanion, animal: TemperamentAnimal?, accent: Color) -> some View {
@@ -236,10 +319,7 @@ struct OnboardingView: View {
                 RoundedRectangle(cornerRadius: 44, style: .continuous)
                     .stroke(accent.opacity(0.20), lineWidth: 1.5)
                     .frame(width: 174, height: 174)
-                Image(companion.portraitAssetName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 190, height: 190)
+                CompanionAnimalFigure(companion: companion, isUnlocked: true, size: 190)
                     .shadow(color: accent.opacity(0.18), radius: 18, y: 10)
             }
             .frame(height: 214)
@@ -332,10 +412,7 @@ struct OnboardingView: View {
                     Circle()
                         .fill(accent.opacity(isSelected ? 0.18 : 0.10))
                         .frame(width: 66, height: 66)
-                    Image(companion.portraitAssetName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 68, height: 68)
+                    CompanionAnimalFigure(companion: companion, isUnlocked: true, size: 68)
                         .shadow(color: accent.opacity(isSelected ? 0.18 : 0.08), radius: 10, y: 5)
 
                     if isSelected {
@@ -503,7 +580,11 @@ struct OnboardingView: View {
                 gender: gender,
                 birthDate: birthDate,
                 avatarEmoji: currentProfile.avatarEmoji,
-                avatarImageData: currentProfile.avatarImageData
+                avatarImageData: currentProfile.avatarImageData,
+                avatarCompanionID: currentProfile.avatarCompanionID,
+                avatarVideoFilename: currentProfile.avatarVideoFilename,
+                avatarHistory: currentProfile.avatarHistoryItems,
+                avatarMotionEnabled: currentProfile.isAvatarMotionEnabled
             )
         } else {
             profileStore.create(
@@ -598,15 +679,15 @@ private enum TemperamentEngine {
     ]
 
     private static let animals: [TemperamentAnimal] = [
-        .init(id: "bunny_lulu", name: "洛噗", species: "荷兰垂耳兔幼兔", type: .easy, emoji: "🐰", accent: Color(hex: "#E7A7C4"), slogan: "软软甜甜的小太阳", characterLine: "稳定亲近、反应柔和，是容易被轻轻引导的小甜心。", personality: "洛噗通常节奏稳定，笑容很多，遇到新变化也愿意慢慢试试看。", summary: "大多数时候都比较轻松好带，也很愿意和熟悉的人互动。", profile: [.activityLevel: 3, .regularity: 5, .approach: 4, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
-        .init(id: "fawn_mimi", name: "西咔", species: "梅花鹿幼崽", type: .easy, emoji: "🦌", accent: Color(hex: "#D8A96A"), slogan: "温柔安静的小晨光", characterLine: "安静细腻、喜欢熟悉节奏，需要被温柔守护。", personality: "西咔温和细腻，作息比较有节奏，和熟悉的人在一起时特别放松。", summary: "她带着柔和的小步调，让陪伴变得轻轻的、稳稳的。", profile: [.activityLevel: 2, .regularity: 5, .approach: 3, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
-        .init(id: "cal", name: "柯噜", species: "柯尔鸭幼鸭", type: .easy, emoji: "🦆", accent: Color(hex: "#F0C85A"), slogan: "慢半拍的小圆团", characterLine: "圆滚滚、步伐慢半拍，擅长把普通日常变得可爱。", personality: "柯噜总是带着慢半拍的小节奏，回应温和，也很容易被日常里的小事情逗开心。", summary: "像一只把好心情慢慢带来的小鸭子，让照护节奏变得轻松又可爱。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 2, .distractibility: 4, .sensorySensitivity: 2]),
-        .init(id: "samoyed_momo", name: "摩耶", species: "萨摩耶幼犬", type: .easy, emoji: "🐶", accent: Color(hex: "#A8C7FF"), slogan: "笑眯眯的小棉花糖", characterLine: "亲和稳定、适应力强，像随时给人安心的陪伴。", personality: "摩耶亲和、情绪稳定，进入新场景时往往也比较从容。", summary: "稳定、亲近，也很容易让照护者找到节奏。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
-        .init(id: "otter_tangtang", name: "欧缇", species: "亚洲小爪水獭幼崽", type: .intermediate, emoji: "🦦", accent: Color(hex: "#8BC7B1"), slogan: "今天想撒娇，明天想探险", characterLine: "状态丰富、节奏多变，需要弹性和耐心配合。", personality: "欧缇有时轻松好带，有时又特别有自己的节奏，像在不同状态间轻轻切换。", summary: "不是一种固定模板，而是很有层次的小宝宝。", profile: [.activityLevel: 3, .regularity: 3, .approach: 4, .adaptability: 3, .intensity: 3, .mood: 4, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 3]),
-        .init(id: "fenny", name: "芬灵", species: "耳廓狐幼崽", type: .intermediate, emoji: "🦊", accent: Color(hex: "#E9A05E"), slogan: "机灵又讲感觉的小观察家", characterLine: "敏锐聪明、先观察再靠近，对环境里的细节特别有感觉。", personality: "芬灵对外界很敏锐，有时热情靠近，有时又想先看看再说。", summary: "他有自己的感受节奏，需要被理解，而不是被催着快一点。", profile: [.activityLevel: 4, .regularity: 3, .approach: 3, .adaptability: 3, .intensity: 3, .mood: 3, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 5]),
-        .init(id: "redpanda_youyou", name: "瑞迪", species: "小熊猫幼崽", type: .intermediate, emoji: "🐾", accent: Color(hex: "#C88968"), slogan: "有主见的小团子", characterLine: "柔软但有主见，喜欢按自己的方式慢慢进入状态。", personality: "瑞迪既有柔软的一面，也有坚持自己步调的一面，时而乖巧，时而很有态度。", summary: "不是不好带，只是更需要按自己的方式慢慢配合。", profile: [.activityLevel: 3, .regularity: 3, .approach: 3, .adaptability: 2, .intensity: 3, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 3]),
-        .init(id: "koala_anan", name: "阿考", species: "昆士兰考拉幼崽", type: .slowToWarmUp, emoji: "🐨", accent: Color(hex: "#9BB1B8"), slogan: "慢热但很认真的小月亮", characterLine: "慢热谨慎、观察力强，安全感足够后会认真靠近。", personality: "阿考不急着靠近世界，更喜欢先观察，等准备好了才慢慢伸出小手。", summary: "不是慢，而是会先把安全感装满。", profile: [.activityLevel: 2, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 5]),
-        .init(id: "sloth_nono", name: "霍菲", species: "霍氏树懒幼崽", type: .slowToWarmUp, emoji: "🌿", accent: Color(hex: "#8FB98A"), slogan: "慢一点，也一样很可爱", characterLine: "慢节奏、低刺激偏好，需要更从容的过渡时间。", personality: "霍菲喜欢按照自己的小节奏前进，换环境时会先停一停、看一看。", summary: "给他一点缓冲时间，他会用自己的方式慢慢打开。", profile: [.activityLevel: 1, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
-        .init(id: "chipmunk_huohuo", name: "奇比", species: "西伯利亚花栗鼠幼崽", type: .highSensitivity, emoji: "✨", accent: Color(hex: "#FF7A70"), slogan: "反应快、感觉多的小火花", characterLine: "感受强烈、反应很快，需要更多安抚和提前预告。", personality: "奇比感受丰富、反应迅速，喜欢立刻表达自己的不舒服，也常常需要更多安抚和理解。", summary: "不是故意难带，只是比别人更敏锐、更强烈地感受这个世界。", profile: [.activityLevel: 4, .regularity: 1, .approach: 2, .adaptability: 1, .intensity: 5, .mood: 2, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 5])
+        .init(id: "bunny_lulu", name: "洛噗", species: "荷兰垂耳兔宝宝", type: .easy, emoji: "🐰", accent: Color(hex: "#E7A7C4"), slogan: "软软甜甜的小太阳", characterLine: "稳定亲近、反应柔和，是容易被轻轻引导的小甜心。", personality: "洛噗通常节奏稳定，笑容很多，遇到新变化也愿意慢慢试试看。", summary: "大多数时候都比较轻松好带，也很愿意和熟悉的人互动。", profile: [.activityLevel: 3, .regularity: 5, .approach: 4, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
+        .init(id: "fawn_mimi", name: "西咔", species: "梅花鹿宝宝", type: .easy, emoji: "🦌", accent: Color(hex: "#D8A96A"), slogan: "温柔安静的小晨光", characterLine: "安静细腻、喜欢熟悉节奏，需要被温柔守护。", personality: "西咔温和细腻，作息比较有节奏，和熟悉的人在一起时特别放松。", summary: "她带着柔和的小步调，让陪伴变得轻轻的、稳稳的。", profile: [.activityLevel: 2, .regularity: 5, .approach: 3, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
+        .init(id: "cal", name: "柯噜", species: "柯尔鸭宝宝", type: .easy, emoji: "🦆", accent: Color(hex: "#F0C85A"), slogan: "慢半拍的小圆团", characterLine: "圆滚滚、步伐慢半拍，擅长把普通日常变得可爱。", personality: "柯噜总是带着慢半拍的小节奏，回应温和，也很容易被日常里的小事情逗开心。", summary: "像一只把好心情慢慢带来的小鸭子，让照护节奏变得轻松又可爱。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 2, .distractibility: 4, .sensorySensitivity: 2]),
+        .init(id: "samoyed_momo", name: "摩耶", species: "萨摩耶宝宝", type: .easy, emoji: "🐶", accent: Color(hex: "#A8C7FF"), slogan: "笑眯眯的小棉花糖", characterLine: "亲和稳定、适应力强，像随时给人安心的陪伴。", personality: "摩耶亲和、情绪稳定，进入新场景时往往也比较从容。", summary: "稳定、亲近，也很容易让照护者找到节奏。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
+        .init(id: "otter_tangtang", name: "欧缇", species: "亚洲小爪水獭宝宝", type: .intermediate, emoji: "🦦", accent: Color(hex: "#8BC7B1"), slogan: "今天想撒娇，明天想探险", characterLine: "状态丰富、节奏多变，需要弹性和耐心配合。", personality: "欧缇有时轻松好带，有时又特别有自己的节奏，像在不同状态间轻轻切换。", summary: "不是一种固定模板，而是很有层次的小宝宝。", profile: [.activityLevel: 3, .regularity: 3, .approach: 4, .adaptability: 3, .intensity: 3, .mood: 4, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 3]),
+        .init(id: "fenny", name: "芬灵", species: "耳廓狐宝宝", type: .intermediate, emoji: "🦊", accent: Color(hex: "#E9A05E"), slogan: "机灵又讲感觉的小观察家", characterLine: "敏锐聪明、先观察再靠近，对环境里的细节特别有感觉。", personality: "芬灵对外界很敏锐，有时热情靠近，有时又想先看看再说。", summary: "他有自己的感受节奏，需要被理解，而不是被催着快一点。", profile: [.activityLevel: 4, .regularity: 3, .approach: 3, .adaptability: 3, .intensity: 3, .mood: 3, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 5]),
+        .init(id: "redpanda_youyou", name: "瑞迪", species: "小熊猫宝宝", type: .intermediate, emoji: "🐾", accent: Color(hex: "#C88968"), slogan: "有主见的小团子", characterLine: "柔软但有主见，喜欢按自己的方式慢慢进入状态。", personality: "瑞迪既有柔软的一面，也有坚持自己步调的一面，时而乖巧，时而很有态度。", summary: "不是不好带，只是更需要按自己的方式慢慢配合。", profile: [.activityLevel: 3, .regularity: 3, .approach: 3, .adaptability: 2, .intensity: 3, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 3]),
+        .init(id: "koala_anan", name: "阿考", species: "昆士兰考拉宝宝", type: .slowToWarmUp, emoji: "🐨", accent: Color(hex: "#9BB1B8"), slogan: "慢热但很认真的小月亮", characterLine: "慢热谨慎、观察力强，安全感足够后会认真靠近。", personality: "阿考不急着靠近世界，更喜欢先观察，等准备好了才慢慢伸出小手。", summary: "不是慢，而是会先把安全感装满。", profile: [.activityLevel: 2, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 5]),
+        .init(id: "sloth_nono", name: "霍菲", species: "霍氏树懒宝宝", type: .slowToWarmUp, emoji: "🌿", accent: Color(hex: "#8FB98A"), slogan: "慢一点，也一样很可爱", characterLine: "慢节奏、低刺激偏好，需要更从容的过渡时间。", personality: "霍菲喜欢按照自己的小节奏前进，换环境时会先停一停、看一看。", summary: "给他一点缓冲时间，他会用自己的方式慢慢打开。", profile: [.activityLevel: 1, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
+        .init(id: "chipmunk_huohuo", name: "奇比", species: "西伯利亚花栗鼠宝宝", type: .highSensitivity, emoji: "✨", accent: Color(hex: "#FF7A70"), slogan: "反应快、感觉多的小火花", characterLine: "感受强烈、反应很快，需要更多安抚和提前预告。", personality: "奇比感受丰富、反应迅速，喜欢立刻表达自己的不舒服，也常常需要更多安抚和理解。", summary: "不是故意难带，只是比别人更敏锐、更强烈地感受这个世界。", profile: [.activityLevel: 4, .regularity: 1, .approach: 2, .adaptability: 1, .intensity: 5, .mood: 2, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 5])
     ]
 }

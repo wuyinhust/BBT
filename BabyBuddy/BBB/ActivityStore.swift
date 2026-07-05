@@ -1,8 +1,12 @@
 import Foundation
 import SwiftUI
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 enum CareRecordKind: String, Codable {
     case diaper
+    case activity
     case sleep
 }
 
@@ -136,24 +140,46 @@ final class ActivityStore: ObservableObject {
 
     init() {
         loadCareRecords()
+        persistCareRecords()
     }
 
     func record(_ action: BabyAction) {
         logs.insert(ActivityLog(action: action, timestamp: Date()), at: 0)
     }
 
-    func recordDiaper(type: String, note: String, recordedAt: Date) {
-        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+    func recordDiaper(type: String, detail: String = "尿布护理", note: String, recordedAt: Date) {
+        guard recordedAt <= Date() else { return }
+        let trimmedNote = note
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
         let careRecord = CareRecord(
             kind: .diaper,
             title: type,
-            detail: trimmedNote.isEmpty ? "尿布护理" : trimmedNote,
+            detail: detail,
             note: trimmedNote,
             recordedAt: recordedAt
         )
         saveCareRecord(careRecord)
+        EasyCycleStore.shared.trackCareRecord(careRecord)
         CompanionRecruitmentStore.shared.awardBBBucks(forRecord: .diaper, recordedAt: recordedAt)
         record(.diaper)
+    }
+
+    func recordActivity(title: String, durationMinutes: Int, recordedAt: Date, note: String = "") {
+        guard recordedAt <= Date() else { return }
+        let minutes = max(durationMinutes, 1)
+        let trimmedNote = note
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
+        let careRecord = CareRecord(
+            kind: .activity,
+            title: title,
+            detail: "\(minutes) 分钟",
+            note: trimmedNote,
+            recordedAt: recordedAt
+        )
+        saveCareRecord(careRecord)
+        EasyCycleStore.shared.trackCareRecord(careRecord)
     }
 
     func recordSleep(durationMinutes: Int, note: String, startTime: Date) {
@@ -161,29 +187,49 @@ final class ActivityStore: ObservableObject {
     }
 
     func recordSleep(startTime: Date, endTime: Date, note: String) {
-        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        let durationMinutes = SleepRecordFormatter.durationMinutes(start: startTime, end: endTime)
+        let cappedEndTime = min(endTime, Date())
+        guard startTime <= Date(), cappedEndTime > startTime else { return }
+        let trimmedNote = note
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
+        let durationMinutes = SleepRecordFormatter.durationMinutes(start: startTime, end: cappedEndTime)
         let durationText = "\(durationMinutes) 分钟"
         let careRecord = CareRecord(
             kind: .sleep,
-            title: SleepRecordFormatter.sleepTitle(start: startTime, end: endTime),
+            title: SleepRecordFormatter.sleepTitle(start: startTime, end: cappedEndTime),
             detail: trimmedNote.isEmpty ? durationText : "\(durationText) · \(trimmedNote)",
             note: trimmedNote,
             recordedAt: startTime
         )
         saveCareRecord(careRecord)
+        EasyCycleStore.shared.trackCareRecord(careRecord)
         CompanionRecruitmentStore.shared.awardBBBucks(forRecord: .sleep, recordedAt: startTime)
         record(.sleep)
     }
 
-    func updateDiaperRecord(_ record: CareRecord, type: String, note: String, recordedAt: Date) {
-        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+    func updateDiaperRecord(_ record: CareRecord, type: String, detail: String, note: String, recordedAt: Date) {
+        guard recordedAt <= Date() else { return }
+        let trimmedNote = note
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
         updateCareRecord(CareRecord(
             id: record.id,
             kind: .diaper,
             title: type,
-            detail: trimmedNote.isEmpty ? "尿布护理" : trimmedNote,
+            detail: detail,
             note: trimmedNote,
+            recordedAt: recordedAt
+        ))
+    }
+
+    func updateActivityRecord(_ record: CareRecord, recordedAt: Date) {
+        guard recordedAt <= Date() else { return }
+        updateCareRecord(CareRecord(
+            id: record.id,
+            kind: .activity,
+            title: record.title,
+            detail: record.detail,
+            note: record.note,
             recordedAt: recordedAt
         ))
     }
@@ -193,13 +239,17 @@ final class ActivityStore: ObservableObject {
     }
 
     func updateSleepRecord(_ record: CareRecord, startTime: Date, endTime: Date, note: String) {
-        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        let durationMinutes = SleepRecordFormatter.durationMinutes(start: startTime, end: endTime)
+        let cappedEndTime = min(endTime, Date())
+        guard startTime <= Date(), cappedEndTime > startTime else { return }
+        let trimmedNote = note
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
+        let durationMinutes = SleepRecordFormatter.durationMinutes(start: startTime, end: cappedEndTime)
         let durationText = "\(durationMinutes) 分钟"
         updateCareRecord(CareRecord(
             id: record.id,
             kind: .sleep,
-            title: SleepRecordFormatter.sleepTitle(start: startTime, end: endTime),
+            title: SleepRecordFormatter.sleepTitle(start: startTime, end: cappedEndTime),
             detail: trimmedNote.isEmpty ? durationText : "\(durationText) · \(trimmedNote)",
             note: trimmedNote,
             recordedAt: startTime
@@ -208,6 +258,7 @@ final class ActivityStore: ObservableObject {
 
     func deleteCareRecord(_ record: CareRecord) {
         careRecords.removeAll { $0.id == record.id }
+        EasyCycleStore.shared.removeRecordLink(type: .care, recordID: record.id)
         FamilyCloudStore.shared.markCareRecordDeleted(record.id)
     }
 
@@ -256,14 +307,19 @@ final class ActivityStore: ObservableObject {
     private func updateCareRecord(_ record: CareRecord) {
         guard let index = careRecords.firstIndex(where: { $0.id == record.id }) else {
             saveCareRecord(record)
+            EasyCycleStore.shared.trackCareRecord(record)
             return
         }
         careRecords[index] = record
         careRecords.sort { $0.recordedAt > $1.recordedAt }
+        EasyCycleStore.shared.removeRecordLink(type: .care, recordID: record.id)
+        EasyCycleStore.shared.trackCareRecord(record)
     }
 
     private func loadCareRecords() {
-        guard let data = UserDefaults.standard.data(forKey: careRecordsKey),
+        let appGroupDefaults = UserDefaults(suiteName: WidgetStorageKey.appGroupID)
+        guard let data = UserDefaults.standard.data(forKey: careRecordsKey)
+                ?? appGroupDefaults?.data(forKey: WidgetStorageKey.careRecords),
               let decoded = try? JSONDecoder().decode([CareRecord].self, from: data) else {
             return
         }
@@ -273,5 +329,9 @@ final class ActivityStore: ObservableObject {
     private func persistCareRecords() {
         guard let data = try? JSONEncoder().encode(careRecords) else { return }
         UserDefaults.standard.set(data, forKey: careRecordsKey)
+        UserDefaults(suiteName: WidgetStorageKey.appGroupID)?.set(data, forKey: WidgetStorageKey.careRecords)
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetStorageKey.lastFeedingWidgetKind)
+        #endif
     }
 }

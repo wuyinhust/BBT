@@ -1,7 +1,7 @@
 [
   {
     "id": "NHC_2024_INFANT_FEEDING_EVAL",
-    "title": "国家卫生健康委办公厅关于印发婴幼儿营养喂养评估服务指南（试行）的通知",
+    "title": "国家卫生健康委办公厅关于印发宝宝营养喂养评估服务指南（试行）的通知",
     "organization": "中华人民共和国国家卫生健康委员会",
     "date": "2024-11-27",
     "url": "https://www.nhc.gov.cn/fys/c100078/202502/19903ff647694f3a85ed6fe332380b34.shtml",
@@ -10,7 +10,7 @@
   },
   {
     "id": "CNS_2022_INFANT_FEEDING_CORE",
-    "title": "《中国婴幼儿喂养指南（2022）》核心信息",
+    "title": "《中国宝宝喂养指南（2022）》核心信息",
     "organization": "中国营养学会 / 中国居民膳食指南",
     "date": "2022-06-02",
     "url": "https://dg.cnsoc.org/article/04/gc5cUak3RhSGheqSaRljnA.html",
@@ -33,7 +33,7 @@
     "date": "2025-09-24",
     "url": "https://www.who.int/publications/i/item/9789240113732",
     "access_type": "official_publication",
-    "notes": "卫生专业人员基础教育资料，聚焦 2 岁以下婴幼儿喂养。"
+    "notes": "卫生专业人员基础教育资料，聚焦 2 岁以下宝宝喂养。"
   },
   {
     "id": "WHO_UNICEF_2021_IYCF_COUNSELLING",
@@ -105,7 +105,7 @@
     "date": "2025-09-23",
     "url": "https://www.cdc.gov/breastfeeding-special-circumstances/hcp/diet-micronutrients/vitamin-d.html",
     "access_type": "official_public_health_page",
-    "notes": "母乳或部分母乳喂养婴儿维生素 D 补充。"
+    "notes": "母乳或部分母乳喂养宝宝维生素 D 补充。"
   },
   {
     "id": "AAP_2025_SOLIDS",
@@ -123,7 +123,7 @@
     "date": "2025-06-12",
     "url": "https://www.healthychildren.org/English/healthy-living/nutrition/Pages/when-to-introduce-egg-peanut-butter-and-other-common-food-allergens-to-your-baby-food-allergy-prevention-tips.aspx",
     "access_type": "official_clinical_education",
-    "notes": "过敏食物早期、适龄、安全形态引入；高风险婴儿需先咨询医生。"
+    "notes": "过敏食物早期、适龄、安全形态引入；高风险宝宝需先咨询医生。"
   },
   {
     "id": "AAP_2024_BREASTFEEDING_POLICY_EXPLAINED",
@@ -141,7 +141,7 @@
     "date": "2026-01-01",
     "url": "https://www.healthychildren.org/English/ages-stages/baby/sleep/Pages/a-parents-guide-to-safe-sleep.aspx",
     "access_type": "official_clinical_education",
-    "notes": "AAP 安全睡眠建议，适用于 1 岁内婴儿。"
+    "notes": "AAP 安全睡眠建议，适用于 1 岁内宝宝。"
   },
   {
     "id": "CDC_2024_SAFE_SLEEP",
@@ -159,7 +159,7 @@
     "date": "2024-08-01",
     "url": "https://www.healthychildren.org/English/ages-stages/baby/Pages/The-Many-Colors-of-Poop.aspx",
     "access_type": "official_clinical_education",
-    "notes": "婴儿大便颜色正常范围和红/黑/白便就医提示。"
+    "notes": "宝宝大便颜色正常范围和红/黑/白便就医提示。"
   },
   {
     "id": "AAP_2022_INFANT_CONSTIPATION",
@@ -168,7 +168,7 @@
     "date": "2022-05-01",
     "url": "https://www.healthychildren.org/English/ages-stages/baby/diapers-clothing/pages/Infant-Constipation.aspx",
     "access_type": "official_clinical_education",
-    "notes": "婴儿排便频率差异、便秘判断和喂养不足提示。"
+    "notes": "宝宝排便频率差异、便秘判断和喂养不足提示。"
   },
   {
     "id": "AAP_2015_INFANT_DIARRHEA",
@@ -177,7 +177,7 @@
     "date": "2015-01-01",
     "url": "https://www.healthychildren.org/English/ages-stages/baby/diapers-clothing/Pages/Diarrhea-in-Babies.aspx",
     "access_type": "official_clinical_education",
-    "notes": "婴儿腹泻与正常稀便区分，以及何时联系儿科医生。"
+    "notes": "宝宝腹泻与正常稀便区分，以及何时联系儿科医生。"
   },
   {
     "id": "BOOK_AAP_CARING_BIRTH_TO_5",
@@ -199,7 +199,7 @@
   },
   {
     "id": "NHC_2022_CHILDCARE_FEEDING_NUTRITION",
-    "title": "国家卫生健康委办公厅关于印发托育机构婴幼儿喂养与营养指南（试行）的通知",
+    "title": "国家卫生健康委办公厅关于印发托育机构宝宝喂养与营养指南（试行）的通知",
     "organization": "中华人民共和国国家卫生健康委员会",
     "date": "2022-01-17",
     "url": "https://www.nhc.gov.cn/rkjcyjtfzs/c100147/202201/a7d3fc17153f410ea97270814a3e662f.shtml",
@@ -231,7 +231,7 @@
     "date": "2017-01-05",
     "url": "https://www.niaid.nih.gov/sites/default/files/addendum-peanut-allergy-prevention-guidelines.pdf",
     "access_type": "official_guideline_pdf",
-    "notes": "适合扩充花生过敏预防：严重湿疹或鸡蛋过敏婴儿需先评估，轻中度湿疹约6月龄引入，普通风险按家庭偏好和适龄形态引入。"
+    "notes": "适合扩充花生过敏预防：严重湿疹或鸡蛋过敏宝宝需先评估，轻中度湿疹约6月龄引入，普通风险按家庭偏好和适龄形态引入。"
   },
   {
     "id": "NIAID_2024_FOOD_ALLERGY_PREVENTION",
@@ -276,7 +276,7 @@
     "date": "2024-12-06",
     "url": "https://healthychildren.org/English/ages-stages/baby/crying-colic/Pages/Responding-to-Your-Babys-Cries.aspx",
     "access_type": "official_clinical_education",
-    "notes": "新生儿哭闹模式、固定哭闹时段和安抚策略；AAP版权内容，只做转述和链接引用。"
+    "notes": "新生宝宝哭闹模式、固定哭闹时段和安抚策略；AAP版权内容，只做转述和链接引用。"
   },
   {
     "id": "AAP_2024_COLIC_RELIEF",
@@ -285,7 +285,7 @@
     "date": "2024-06-13",
     "url": "https://healthychildren.org/English/ages-stages/baby/crying-colic/Pages/Colic.aspx",
     "access_type": "official_clinical_education",
-    "notes": "婴儿每日固定时段烦躁、肠绞痛特征和何时需要警惕医疗问题。"
+    "notes": "宝宝每日固定时段烦躁、肠绞痛特征和何时需要警惕医疗问题。"
   },
   {
     "id": "AAP_2022_CALMING_FUSSY_BABY",
@@ -294,7 +294,7 @@
     "date": "2022-03-21",
     "url": "https://www.healthychildren.org/english/ages-stages/baby/crying-colic/pages/Calming-A-Fussy-Baby.aspx",
     "access_type": "official_clinical_education",
-    "notes": "安抚哭闹婴儿、记录喂养睡眠哭闹、发热/反流/喂养相关哭闹排查和照护者安全暂停。"
+    "notes": "安抚哭闹宝宝、记录喂养睡眠哭闹、发热/反流/喂养相关哭闹排查和照护者安全暂停。"
   },
   {
     "id": "AAP_2025_FEVER_BABY",
@@ -303,7 +303,7 @@
     "date": "2025-10-13",
     "url": "https://www.healthychildren.org/English/health-issues/conditions/fever/Pages/Fever-and-Your-Baby.aspx",
     "access_type": "official_clinical_education",
-    "notes": "3月龄及以下婴儿肛温38.0°C或以上应立即联系儿科医生。"
+    "notes": "3月龄及以下宝宝肛温38.0°C或以上应立即联系儿科医生。"
   },
   {
     "id": "AAP_2023_INFANT_ABDOMINAL_PAIN",
@@ -312,7 +312,7 @@
     "date": "2023-04-12",
     "url": "https://www.healthychildren.org/English/health-issues/conditions/abdominal/pages/Abdominal-Pains-in-Infants.aspx",
     "access_type": "official_clinical_education",
-    "notes": "婴儿腹痛、肠绞痛、胀气、反流、喂养问题等鉴别；提醒有担忧应咨询儿科医生。"
+    "notes": "宝宝腹痛、肠绞痛、胀气、反流、喂养问题等鉴别；提醒有担忧应咨询儿科医生。"
   },
   {
     "id": "AAP_2023_TEMPERAMENT",
@@ -330,7 +330,7 @@
     "date": "current_public_page",
     "url": "https://www.iecmhc.org/resources/infant-toddler-temperament-tool/",
     "access_type": "expert_education_page",
-    "notes": "面向照护者和早期儿童工作者的婴幼儿气质工具，强调气质没有好坏之分以及照护者与儿童匹配。"
+    "notes": "面向照护者和早期儿童工作者的宝宝气质工具，强调气质没有好坏之分以及照护者与儿童匹配。"
   },
   {
     "id": "ZERO_TO_THREE_TEMPERAMENT",
@@ -339,7 +339,7 @@
     "date": "current_public_page",
     "url": "https://www.zerotothree.org/resource/getting-to-know-your-baby/",
     "access_type": "expert_education_page",
-    "notes": "面向家庭的婴儿气质教育，强调观察宝宝的独特反应方式并调整照护策略。"
+    "notes": "面向家庭的宝宝气质教育，强调观察宝宝的独特反应方式并调整照护策略。"
   },
   {
     "id": "CDC_2026_MILESTONES_2M",
@@ -465,7 +465,7 @@
     "date": "2026-05-14",
     "url": "https://www.reddit.com/r/beyondthebump/",
     "access_type": "community_discussion",
-    "notes": "产后和婴儿照护社区，适合观察家庭情绪、睡眠剥夺、母乳/瓶喂、返工托育等问题。"
+    "notes": "产后和宝宝照护社区，适合观察家庭情绪、睡眠剥夺、母乳/瓶喂、返工托育等问题。"
   },
   {
     "id": "REDDIT_SCIENCEBASEDPARENTING",
@@ -483,6 +483,6 @@
     "date": "2026-05-14",
     "url": "https://www.reddit.com/r/Parenting/",
     "access_type": "community_discussion",
-    "notes": "泛育儿社区，幼儿阶段常见话题包括挑食、发脾气、如厕训练、托育适应、兄弟姐妹和边界设置。"
+    "notes": "泛育儿社区，宝宝阶段常见话题包括挑食、发脾气、如厕训练、托育适应、兄弟姐妹和边界设置。"
   }
 ]

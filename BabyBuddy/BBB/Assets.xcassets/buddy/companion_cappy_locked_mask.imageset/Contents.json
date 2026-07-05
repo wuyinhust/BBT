@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "卡皮 Cappy.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

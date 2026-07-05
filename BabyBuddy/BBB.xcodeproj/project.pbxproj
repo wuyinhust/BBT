@@ -12,11 +12,13 @@
 		38FA07B2E571E9AC19D6C52E /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB127FE032B7ABC2205A055 /* Models.swift */; };
 		6657DB659C8DB7D27868FEB1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E62A96081C4DA27A68905E70 /* ContentView.swift */; };
 		6FF7C2646CC91F66F477EC86 /* BBBApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0572B03F18DDC9494FC72E4B /* BBBApp.swift */; };
+		APPVARBLD0000000000001 /* AppVariant.swift in Sources */ = {isa = PBXBuildFile; fileRef = APPVARREF0000000000001 /* AppVariant.swift */; };
 		8ADB314B96B7460DD0133AA0 /* ShakeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A83CB333C6C586A43AE6264 /* ShakeDetector.swift */; };
 		8F8574101C82F9F5B7E6C3A0 /* BaByBuddyWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 99B3394530EE8E6934513A41 /* BaByBuddyWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A3239C72CEC527C89372AF63 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C94D1EB326D2FD84913950C8 /* Foundation.framework */; };
 		ACHSTKBLD00000000000001 /* AchievementStickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACHSTKREF00000000000001 /* AchievementStickerStore.swift */; };
 		AST01BLD000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AST01REF000000000000001 /* Assets.xcassets */; };
+		ASTWGTBLD00000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ASTWGTREF00000000000001 /* Assets.xcassets */; };
 		B564EB58B2155D6DE2AA8A37 /* FeedingActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1AF612DA59E32807FC8FFD /* FeedingActivityAttributes.swift */; };
 		BBBFONTBLD0000000000001 /* BBBFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBFONTREF0000000000001 /* BBBFont.swift */; };
 		BBBFONTRES0000000000001 /* AlimamaFangYuanTiVF-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */; };
@@ -28,15 +30,23 @@
 		FDS01BLD000000000000001 /* FeedingDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDS01REF000000000000001 /* FeedingDraftStore.swift */; };
 		FS001BLD0000000000000001 /* FeedingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FS001REF0000000000000001 /* FeedingSheet.swift */; };
 		HV001BLD0000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = HV001REF0000000000000001 /* HomeView.swift */; };
-		LICLABBLD000000000001 /* LiveIslandCameraLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LICLABREF000000000001 /* LiveIslandCameraLabView.swift */; };
 		LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LIS01REF000000000000001 /* LiveIslandSceneView.swift */; };
+		LDTDSBLD00000000000001 /* LocalDebugTodayDataSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = LDTDSREF00000000000001 /* LocalDebugTodayDataSeeder.swift */; };
 		ONB01BLD000000000000001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONB01REF000000000000001 /* OnboardingView.swift */; };
 		OP001BLD0000000000000001 /* OtherPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP001REF0000000000000001 /* OtherPages.swift */; };
+		PLUSSTOREBLD00000000001 /* PlusMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = PLUSSTOREREF00000000001 /* PlusMembershipStore.swift */; };
+		PLUSVIEWBLD000000000001 /* PlusMembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PLUSVIEWREF000000000001 /* PlusMembershipView.swift */; };
 		PV001BLD0000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV001REF0000000000000001 /* ProfileView.swift */; };
 		RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = RES01REF000000000000001 /* RecordEditSheets.swift */; };
 		RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RHV01REF000000000000001 /* RecordHomeView.swift */; };
 		SDS01BLD000000000000001 /* SleepDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = SDS01REF000000000000001 /* SleepDraftStore.swift */; };
 		VID01BLD000000000000001 /* Videos in Resources */ = {isa = PBXBuildFile; fileRef = VID01REF000000000000001 /* Videos */; };
+		GRW01BLD0000000000000001 /* GrowthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = GRW01REF0000000000000001 /* GrowthView.swift */; };
+		WRC01BLD0000000000000001 /* WeeklyRhythmComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = WRC01REF0000000000000001 /* WeeklyRhythmComposer.swift */; };
+		WRV01BLD0000000000000001 /* WeeklyRhythmPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WRV01REF0000000000000001 /* WeeklyRhythmPlayerView.swift */; };
+		RPS01BLD0000000000000001 /* RhythmParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = RPS01REF0000000000000001 /* RhythmParameters.swift */; };
+		BAE01BLD0000000000000001 /* BabyAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE01REF0000000000000001 /* BabyAudioEngine.swift */; };
+		SOB01BLD0000000000000001 /* SafetyOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SOB01REF0000000000000001 /* SafetyOnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -53,6 +63,16 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
+/* Begin PBXContainerItemProxy section */
+		WGTDEPPROXY00000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 41FEED048C0EAB561C002544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA060C4F86BED67B58651A90;
+			remoteInfo = BaByBuddyWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		0572B03F18DDC9494FC72E4B /* BBBApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BBBApp.swift; path = BBB/BBBApp.swift; sourceTree = "<group>"; };
 		248DD516A1260C910752AEE8 /* BaByBuddyWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BaByBuddyWidgetBundle.swift; path = BaByBuddyWidget/BaByBuddyWidgetBundle.swift; sourceTree = "<group>"; };
@@ -65,7 +85,9 @@
 		99B3394530EE8E6934513A41 /* BaByBuddyWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BaByBuddyWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AFBEFADC6441C33D178AEE4 /* BaByBuddyWidgetExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BaByBuddyWidgetExtension.entitlements; sourceTree = "<group>"; };
 		ACHSTKREF00000000000001 /* AchievementStickerStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AchievementStickerStore.swift; path = BBB/AchievementStickerStore.swift; sourceTree = "<group>"; };
+		APPVARREF0000000000001 /* AppVariant.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppVariant.swift; path = BBB/AppVariant.swift; sourceTree = "<group>"; };
 		AST01REF000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = BBB/Assets.xcassets; sourceTree = "<group>"; };
+		ASTWGTREF00000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = BaByBuddyWidget/Assets.xcassets; sourceTree = "<group>"; };
 		BCV01REF000000000000001 /* BuddyChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BuddyChatView.swift; path = BBB/BuddyChatView.swift; sourceTree = "<group>"; };
 		BIE01REF000000000000001 /* BabyInfoEditView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BabyInfoEditView.swift; path = BBB/BabyInfoEditView.swift; sourceTree = "<group>"; };
 		BBBFONTREF0000000000001 /* BBBFont.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BBBFont.swift; path = BBB/BBBFont.swift; sourceTree = "<group>"; };
@@ -80,15 +102,23 @@
 		FDS01REF000000000000001 /* FeedingDraftStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FeedingDraftStore.swift; path = BBB/FeedingDraftStore.swift; sourceTree = "<group>"; };
 		FS001REF0000000000000001 /* FeedingSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FeedingSheet.swift; path = BBB/FeedingSheet.swift; sourceTree = "<group>"; };
 		HV001REF0000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = BBB/HomeView.swift; sourceTree = "<group>"; };
-		LICLABREF000000000001 /* LiveIslandCameraLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveIslandCameraLabView.swift; path = BBB/LiveIslandCameraLabView.swift; sourceTree = "<group>"; };
 		LIS01REF000000000000001 /* LiveIslandSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveIslandSceneView.swift; path = BBB/LiveIslandSceneView.swift; sourceTree = "<group>"; };
+		LDTDSREF00000000000001 /* LocalDebugTodayDataSeeder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalDebugTodayDataSeeder.swift; path = BBB/LocalDebugTodayDataSeeder.swift; sourceTree = "<group>"; };
 		ONB01REF000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = BBB/OnboardingView.swift; sourceTree = "<group>"; };
 		OP001REF0000000000000001 /* OtherPages.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OtherPages.swift; path = BBB/OtherPages.swift; sourceTree = "<group>"; };
+		PLUSSTOREREF00000000001 /* PlusMembershipStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusMembershipStore.swift; path = BBB/PlusMembershipStore.swift; sourceTree = "<group>"; };
+		PLUSVIEWREF000000000001 /* PlusMembershipView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusMembershipView.swift; path = BBB/PlusMembershipView.swift; sourceTree = "<group>"; };
 		PV001REF0000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = BBB/ProfileView.swift; sourceTree = "<group>"; };
 		RES01REF000000000000001 /* RecordEditSheets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordEditSheets.swift; path = BBB/RecordEditSheets.swift; sourceTree = "<group>"; };
 		RHV01REF000000000000001 /* RecordHomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordHomeView.swift; path = BBB/RecordHomeView.swift; sourceTree = "<group>"; };
 		SDS01REF000000000000001 /* SleepDraftStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SleepDraftStore.swift; path = BBB/SleepDraftStore.swift; sourceTree = "<group>"; };
 		VID01REF000000000000001 /* Videos */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Videos; path = BBB/Videos; sourceTree = "<group>"; };
+		GRW01REF0000000000000001 /* GrowthView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GrowthView.swift; path = BBB/GrowthView.swift; sourceTree = "<group>"; };
+		WRC01REF0000000000000001 /* WeeklyRhythmComposer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WeeklyRhythmComposer.swift; path = BBB/WeeklyRhythmComposer.swift; sourceTree = "<group>"; };
+		WRV01REF0000000000000001 /* WeeklyRhythmPlayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WeeklyRhythmPlayerView.swift; path = BBB/WeeklyRhythmPlayerView.swift; sourceTree = "<group>"; };
+		RPS01REF0000000000000001 /* RhythmParameters.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RhythmParameters.swift; path = BBB/RhythmParameters.swift; sourceTree = "<group>"; };
+		BAE01REF0000000000000001 /* BabyAudioEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BabyAudioEngine.swift; path = BBB/BabyAudioEngine.swift; sourceTree = "<group>"; };
+		SOB01REF0000000000000001 /* SafetyOnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SafetyOnboardingView.swift; path = BBB/SafetyOnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +162,7 @@
 			children = (
 				248DD516A1260C910752AEE8 /* BaByBuddyWidgetBundle.swift */,
 				2A1AF612DA59E32807FC8FFD /* FeedingActivityAttributes.swift */,
+				ASTWGTREF00000000000001 /* Assets.xcassets */,
 				728CAC24E4DDC7070A4DEAD2 /* Info.plist */,
 				9AFBEFADC6441C33D178AEE4 /* BaByBuddyWidgetExtension.entitlements */,
 			);
@@ -143,17 +174,20 @@
 			children = (
 				579076D497F6554B21D4DE5F /* BBB.entitlements */,
 				F16851AE20788329FCEA0CA0 /* ActivityStore.swift */,
+				APPVARREF0000000000001 /* AppVariant.swift */,
 				0572B03F18DDC9494FC72E4B /* BBBApp.swift */,
 				BBBFONTREF0000000000001 /* BBBFont.swift */,
 				E62A96081C4DA27A68905E70 /* ContentView.swift */,
 				FCS01REF000000000000001 /* FamilyCloudStore.swift */,
 				HV001REF0000000000000001 /* HomeView.swift */,
-				LICLABREF000000000001 /* LiveIslandCameraLabView.swift */,
 				LIS01REF000000000000001 /* LiveIslandSceneView.swift */,
+				LDTDSREF00000000000001 /* LocalDebugTodayDataSeeder.swift */,
 				BCV01REF000000000000001 /* BuddyChatView.swift */,
 				RHV01REF000000000000001 /* RecordHomeView.swift */,
 				RES01REF000000000000001 /* RecordEditSheets.swift */,
 				PV001REF0000000000000001 /* ProfileView.swift */,
+				PLUSSTOREREF00000000001 /* PlusMembershipStore.swift */,
+				PLUSVIEWREF000000000001 /* PlusMembershipView.swift */,
 				CPV01REF000000000000001 /* CompanionPickerView.swift */,
 				ONB01REF000000000000001 /* OnboardingView.swift */,
 				OP001REF0000000000000001 /* OtherPages.swift */,
@@ -168,6 +202,12 @@
 				AST01REF000000000000001 /* Assets.xcassets */,
 				BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */,
 				9055D29909109FB3B0237737 /* VideoPlayerView.swift */,
+				GRW01REF0000000000000001 /* GrowthView.swift */,
+				WRC01REF0000000000000001 /* WeeklyRhythmComposer.swift */,
+				WRV01REF0000000000000001 /* WeeklyRhythmPlayerView.swift */,
+				RPS01REF0000000000000001 /* RhythmParameters.swift */,
+				BAE01REF0000000000000001 /* BabyAudioEngine.swift */,
+				SOB01REF0000000000000001 /* SafetyOnboardingView.swift */,
 				F2AE3C2B6FC0FE33BC35F395 /* Info.plist */,
 			);
 			name = BBB;
@@ -206,6 +246,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				WGTDEP000000000000001 /* PBXTargetDependency */,
 			);
 			name = BBB;
 			productName = BBB;
@@ -218,6 +259,7 @@
 			buildPhases = (
 				C025262B8CCCD53B1862BF89 /* Sources */,
 				FF8F1CB0FA463A4433C474E2 /* Frameworks */,
+				WGTRESBLD0000000000001 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -229,6 +271,14 @@
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		WGTDEP000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA060C4F86BED67B58651A90 /* BaByBuddyWidgetExtension */;
+			targetProxy = WGTDEPPROXY00000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		41FEED048C0EAB561C002544 /* Project object */ = {
@@ -268,6 +318,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		WGTRESBLD0000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ASTWGTBLD00000000000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -276,16 +334,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				30EA1CB3C7BE396FE2D1E6D9 /* ActivityStore.swift in Sources */,
+				APPVARBLD0000000000001 /* AppVariant.swift in Sources */,
 				6FF7C2646CC91F66F477EC86 /* BBBApp.swift in Sources */,
 				BBBFONTBLD0000000000001 /* BBBFont.swift in Sources */,
 				6657DB659C8DB7D27868FEB1 /* ContentView.swift in Sources */,
 				HV001BLD0000000000000001 /* HomeView.swift in Sources */,
-				LICLABBLD000000000001 /* LiveIslandCameraLabView.swift in Sources */,
 				LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */,
+				LDTDSBLD00000000000001 /* LocalDebugTodayDataSeeder.swift in Sources */,
 				BCV01BLD000000000000001 /* BuddyChatView.swift in Sources */,
 				RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */,
 				RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */,
 				PV001BLD0000000000000001 /* ProfileView.swift in Sources */,
+				PLUSSTOREBLD00000000001 /* PlusMembershipStore.swift in Sources */,
+				PLUSVIEWBLD000000000001 /* PlusMembershipView.swift in Sources */,
 				CPV01BLD000000000000001 /* CompanionPickerView.swift in Sources */,
 				ONB01BLD000000000000001 /* OnboardingView.swift in Sources */,
 				OP001BLD0000000000000001 /* OtherPages.swift in Sources */,
@@ -298,6 +359,12 @@
 				38FA07B2E571E9AC19D6C52E /* Models.swift in Sources */,
 				8ADB314B96B7460DD0133AA0 /* ShakeDetector.swift in Sources */,
 				DD5114F47B635FE842294EA7 /* VideoPlayerView.swift in Sources */,
+				GRW01BLD0000000000000001 /* GrowthView.swift in Sources */,
+				WRC01BLD0000000000000001 /* WeeklyRhythmComposer.swift in Sources */,
+				WRV01BLD0000000000000001 /* WeeklyRhythmPlayerView.swift in Sources */,
+				RPS01BLD0000000000000001 /* RhythmParameters.swift in Sources */,
+				BAE01BLD0000000000000001 /* BabyAudioEngine.swift in Sources */,
+				SOB01BLD0000000000000001 /* SafetyOnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,7 +449,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconAlt1 AppIconAlt2 AppIconAlt3 AppIconAlt4 AppIconAlt5 AppIconAlt6 AppIconAlt7";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = BBB/BBB.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -390,7 +459,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
 				INFOPLIST_FILE = BBB/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -399,6 +468,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = APPSTORE_REVIEW;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 				VALIDATE_PRODUCT = YES;
@@ -467,7 +537,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconAlt1 AppIconAlt2 AppIconAlt3 AppIconAlt4 AppIconAlt5 AppIconAlt6 AppIconAlt7";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = BBB/BBB.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -475,7 +547,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
 				INFOPLIST_FILE = BBB/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -484,6 +556,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG APPSTORE_REVIEW LOCAL_DEBUG_UNLOCKS";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -502,7 +575,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 73AUQDMCJ2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BaByBuddyWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -532,7 +605,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 73AUQDMCJ2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BaByBuddyWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

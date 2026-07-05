@@ -42,6 +42,7 @@ final class LiveIslandScene: SKScene {
     private let worldNode = SKNode()
     private let cameraNode = SKCameraNode()
     private let worldSize = CGSize(width: 1800, height: 1350)
+    private let panoramaSize = CGSize(width: 2880, height: 2160)
     private let panoramaAssetName = "live_island_panorama"
     private var lastTouchLocation: CGPoint?
     private var animalNodes: [AnimalNode] = []
@@ -76,7 +77,7 @@ final class LiveIslandScene: SKScene {
     ]
 
     override init() {
-        super.init(size: UIScreen.main.bounds.size)
+        super.init(size: worldSize)
         scaleMode = .resizeFill
         backgroundColor = .clear
     }
@@ -86,6 +87,7 @@ final class LiveIslandScene: SKScene {
     }
 
     override func didMove(to view: SKView) {
+        size = view.bounds.size
         view.allowsTransparency = true
         view.backgroundColor = .clear
         removeAllChildren()
@@ -161,7 +163,7 @@ final class LiveIslandScene: SKScene {
         if UIImage(named: panoramaAssetName) != nil {
             let background = SKSpriteNode(imageNamed: panoramaAssetName)
             background.position = CGPoint(x: worldSize.width / 2, y: worldSize.height / 2)
-            background.size = worldSize
+            background.size = panoramaSize
             background.zPosition = -100
             worldNode.addChild(background)
         } else {
