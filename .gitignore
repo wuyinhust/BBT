@@ -3,6 +3,9 @@
 DerivedData/
 .swift-module-cache/
 BabyBuddy/build/
+BabyBuddy/.build/
+BabyBuddy/TestArtifacts/
+BabyBuddy/tmp/
 xcuserdata/
 *.xcuserstate
 *.zip
