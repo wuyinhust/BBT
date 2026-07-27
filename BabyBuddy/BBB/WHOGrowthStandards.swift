@@ -386,7 +386,7 @@ enum GrowthStandardPreference: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .automatic:
-            return "跟随当前地区（\(defaultStandard.shortTitle)）"
+            return "跟随当前地区（\(Self.defaultStandard.shortTitle)）"
         case .who2006:
             return GrowthReferenceStandard.who2006.title
         case .chinaNHC2022:
