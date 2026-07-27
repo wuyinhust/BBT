@@ -8,14 +8,14 @@ final class FeedingDraftStore: ObservableObject {
     @Published var entries: [FeedingEntry] = []
     @Published var note = ""
     @Published var imageData: Data?
-    @Published var currentTime = Date()
+    var currentTime = Date()
     @Published var didSave = false
-
     @Published var breastMode: BreastFeedingMode = .nursing
     @Published var leftBaseSeconds = 0
     @Published var rightBaseSeconds = 0
     @Published var activeBreastSide: BreastSide?
     @Published var activeBreastStartAt: Date?
+    @Published var breastTimingStartedAt: Date?
     @Published var hitMilestones: Set<Int> = []
     @Published var expressedAmount = 80.0
 
@@ -24,6 +24,7 @@ final class FeedingDraftStore: ObservableObject {
     @Published var bottleMinutes = 0.0
     @Published var bottleIsTimed = false
     @Published var bottleTimerStartedAt: Date?
+    @Published var bottleTimingStartedAt: Date?
 
     @Published var solidFood: SolidFood = .rice
     @Published var solidFoods: [SolidFood] = [.rice]
@@ -44,9 +45,30 @@ final class FeedingDraftStore: ObservableObject {
     }
 
     var isRecording: Bool {
-        (type == .breast && (activeBreastSide != nil || leftSeconds + rightSeconds > 0)) ||
-        bottleTimerStartedAt != nil ||
-        totalBottleMinutes > 0
+        breastTimingStartedAt != nil || bottleTimingStartedAt != nil
+    }
+
+    var activeTimingItem: ActiveTimingItem? {
+        if let startedAt = breastTimingStartedAt {
+            return ActiveTimingItem(
+                kind: .nursing,
+                startedAt: startedAt,
+                detail: "左 \(durationText(leftSeconds)) · 右 \(durationText(rightSeconds))"
+            )
+        }
+        if let startedAt = bottleTimingStartedAt {
+            return ActiveTimingItem(
+                kind: .bottle,
+                startedAt: startedAt,
+                detail: totalBottleMinutes > 0 ? "已计时 \(max(Int(totalBottleMinutes), 1)) 分钟" : "计时中"
+            )
+        }
+        return nil
+    }
+
+    var activeTimingStateID: String {
+        guard let item = activeTimingItem else { return "none" }
+        return "\(item.kind.rawValue)-\(item.startedAt.timeIntervalSince1970)"
     }
 
     private var hasMetadataDraft: Bool {
@@ -57,7 +79,7 @@ final class FeedingDraftStore: ObservableObject {
 
     private var hasBreastDraft: Bool {
         type == .breast &&
-        (leftSeconds > 0 || rightSeconds > 0 || activeBreastSide != nil)
+        (leftSeconds > 0 || rightSeconds > 0 || activeBreastSide != nil || breastTimingStartedAt != nil)
     }
 
     private var hasBottleDraft: Bool {
@@ -65,6 +87,7 @@ final class FeedingDraftStore: ObservableObject {
         (
             totalBottleMinutes > 0 ||
             bottleTimerStartedAt != nil ||
+            bottleTimingStartedAt != nil ||
             milkType != .formula ||
             bottleAmount != 60 ||
             (hasMetadataDraft && bottleAmount > 0)
@@ -101,9 +124,9 @@ final class FeedingDraftStore: ObservableObject {
 
     var statusTitle: String {
         switch type {
-        case .breast: return "亲喂"
-        case .bottle: return milkType.displayName
-        case .solid: return "辅食"
+        case .breast: return "亲喂".localized
+        case .bottle: return milkType.localizedDisplayName
+        case .solid: return "辅食".localized
         }
     }
 
@@ -113,18 +136,25 @@ final class FeedingDraftStore: ObservableObject {
             return durationText(totalSeconds)
         }
         if totalBottleMinutes > 0 {
-            return "\(max(Int(totalBottleMinutes), 1)) 分钟"
+            return AppQuantityFormat.minutes(max(Int(totalBottleMinutes), 1))
         }
         if !entries.isEmpty {
-            return "\(entries.count) 条"
+            return AppQuantityFormat.records(entries.count)
         }
         switch type {
         case .breast:
-            return "进行中"
+            return "进行中".localized
         case .bottle:
-            return "\(Int(bottleAmount))ml"
+            return AppMeasurementFormat.volume(bottleAmount)
         case .solid:
-            return "\(Int(solidAmount))\(solidUnit.displayName)"
+            switch solidUnit {
+            case .g:
+                return AppMeasurementFormat.mass(solidAmount)
+            case .ml:
+                return AppMeasurementFormat.volume(solidAmount)
+            default:
+                return "\(Int(solidAmount)) \(solidUnit.localizedDisplayName)"
+            }
         }
     }
 
@@ -148,6 +178,53 @@ final class FeedingDraftStore: ObservableObject {
         let base = side == .left ? leftBaseSeconds : rightBaseSeconds
         guard activeBreastSide == side, let activeBreastStartAt else { return base }
         return base + max(Int(date.timeIntervalSince(activeBreastStartAt)), 0)
+    }
+
+    func toggleBreastTimer(_ side: BreastSide, at date: Date = Date()) {
+        commitActiveBreastElapsed(at: date)
+        if activeBreastSide == side {
+            activeBreastSide = nil
+            activeBreastStartAt = nil
+        } else {
+            type = .breast
+            breastMode = .nursing
+            breastTimingStartedAt = breastTimingStartedAt ?? date
+            activeBreastSide = side
+            activeBreastStartAt = date
+        }
+        currentTime = date
+        persistDraft()
+    }
+
+    func pauseBreastTimer(at date: Date = Date()) {
+        guard activeBreastSide != nil else { return }
+        commitActiveBreastElapsed(at: date)
+        activeBreastSide = nil
+        activeBreastStartAt = nil
+        currentTime = date
+        persistDraft()
+    }
+
+    func setBreastTiming(leftSeconds: Int, rightSeconds: Int, startedAt: Date?) {
+        activeBreastSide = nil
+        activeBreastStartAt = nil
+        leftBaseSeconds = max(leftSeconds, 0)
+        rightBaseSeconds = max(rightSeconds, 0)
+        breastTimingStartedAt = startedAt
+        type = .breast
+        breastMode = .nursing
+        persistDraft()
+    }
+
+    func commitActiveBreastElapsed(at date: Date = Date()) {
+        guard let side = activeBreastSide, let startedAt = activeBreastStartAt else { return }
+        let elapsed = max(Int(date.timeIntervalSince(startedAt)), 0)
+        if side == .left {
+            leftBaseSeconds += elapsed
+        } else {
+            rightBaseSeconds += elapsed
+        }
+        activeBreastStartAt = date
     }
 
     func persistDraftIfNeeded() {
@@ -174,6 +251,7 @@ final class FeedingDraftStore: ObservableObject {
             rightBaseSeconds: rightBaseSeconds,
             activeBreastSide: activeBreastSide,
             activeBreastStartAt: activeBreastStartAt,
+            breastTimingStartedAt: breastTimingStartedAt,
             hitMilestones: hitMilestones,
             expressedAmount: expressedAmount,
             milkType: milkType,
@@ -181,6 +259,7 @@ final class FeedingDraftStore: ObservableObject {
             bottleMinutes: bottleMinutes,
             bottleIsTimed: bottleIsTimed,
             bottleTimerStartedAt: bottleTimerStartedAt,
+            bottleTimingStartedAt: bottleTimingStartedAt,
             solidFood: solidFood,
             solidFoods: solidFoods,
             solidAmount: solidAmount,
@@ -190,6 +269,7 @@ final class FeedingDraftStore: ObservableObject {
         guard let data = try? JSONEncoder().encode(draft) else { return }
         UserDefaults.standard.set(data, forKey: draftKey)
         UserDefaults(suiteName: WidgetStorageKey.appGroupID)?.set(data, forKey: draftKey)
+        persistActiveTimingSnapshot()
     }
 
     func restoreDraft() {
@@ -207,6 +287,7 @@ final class FeedingDraftStore: ObservableObject {
         rightBaseSeconds = draft.rightBaseSeconds
         activeBreastSide = draft.activeBreastSide
         activeBreastStartAt = draft.activeBreastStartAt
+        breastTimingStartedAt = draft.breastTimingStartedAt
         hitMilestones = draft.hitMilestones
         expressedAmount = draft.expressedAmount
         milkType = migratedBottleDraft ? .expressed : draft.milkType
@@ -214,6 +295,7 @@ final class FeedingDraftStore: ObservableObject {
         bottleMinutes = draft.bottleMinutes
         bottleIsTimed = draft.bottleIsTimed
         bottleTimerStartedAt = draft.bottleTimerStartedAt
+        bottleTimingStartedAt = draft.bottleTimingStartedAt
         solidFood = draft.solidFood
         solidFoods = Self.normalizedSolidFoods(draft.solidFoods ?? [draft.solidFood])
         solidFood = solidFoods.first ?? draft.solidFood
@@ -221,6 +303,8 @@ final class FeedingDraftStore: ObservableObject {
         solidUnit = draft.solidUnit
         if !hasDraft {
             resetDraft()
+        } else {
+            persistActiveTimingSnapshot()
         }
     }
 
@@ -237,6 +321,7 @@ final class FeedingDraftStore: ObservableObject {
         rightBaseSeconds = 0
         activeBreastSide = nil
         activeBreastStartAt = nil
+        breastTimingStartedAt = nil
         hitMilestones = []
         expressedAmount = 80
         milkType = .formula
@@ -244,6 +329,7 @@ final class FeedingDraftStore: ObservableObject {
         bottleMinutes = 0
         bottleIsTimed = false
         bottleTimerStartedAt = nil
+        bottleTimingStartedAt = nil
         solidFood = .rice
         solidFoods = [.rice]
         solidAmount = 30
@@ -254,6 +340,11 @@ final class FeedingDraftStore: ObservableObject {
     private func clearPersistedDraft() {
         UserDefaults.standard.removeObject(forKey: draftKey)
         UserDefaults(suiteName: WidgetStorageKey.appGroupID)?.removeObject(forKey: draftKey)
+        ActiveTimingStorage.update(feeding: nil, replaceFeeding: true)
+    }
+
+    private func persistActiveTimingSnapshot() {
+        ActiveTimingStorage.update(feeding: activeTimingItem, replaceFeeding: true)
     }
 
     private func durationText(_ seconds: Int) -> String {
@@ -278,6 +369,7 @@ private struct FeedingDraft: Codable {
     var rightBaseSeconds: Int
     var activeBreastSide: BreastSide?
     var activeBreastStartAt: Date?
+    var breastTimingStartedAt: Date?
     var hitMilestones: Set<Int>
     var expressedAmount: Double
     var milkType: MilkType
@@ -285,6 +377,7 @@ private struct FeedingDraft: Codable {
     var bottleMinutes: Double
     var bottleIsTimed: Bool
     var bottleTimerStartedAt: Date?
+    var bottleTimingStartedAt: Date?
     var solidFood: SolidFood
     var solidFoods: [SolidFood]?
     var solidAmount: Double

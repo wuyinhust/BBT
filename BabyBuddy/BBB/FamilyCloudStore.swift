@@ -43,12 +43,16 @@ struct FamilyCloudSnapshot: Codable {
     var careRecords: [CareRecord]
     var growthMetricRecords: [GrowthMetricRecord]?
     var achievements: [CustomAchievement]
+    var subjectiveStateCheckIns: [SubjectiveStateCheckIn]?
     var deletedFeedingSessionIDs: [UUID]?
     var deletedCareRecordIDs: [UUID]?
     var deletedGrowthMetricRecordIDs: [UUID]?
     var deletedAchievementIDs: [UUID]?
+    var deletedSubjectiveStateCheckInIDs: [UUID]?
     var selectedCompanionID: String
     var temperamentResult: BabyTemperamentResult?
+    var recruitment: CompanionRecruitmentSnapshot?
+    var sceneEntitlements: [SceneEntitlement]?
     var updatedAt: Date
 }
 
@@ -99,8 +103,14 @@ final class FamilyCloudStore: ObservableObject {
         static let babySpace = "babySpace"
         static let stickerFilename = "stickerFilename"
         static let originalFilename = "originalFilename"
+        static let sourceFilename = "sourceFilename"
+        static let livePhotoStillFilename = "livePhotoStillFilename"
+        static let livePhotoMovieFilename = "livePhotoMovieFilename"
         static let stickerAsset = "stickerAsset"
         static let originalAsset = "originalAsset"
+        static let sourceAsset = "sourceAsset"
+        static let livePhotoStillAsset = "livePhotoStillAsset"
+        static let livePhotoMovieAsset = "livePhotoMovieAsset"
     }
 
     private struct StoredLocator: Codable {
@@ -126,9 +136,14 @@ final class FamilyCloudStore: ObservableObject {
     private let deletedCareRecordIDsKey = "family_cloud_deleted_care_record_ids_v1"
     private let deletedGrowthMetricRecordIDsKey = "family_cloud_deleted_growth_metric_record_ids_v1"
     private let deletedAchievementIDsKey = "family_cloud_deleted_achievement_ids_v1"
+    private let deletedSubjectiveStateCheckInIDsKey = "family_cloud_deleted_subjective_state_check_in_ids_v1"
     private let zoneName = "BabyBuddySharedZone"
     private let syncDebounce: TimeInterval = 1.4
     private let snapshotTemporaryDirectoryName = "BabyBuddyCloudSnapshots"
+    private let maxSnapshotByteCount = 10 * 1024 * 1024
+    private let maxAchievementAssetByteCount = 30 * 1024 * 1024
+    private let cloudModifyBatchSize = 200
+    private let maxSyncRetryAttempts = 3
 
     private weak var feedingStore: FeedingStore?
     private weak var activityStore: ActivityStore?
@@ -136,9 +151,14 @@ final class FamilyCloudStore: ObservableObject {
     private weak var achievementStore: AchievementStickerStore?
     private weak var companionStore: CompanionStore?
     private weak var temperamentStore: TemperamentProfileStore?
+    private weak var subjectiveStateStore: SubjectiveStateStore?
     private var profileStore: BabyProfileStore?
     private var scheduledUploadTask: Task<Void, Never>?
     private var isApplyingRemoteSnapshot = false
+    private var isSyncInProgress = false
+    private var needsFollowUpSync = false
+    private var localMutationRevision: UInt64 = 0
+    private var syncRetryAttempt = 0
 
     private init() {}
 
@@ -161,7 +181,8 @@ final class FamilyCloudStore: ObservableObject {
         growthMetricStore: GrowthMetricStore,
         achievementStore: AchievementStickerStore,
         companionStore: CompanionStore,
-        temperamentStore: TemperamentProfileStore
+        temperamentStore: TemperamentProfileStore,
+        subjectiveStateStore: SubjectiveStateStore
     ) {
         self.profileStore = profileStore
         self.feedingStore = feedingStore
@@ -170,6 +191,7 @@ final class FamilyCloudStore: ObservableObject {
         self.achievementStore = achievementStore
         self.companionStore = companionStore
         self.temperamentStore = temperamentStore
+        self.subjectiveStateStore = subjectiveStateStore
         isConfigured = true
     }
 
@@ -202,6 +224,7 @@ final class FamilyCloudStore: ObservableObject {
         guard try await accountIsAvailable() else { throw FamilyCloudError.iCloudUnavailable }
         state = .syncing
 
+        let expectedRevision = localMutationRevision
         let locator = try await ensureOwnerBabySpace()
         let snapshot = try snapshotForUpload()
         let rootRecord = try await upsertSnapshotRecord(locator: locator, snapshot: snapshot)
@@ -211,17 +234,30 @@ final class FamilyCloudStore: ObservableObject {
         try await save(records: [rootRecord, share], in: container.privateCloudDatabase)
 
         saveLocator(locator)
-        setLocalSnapshotUpdatedAt(snapshot.updatedAt)
-        setLocalSnapshotDirty(false)
+        finishSnapshotSync(snapshot.updatedAt, expectedRevision: expectedRevision)
         lastSyncAt = Date()
         state = .ownerShared
         return UICloudSharingController(share: share, container: container)
     }
 
     func syncNow() async {
-        guard isConfigured, let locator = storedLocator() else { return }
-        guard Self.canUseCloudKitContainer else { return }
-        let previousState = state
+        guard isConfigured, storedLocator() != nil, Self.canUseCloudKitContainer else { return }
+        if isSyncInProgress {
+            needsFollowUpSync = true
+            return
+        }
+
+        isSyncInProgress = true
+        defer { isSyncInProgress = false }
+        repeat {
+            needsFollowUpSync = false
+            await performSingleSync()
+        } while needsFollowUpSync && !Task.isCancelled
+    }
+
+    private func performSingleSync() async {
+        guard let locator = storedLocator() else { return }
+        let expectedRevision = localMutationRevision
         state = .syncing
         do {
             let database = locator.isOwner ? container.privateCloudDatabase : container.sharedCloudDatabase
@@ -230,9 +266,18 @@ final class FamilyCloudStore: ObservableObject {
 
             if let remoteRecord {
                 let remoteSnapshot = try decodeSnapshot(from: remoteRecord)
+                guard localMutationRevision == expectedRevision else {
+                    throw FamilyCloudError.localDataChangedDuringSync
+                }
                 let hasLocalChanges = localSnapshotIsDirty()
                 if remoteSnapshot.updatedAt > localUpdatedAt, !hasLocalChanges {
-                    try await applyRemoteSnapshot(remoteSnapshot, rootRecord: remoteRecord, database: database)
+                    try await applyRemoteSnapshot(
+                        remoteSnapshot,
+                        rootRecord: remoteRecord,
+                        database: database,
+                        expectedRevision: expectedRevision
+                    )
+                    finishSnapshotSync(remoteSnapshot.updatedAt, expectedRevision: expectedRevision)
                 } else if remoteSnapshot.updatedAt > localUpdatedAt {
                     let localSnapshot = try currentSnapshot(updatedAt: localUpdatedAt)
                     let mergedSnapshot = mergeSnapshots(
@@ -245,7 +290,8 @@ final class FamilyCloudStore: ObservableObject {
                         remoteSnapshot: remoteSnapshot,
                         rootRecord: remoteRecord,
                         locator: locator,
-                        database: database
+                        database: database,
+                        expectedRevision: expectedRevision
                     )
                 } else if localUpdatedAt > remoteSnapshot.updatedAt {
                     let localSnapshot = try currentSnapshot(updatedAt: localUpdatedAt)
@@ -254,43 +300,90 @@ final class FamilyCloudStore: ObservableObject {
                         remote: remoteSnapshot,
                         preferRemoteFields: false
                     )
-                    try await applyRemoteSnapshot(mergedSnapshot, rootRecord: remoteRecord, database: database)
+                    try await applyRemoteSnapshot(
+                        mergedSnapshot,
+                        rootRecord: remoteRecord,
+                        database: database,
+                        expectedRevision: expectedRevision
+                    )
                     _ = try await saveSnapshot(mergedSnapshot, rootRecord: remoteRecord, database: database)
                     try await upsertAchievementAssets(locator: locator, rootRecord: remoteRecord, database: database)
-                    setLocalSnapshotUpdatedAt(mergedSnapshot.updatedAt)
-                    setLocalSnapshotDirty(false)
+                    finishSnapshotSync(mergedSnapshot.updatedAt, expectedRevision: expectedRevision)
                 }
             } else if locator.isOwner {
                 let localSnapshot = try snapshotForUpload()
                 let rootRecord = CKRecord(recordType: RecordType.babySpace, recordID: locator.recordID)
                 _ = try await saveSnapshot(localSnapshot, rootRecord: rootRecord, database: database)
                 try await upsertAchievementAssets(locator: locator, rootRecord: rootRecord, database: database)
-                setLocalSnapshotUpdatedAt(localSnapshot.updatedAt)
-                setLocalSnapshotDirty(false)
+                finishSnapshotSync(localSnapshot.updatedAt, expectedRevision: expectedRevision)
             } else {
                 throw FamilyCloudError.recordNotFound
             }
 
             lastSyncAt = Date()
+            syncRetryAttempt = 0
             state = locator.isOwner ? .ownerShared : .joinedShared
+        } catch FamilyCloudError.localDataChangedDuringSync {
+            needsFollowUpSync = true
         } catch {
             state = .failed(error.localizedDescription)
-            if case .syncing = previousState {
-                state = .failed(error.localizedDescription)
-            }
+            scheduleRetryIfNeeded(for: error)
         }
     }
 
-    func scheduleUpload(reason: String = "") {
+    func scheduleUpload(reason _: String = "") {
         guard isConfigured, !isApplyingRemoteSnapshot else { return }
+        localMutationRevision &+= 1
+        syncRetryAttempt = 0
         setLocalSnapshotUpdatedAt(Date())
         setLocalSnapshotDirty(true)
         guard storedLocator() != nil else { return }
         scheduledUploadTask?.cancel()
         scheduledUploadTask = Task { [weak self] in
             guard let self else { return }
-            try? await Task.sleep(nanoseconds: UInt64(self.syncDebounce * 1_000_000_000))
+            do {
+                try await Task.sleep(nanoseconds: UInt64(self.syncDebounce * 1_000_000_000))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
             await self.syncNow()
+        }
+    }
+
+    private func scheduleRetryIfNeeded(for error: Error) {
+        guard syncRetryAttempt < maxSyncRetryAttempts,
+              let delay = retryDelay(for: error) else {
+            return
+        }
+        syncRetryAttempt += 1
+        scheduledUploadTask?.cancel()
+        scheduledUploadTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self else { return }
+            await self.syncNow()
+        }
+    }
+
+    private func retryDelay(for error: Error) -> TimeInterval? {
+        guard let cloudError = error as? CKError else { return nil }
+        let serverDelay = (cloudError.userInfo[CKErrorRetryAfterKey] as? NSNumber)?.doubleValue
+        switch cloudError.code {
+        case .networkUnavailable,
+             .networkFailure,
+             .serviceUnavailable,
+             .requestRateLimited,
+             .zoneBusy,
+             .serverRecordChanged,
+             .partialFailure:
+            let exponentialDelay = pow(2, Double(syncRetryAttempt + 1))
+            return max(serverDelay ?? 0, exponentialDelay)
+        default:
+            return nil
         }
     }
 
@@ -312,6 +405,11 @@ final class FamilyCloudStore: ObservableObject {
     func markAchievementDeleted(_ id: UUID) {
         addDeletedID(id, key: deletedAchievementIDsKey)
         scheduleUpload(reason: "achievement-delete")
+    }
+
+    func markSubjectiveStateCheckInDeleted(_ id: UUID) {
+        addDeletedID(id, key: deletedSubjectiveStateCheckInIDsKey)
+        scheduleUpload(reason: "subjective-state-delete")
     }
 
     func acceptShare(metadata: CKShare.Metadata) async {
@@ -366,64 +464,100 @@ final class FamilyCloudStore: ObservableObject {
               let activityStore,
               let growthMetricStore,
               let achievementStore,
-              let companionStore else {
+              let companionStore,
+              let subjectiveStateStore else {
             throw FamilyCloudError.notConfigured
         }
+
+        let deletedFeedingSessionIDs = deletedFeedingSessionIDs()
+        let deletedCareRecordIDs = deletedCareRecordIDs()
+        let deletedGrowthMetricRecordIDs = deletedGrowthMetricRecordIDs()
+        let deletedAchievementIDs = deletedAchievementIDs()
+        let deletedSubjectiveStateCheckInIDs = deletedSubjectiveStateCheckInIDs()
 
         return FamilyCloudSnapshot(
             profile: profileStore.currentProfile,
             feedingSessions: feedingStore.exportSessions()
-                .filter { !deletedFeedingSessionIDs().contains($0.id) },
+                .filter { !deletedFeedingSessionIDs.contains($0.id) },
             careRecords: activityStore.exportCareRecords()
-                .filter { !deletedCareRecordIDs().contains($0.id) },
+                .filter { !deletedCareRecordIDs.contains($0.id) },
             growthMetricRecords: growthMetricStore.exportRecords()
-                .filter { !deletedGrowthMetricRecordIDs().contains($0.id) },
+                .filter { !deletedGrowthMetricRecordIDs.contains($0.id) },
             achievements: achievementStore.exportAchievements()
-                .filter { !deletedAchievementIDs().contains($0.id) },
-            deletedFeedingSessionIDs: Array(deletedFeedingSessionIDs()),
-            deletedCareRecordIDs: Array(deletedCareRecordIDs()),
-            deletedGrowthMetricRecordIDs: Array(deletedGrowthMetricRecordIDs()),
-            deletedAchievementIDs: Array(deletedAchievementIDs()),
+                .filter { !deletedAchievementIDs.contains($0.id) },
+            subjectiveStateCheckIns: subjectiveStateStore.exportCheckIns()
+                .filter { !deletedSubjectiveStateCheckInIDs.contains($0.id) },
+            deletedFeedingSessionIDs: sortedIDs(deletedFeedingSessionIDs),
+            deletedCareRecordIDs: sortedIDs(deletedCareRecordIDs),
+            deletedGrowthMetricRecordIDs: sortedIDs(deletedGrowthMetricRecordIDs),
+            deletedAchievementIDs: sortedIDs(deletedAchievementIDs),
+            deletedSubjectiveStateCheckInIDs: sortedIDs(deletedSubjectiveStateCheckInIDs),
             selectedCompanionID: companionStore.selectedID,
             temperamentResult: temperamentStore?.exportResult(),
+            recruitment: CompanionRecruitmentStore.shared.exportSnapshot(),
+            sceneEntitlements: SceneEntitlementStore.shared.exportEntitlements(),
             updatedAt: updatedAt
         )
     }
 
-    private func applyRemoteSnapshot(_ snapshot: FamilyCloudSnapshot, rootRecord: CKRecord, database: CKDatabase) async throws {
+    private func applyRemoteSnapshot(
+        _ snapshot: FamilyCloudSnapshot,
+        rootRecord: CKRecord,
+        database: CKDatabase,
+        expectedRevision: UInt64
+    ) async throws {
         guard let profileStore,
               let feedingStore,
               let activityStore,
               let growthMetricStore,
               let achievementStore,
-              let companionStore else {
+              let companionStore,
+              let subjectiveStateStore else {
             throw FamilyCloudError.notConfigured
         }
         let assets = try await fetchAchievementAssetFiles(rootRecord: rootRecord, database: database)
+        guard localMutationRevision == expectedRevision else {
+            throw FamilyCloudError.localDataChangedDuringSync
+        }
+        let deletedFeedingSessionIDs = Set(snapshot.deletedFeedingSessionIDs ?? [])
+        let deletedCareRecordIDs = Set(snapshot.deletedCareRecordIDs ?? [])
+        let deletedGrowthMetricRecordIDs = Set(snapshot.deletedGrowthMetricRecordIDs ?? [])
+        let deletedAchievementIDs = Set(snapshot.deletedAchievementIDs ?? [])
+        let deletedSubjectiveStateCheckInIDs = Set(snapshot.deletedSubjectiveStateCheckInIDs ?? [])
         isApplyingRemoteSnapshot = true
         defer { isApplyingRemoteSnapshot = false }
-        setDeletedFeedingSessionIDs(Set(snapshot.deletedFeedingSessionIDs ?? []))
-        setDeletedCareRecordIDs(Set(snapshot.deletedCareRecordIDs ?? []))
-        setDeletedGrowthMetricRecordIDs(Set(snapshot.deletedGrowthMetricRecordIDs ?? []))
-        setDeletedAchievementIDs(Set(snapshot.deletedAchievementIDs ?? []))
+        setDeletedFeedingSessionIDs(deletedFeedingSessionIDs)
+        setDeletedCareRecordIDs(deletedCareRecordIDs)
+        setDeletedGrowthMetricRecordIDs(deletedGrowthMetricRecordIDs)
+        setDeletedAchievementIDs(deletedAchievementIDs)
+        setDeletedSubjectiveStateCheckInIDs(deletedSubjectiveStateCheckInIDs)
         profileStore.importProfile(snapshot.profile)
         feedingStore.importSessions(
-            snapshot.feedingSessions.filter { !(snapshot.deletedFeedingSessionIDs ?? []).contains($0.id) }
+            snapshot.feedingSessions.filter { !deletedFeedingSessionIDs.contains($0.id) }
         )
         activityStore.importCareRecords(
-            snapshot.careRecords.filter { !(snapshot.deletedCareRecordIDs ?? []).contains($0.id) }
+            snapshot.careRecords.filter { !deletedCareRecordIDs.contains($0.id) }
         )
         growthMetricStore.importRecords(
-            (snapshot.growthMetricRecords ?? []).filter { !(snapshot.deletedGrowthMetricRecordIDs ?? []).contains($0.id) }
+            (snapshot.growthMetricRecords ?? []).filter { !deletedGrowthMetricRecordIDs.contains($0.id) }
         )
+        if let subjectiveStateCheckIns = snapshot.subjectiveStateCheckIns {
+            subjectiveStateStore.importCheckIns(
+                subjectiveStateCheckIns.filter { !deletedSubjectiveStateCheckInIDs.contains($0.id) }
+            )
+        }
         companionStore.importSelectedID(snapshot.selectedCompanionID)
         temperamentStore?.importResult(snapshot.temperamentResult)
+        if let recruitment = snapshot.recruitment {
+            CompanionRecruitmentStore.shared.importSnapshot(recruitment)
+        }
+        if let sceneEntitlements = snapshot.sceneEntitlements {
+            SceneEntitlementStore.shared.importEntitlements(sceneEntitlements)
+        }
         try achievementStore.importAchievements(
-            snapshot.achievements.filter { !(snapshot.deletedAchievementIDs ?? []).contains($0.id) },
+            snapshot.achievements.filter { !deletedAchievementIDs.contains($0.id) },
             assetFiles: assets
         )
-        setLocalSnapshotUpdatedAt(snapshot.updatedAt)
-        setLocalSnapshotDirty(false)
     }
 
     private func applyAndSaveIfNeeded(
@@ -431,17 +565,37 @@ final class FamilyCloudStore: ObservableObject {
         remoteSnapshot: FamilyCloudSnapshot,
         rootRecord: CKRecord,
         locator: StoredLocator,
-        database: CKDatabase
+        database: CKDatabase,
+        expectedRevision: UInt64
     ) async throws {
         if snapshotPayloadEquals(mergedSnapshot, remoteSnapshot) {
-            try await applyRemoteSnapshot(remoteSnapshot, rootRecord: rootRecord, database: database)
+            try await applyRemoteSnapshot(
+                remoteSnapshot,
+                rootRecord: rootRecord,
+                database: database,
+                expectedRevision: expectedRevision
+            )
+            finishSnapshotSync(remoteSnapshot.updatedAt, expectedRevision: expectedRevision)
             return
         }
 
-        try await applyRemoteSnapshot(mergedSnapshot, rootRecord: rootRecord, database: database)
+        try await applyRemoteSnapshot(
+            mergedSnapshot,
+            rootRecord: rootRecord,
+            database: database,
+            expectedRevision: expectedRevision
+        )
         _ = try await saveSnapshot(mergedSnapshot, rootRecord: rootRecord, database: database)
         try await upsertAchievementAssets(locator: locator, rootRecord: rootRecord, database: database)
-        setLocalSnapshotUpdatedAt(mergedSnapshot.updatedAt)
+        finishSnapshotSync(mergedSnapshot.updatedAt, expectedRevision: expectedRevision)
+    }
+
+    private func finishSnapshotSync(_ updatedAt: Date, expectedRevision: UInt64) {
+        guard localMutationRevision == expectedRevision else {
+            needsFollowUpSync = true
+            return
+        }
+        setLocalSnapshotUpdatedAt(updatedAt)
         setLocalSnapshotDirty(false)
     }
 
@@ -459,6 +613,8 @@ final class FamilyCloudStore: ObservableObject {
             .union(remote.deletedGrowthMetricRecordIDs ?? [])
         let deletedAchievementIDs = Set(local.deletedAchievementIDs ?? [])
             .union(remote.deletedAchievementIDs ?? [])
+        let deletedSubjectiveStateCheckInIDs = Set(local.deletedSubjectiveStateCheckInIDs ?? [])
+            .union(remote.deletedSubjectiveStateCheckInIDs ?? [])
         return FamilyCloudSnapshot(
             profile: fieldSource.profile,
             feedingSessions: mergedByID(
@@ -489,14 +645,89 @@ final class FamilyCloudStore: ObservableObject {
                 preferRemote: preferRemoteFields,
                 sortedBy: { $0.completedAt > $1.completedAt }
             ),
-            deletedFeedingSessionIDs: Array(deletedFeedingSessionIDs),
-            deletedCareRecordIDs: Array(deletedCareRecordIDs),
-            deletedGrowthMetricRecordIDs: Array(deletedGrowthMetricRecordIDs),
-            deletedAchievementIDs: Array(deletedAchievementIDs),
+            subjectiveStateCheckIns: mergedSubjectiveStateCheckIns(
+                local.subjectiveStateCheckIns ?? [],
+                remote.subjectiveStateCheckIns ?? [],
+                deletedIDs: deletedSubjectiveStateCheckInIDs
+            ),
+            deletedFeedingSessionIDs: sortedIDs(deletedFeedingSessionIDs),
+            deletedCareRecordIDs: sortedIDs(deletedCareRecordIDs),
+            deletedGrowthMetricRecordIDs: sortedIDs(deletedGrowthMetricRecordIDs),
+            deletedAchievementIDs: sortedIDs(deletedAchievementIDs),
+            deletedSubjectiveStateCheckInIDs: sortedIDs(deletedSubjectiveStateCheckInIDs),
             selectedCompanionID: fieldSource.selectedCompanionID,
             temperamentResult: fieldSource.temperamentResult,
+            recruitment: mergeRecruitmentSnapshots(
+                local.recruitment,
+                remote.recruitment,
+                preferRemote: preferRemoteFields
+            ),
+            sceneEntitlements: mergedEntitlements(
+                local.sceneEntitlements ?? [],
+                remote.sceneEntitlements ?? []
+            ),
             updatedAt: nextSnapshotUpdatedAt(local.updatedAt, remote.updatedAt)
         )
+    }
+
+    private func mergeRecruitmentSnapshots(
+        _ local: CompanionRecruitmentSnapshot?,
+        _ remote: CompanionRecruitmentSnapshot?,
+        preferRemote: Bool
+    ) -> CompanionRecruitmentSnapshot? {
+        guard let local else { return remote }
+        guard let remote else { return local }
+        let fieldSource = preferRemote ? remote : local
+        var transactionByID = Dictionary(uniqueKeysWithValues: local.transactions.map { ($0.id, $0) })
+        for transaction in remote.transactions {
+            transactionByID[transaction.id] = transactionByID[transaction.id] ?? transaction
+        }
+        var friendshipValues = local.friendshipValues
+        for (companionID, value) in remote.friendshipValues {
+            friendshipValues[companionID] = max(friendshipValues[companionID] ?? 0, value)
+        }
+        let mergedTransactions = transactionByID.values.sorted { $0.createdAt < $1.createdAt }
+        let balanceAnchor = max(recruitmentBalanceAnchor(local), recruitmentBalanceAnchor(remote))
+        let mergedBalance = max(
+            balanceAnchor
+                + mergedTransactions.reduce(0) { $0 + $1.amount }
+                - friendshipValues.values.reduce(0, +),
+            0
+        )
+        return CompanionRecruitmentSnapshot(
+            bbBucks: mergedBalance,
+            balanceAnchor: balanceAnchor,
+            friendshipValues: friendshipValues,
+            recruitedIDs: local.recruitedIDs.union(remote.recruitedIDs),
+            transactions: mergedTransactions,
+            relationshipState: fieldSource.relationshipState,
+            historicalImportSettlement: HistoricalImportSettlement(
+                awardedAmount: max(
+                    local.historicalImportSettlement.awardedAmount,
+                    remote.historicalImportSettlement.awardedAmount
+                ),
+                importFingerprints: local.historicalImportSettlement.importFingerprints
+                    .union(remote.historicalImportSettlement.importFingerprints)
+            )
+        )
+    }
+
+    private func recruitmentBalanceAnchor(_ snapshot: CompanionRecruitmentSnapshot) -> Int {
+        snapshot.balanceAnchor
+            ?? snapshot.bbBucks
+                + snapshot.friendshipValues.values.reduce(0, +)
+                - snapshot.transactions.reduce(0) { $0 + $1.amount }
+    }
+
+    private func mergedEntitlements(
+        _ local: [SceneEntitlement],
+        _ remote: [SceneEntitlement]
+    ) -> [SceneEntitlement] {
+        var byID = Dictionary(uniqueKeysWithValues: local.map { ($0.id, $0) })
+        for entitlement in remote {
+            byID[entitlement.id] = byID[entitlement.id] ?? entitlement
+        }
+        return byID.values.sorted { $0.awardedAt < $1.awardedAt }
     }
 
     private func mergedByID<Item: Identifiable>(
@@ -514,6 +745,31 @@ final class FamilyCloudStore: ObservableObject {
             merged[item.id] = item
         }
         return Array(merged.values).sorted(by: areInIncreasingOrder)
+    }
+
+    private func mergedSubjectiveStateCheckIns(
+        _ localItems: [SubjectiveStateCheckIn],
+        _ remoteItems: [SubjectiveStateCheckIn],
+        deletedIDs: Set<UUID>
+    ) -> [SubjectiveStateCheckIn] {
+        var merged: [UUID: SubjectiveStateCheckIn] = [:]
+        for item in localItems where !deletedIDs.contains(item.id) {
+            merged[item.id] = item
+        }
+        for item in remoteItems where !deletedIDs.contains(item.id) {
+            guard let current = merged[item.id] else {
+                merged[item.id] = item
+                continue
+            }
+            if item.updatedAt > current.updatedAt {
+                merged[item.id] = item
+            }
+        }
+        return merged.values.sorted { $0.recordedAt > $1.recordedAt }
+    }
+
+    private func sortedIDs(_ ids: Set<UUID>) -> [UUID] {
+        ids.sorted { $0.uuidString < $1.uuidString }
     }
 
     private func nextSnapshotUpdatedAt(_ lhs: Date, _ rhs: Date) -> Date {
@@ -557,11 +813,22 @@ final class FamilyCloudStore: ObservableObject {
     private func decodeSnapshot(from record: CKRecord) throws -> FamilyCloudSnapshot {
         if let asset = record[Field.snapshotAsset] as? CKAsset,
            let fileURL = asset.fileURL {
-            let data = try Data(contentsOf: fileURL)
+            let values = try fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+            guard values.isRegularFile != false,
+                  (values.fileSize ?? 0) <= maxSnapshotByteCount else {
+                throw FamilyCloudError.snapshotTooLarge
+            }
+            let data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
+            guard data.count <= maxSnapshotByteCount else {
+                throw FamilyCloudError.snapshotTooLarge
+            }
             return try JSONDecoder().decode(FamilyCloudSnapshot.self, from: data)
         }
 
         if let data = record[Field.snapshot] as? Data {
+            guard data.count <= maxSnapshotByteCount else {
+                throw FamilyCloudError.snapshotTooLarge
+            }
             return try JSONDecoder().decode(FamilyCloudSnapshot.self, from: data)
         }
 
@@ -584,7 +851,12 @@ final class FamilyCloudStore: ObservableObject {
             let record = try await fetchOptionalRecord(recordID, from: database)
                 ?? CKRecord(recordType: RecordType.achievementAsset, recordID: recordID)
             record[Field.babySpace] = CKRecord.Reference(record: rootRecord, action: .deleteSelf)
-            record[Field.stickerFilename] = item.stickerFilename as CKRecordValue
+            if let stickerFilename = item.stickerFilename {
+                record[Field.stickerFilename] = stickerFilename as CKRecordValue
+            } else {
+                record[Field.stickerFilename] = nil
+                record[Field.stickerAsset] = nil
+            }
             if let originalFilename = item.originalFilename {
                 record[Field.originalFilename] = originalFilename as CKRecordValue
             } else {
@@ -600,29 +872,88 @@ final class FamilyCloudStore: ObservableObject {
             } else if item.originalFilename == nil {
                 record[Field.originalAsset] = nil
             }
+            setFilename(item.sourceFilename, assetURL: item.sourceURL, filenameField: Field.sourceFilename, assetField: Field.sourceAsset, record: record, temporaryURLs: &temporaryURLs)
+            setFilename(item.livePhotoStillFilename, assetURL: item.livePhotoStillURL, filenameField: Field.livePhotoStillFilename, assetField: Field.livePhotoStillAsset, record: record, temporaryURLs: &temporaryURLs)
+            setFilename(item.livePhotoMovieFilename, assetURL: item.livePhotoMovieURL, filenameField: Field.livePhotoMovieFilename, assetField: Field.livePhotoMovieAsset, record: record, temporaryURLs: &temporaryURLs)
             records.append(record)
         }
 
         try await save(records: records, in: database)
     }
 
-    private func fetchAchievementAssetFiles(rootRecord: CKRecord, database: CKDatabase) async throws -> [String: AchievementAssetFiles] {
+    private func fetchAchievementAssetFiles(rootRecord: CKRecord, database: CKDatabase) async throws -> [UUID: AchievementAssetFiles] {
         let reference = CKRecord.Reference(record: rootRecord, action: .none)
         let predicate = NSPredicate(format: "%K == %@", Field.babySpace, reference)
         let query = CKQuery(recordType: RecordType.achievementAsset, predicate: predicate)
         let records = try await fetchAll(query: query, in: rootRecord.recordID.zoneID, database: database)
-        var files: [String: AchievementAssetFiles] = [:]
+        var files: [UUID: AchievementAssetFiles] = [:]
         for record in records {
-            guard let stickerFilename = record[Field.stickerFilename] as? String else { continue }
-            let originalFilename = record[Field.originalFilename] as? String
-            files[stickerFilename] = AchievementAssetFiles(
+            let prefix = "achievementAsset-"
+            guard record.recordID.recordName.hasPrefix(prefix),
+                  let achievementID = UUID(uuidString: String(record.recordID.recordName.dropFirst(prefix.count))) else {
+                continue
+            }
+            let stickerFilename = (record[Field.stickerFilename] as? String).flatMap { filename in
+                AchievementAssetFilenamePolicy.isValidStickerFilename(filename) ? filename : nil
+            }
+            let originalFilename = (record[Field.originalFilename] as? String).flatMap { filename in
+                AchievementAssetFilenamePolicy.isValidOriginalFilename(filename) ? filename : nil
+            }
+            let sourceFilename = validOriginalFilename(record[Field.sourceFilename] as? String)
+            let livePhotoStillFilename = validOriginalFilename(record[Field.livePhotoStillFilename] as? String)
+            let livePhotoMovieFilename = (record[Field.livePhotoMovieFilename] as? String).flatMap { filename in
+                AchievementAssetFilenamePolicy.isValidLivePhotoFilename(filename) ? filename : nil
+            }
+            files[achievementID] = AchievementAssetFiles(
+                achievementID: achievementID,
                 stickerFilename: stickerFilename,
                 originalFilename: originalFilename,
-                stickerURL: (record[Field.stickerAsset] as? CKAsset)?.fileURL,
-                originalURL: (record[Field.originalAsset] as? CKAsset)?.fileURL
+                sourceFilename: sourceFilename,
+                livePhotoStillFilename: livePhotoStillFilename,
+                livePhotoMovieFilename: livePhotoMovieFilename,
+                stickerURL: safeRemoteAssetURL((record[Field.stickerAsset] as? CKAsset)?.fileURL),
+                originalURL: safeRemoteAssetURL((record[Field.originalAsset] as? CKAsset)?.fileURL),
+                sourceURL: safeRemoteAssetURL((record[Field.sourceAsset] as? CKAsset)?.fileURL),
+                livePhotoStillURL: safeRemoteAssetURL((record[Field.livePhotoStillAsset] as? CKAsset)?.fileURL),
+                livePhotoMovieURL: safeRemoteAssetURL((record[Field.livePhotoMovieAsset] as? CKAsset)?.fileURL)
             )
         }
         return files
+    }
+
+    private func setFilename(
+        _ filename: String?,
+        assetURL: URL?,
+        filenameField: String,
+        assetField: String,
+        record: CKRecord,
+        temporaryURLs: inout [URL]
+    ) {
+        guard let filename else {
+            record[filenameField] = nil
+            record[assetField] = nil
+            return
+        }
+        record[filenameField] = filename as CKRecordValue
+        if let assetURL {
+            temporaryURLs.append(assetURL)
+            record[assetField] = CKAsset(fileURL: assetURL)
+        }
+    }
+
+    private func validOriginalFilename(_ filename: String?) -> String? {
+        filename.flatMap { AchievementAssetFilenamePolicy.isValidOriginalFilename($0) ? $0 : nil }
+    }
+
+    private func safeRemoteAssetURL(_ url: URL?) -> URL? {
+        guard let url, url.isFileURL,
+              let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+              values.isRegularFile != false,
+              let fileSize = values.fileSize,
+              fileSize <= maxAchievementAssetByteCount else {
+            return nil
+        }
+        return url
     }
 
     private func existingOrNewShare(for rootRecord: CKRecord) async throws -> CKShare {
@@ -687,6 +1018,13 @@ final class FamilyCloudStore: ObservableObject {
 
     private func save(records: [CKRecord], in database: CKDatabase) async throws {
         guard !records.isEmpty else { return }
+        for batchStart in stride(from: 0, to: records.count, by: cloudModifyBatchSize) {
+            let batchEnd = min(batchStart + cloudModifyBatchSize, records.count)
+            try await saveBatch(Array(records[batchStart..<batchEnd]), in: database)
+        }
+    }
+
+    private func saveBatch(_ records: [CKRecord], in database: CKDatabase) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let operation = CKModifyRecordsOperation(recordsToSave: records, recordIDsToDelete: nil)
             operation.savePolicy = .changedKeys
@@ -800,6 +1138,10 @@ final class FamilyCloudStore: ObservableObject {
         deletedIDs(for: deletedAchievementIDsKey)
     }
 
+    private func deletedSubjectiveStateCheckInIDs() -> Set<UUID> {
+        deletedIDs(for: deletedSubjectiveStateCheckInIDsKey)
+    }
+
     private func setDeletedFeedingSessionIDs(_ ids: Set<UUID>) {
         setDeletedIDs(ids, key: deletedFeedingSessionIDsKey)
     }
@@ -814,6 +1156,10 @@ final class FamilyCloudStore: ObservableObject {
 
     private func setDeletedAchievementIDs(_ ids: Set<UUID>) {
         setDeletedIDs(ids, key: deletedAchievementIDsKey)
+    }
+
+    private func setDeletedSubjectiveStateCheckInIDs(_ ids: Set<UUID>) {
+        setDeletedIDs(ids, key: deletedSubjectiveStateCheckInIDsKey)
     }
 
     private func deletedIDs(for key: String) -> Set<UUID> {
@@ -865,6 +1211,8 @@ enum FamilyCloudError: LocalizedError {
     case recordNotFound
     case shareUnavailable
     case invalidSnapshot
+    case snapshotTooLarge
+    case localDataChangedDuringSync
 
     var errorDescription: String? {
         switch self {
@@ -873,6 +1221,8 @@ enum FamilyCloudError: LocalizedError {
         case .recordNotFound: return "没有找到宝宝共享空间"
         case .shareUnavailable: return "无法创建或读取共享邀请"
         case .invalidSnapshot: return "共享数据暂时无法读取"
+        case .snapshotTooLarge: return "共享数据文件异常，已停止读取"
+        case .localDataChangedDuringSync: return "本机记录已更新，正在重新同步"
         }
     }
 }

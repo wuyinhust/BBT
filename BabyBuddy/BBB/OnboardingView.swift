@@ -1,536 +1,1013 @@
 import SwiftUI
 
+private enum TemperamentAnimalPalette {
+    static let bunny = DesignToken.easyActivity
+    static let fawn = DesignToken.warning
+    static let duck = DesignToken.reward
+    static let samoyed = DesignToken.easySleep
+    static let otter = DesignToken.easyYearning
+    static let fennec = DesignToken.easyEat
+    static let redPanda = DesignToken.activityDiaper
+    static let koala = DesignToken.grayNeutral
+    static let sloth = DesignToken.success
+    static let chipmunk = DesignToken.error
+}
+
 struct OnboardingView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(BabyProfileStore.self) private var profileStore
     @EnvironmentObject private var companionStore: CompanionStore
     @EnvironmentObject private var temperamentStore: TemperamentProfileStore
+    @EnvironmentObject private var membershipStore: PlusMembershipStore
     @AppStorage(RecordHomeMode.storageKey) private var recordHomeModeRaw = RecordHomeMode.basic.rawValue
 
     let onComplete: () -> Void
     private let prefillFromProfile: Bool
 
-    @State private var step = 0
+    @State private var stage: OnboardingStage
+    @State private var questionIndex = 0
     @State private var babyName = ""
     @State private var birthDate = Calendar.current.date(byAdding: .month, value: -2, to: Date()) ?? Date()
     @State private var gender: BabyGender = .boy
     @State private var answers: [TemperamentDimension: Double] = Dictionary(
         uniqueKeysWithValues: TemperamentQuestion.all.map { ($0.dimension, 3) }
     )
+    @State private var answeredDimensions: Set<TemperamentDimension> = []
     @State private var result: TemperamentAnimal?
-    @State private var selectedCompanionID: String?
     @State private var didHydrateFromProfile = false
-
-    private let buddyColumns = Array(repeating: GridItem(.flexible(minimum: 0), spacing: 10), count: 3)
+    @State private var transitionDirection = 1
+    @State private var selectionFeedbackTrigger = 0
+    @State private var isBuddyFloating = false
+    @State private var showPlusMembership = false
 
     init(prefillFromProfile: Bool = false, onComplete: @escaping () -> Void) {
         self.prefillFromProfile = prefillFromProfile
         self.onComplete = onComplete
+        #if DEBUG
+        let launchesModePage = ProcessInfo.processInfo.arguments.contains("-BBUIOnboardingModePage")
+        _stage = State(initialValue: launchesModePage ? .activation : (prefillFromProfile ? .profile : .hook))
+        #else
+        _stage = State(initialValue: prefillFromProfile ? .profile : .hook)
+        #endif
+    }
+
+    var body: some View {
+        ZStack {
+            onboardingBackground
+
+            VStack(spacing: 0) {
+                topBar
+
+                Group {
+                    switch stage {
+                    case .hook:
+                        hookPage
+                    case .profile:
+                        profilePage
+                    case .quiz:
+                        quizPage
+                    case .result:
+                        resultPage
+                    case .value:
+                        valuePage
+                    case .activation:
+                        activationPage
+                    case .offer:
+                        offerPage
+                    }
+                }
+                .id(pageIdentity)
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: transitionDirection > 0 ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: transitionDirection > 0 ? .leading : .trailing).combined(with: .opacity)
+                    )
+                )
+            }
+        }
+        .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
+        .accessibilityIdentifier("onboarding.screen")
+        .onAppear {
+            hydrateFromProfileIfNeeded()
+            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
+                isBuddyFloating = true
+            }
+        }
+        .sheet(isPresented: $showPlusMembership) {
+            PlusMembershipView()
+        }
+    }
+
+    private var pageIdentity: String {
+        "\(stage.rawValue)-\(stage == .quiz ? questionIndex : 0)"
     }
 
     private var canContinueProfile: Bool {
         !babyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private var totalSteps: Int {
-        prefillFromProfile ? 3 : 4
+    private var currentQuestion: TemperamentQuestion {
+        TemperamentQuestion.all[questionIndex]
     }
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                onboardingBackground
+    private var matchedAnimal: TemperamentAnimal {
+        result ?? TemperamentEngine.match(scores: answers)
+    }
 
-                Group {
-                    switch step {
-                    case 0:
-                        profilePage
-                    case 1:
-                        quizPage
-                    case 2:
-                        resultPage
-                    default:
-                        homeModePage
-                    }
-                }
-                .animation(.spring(response: 0.32, dampingFraction: 0.86), value: step)
+    private var matchedCompanion: BabyCompanion {
+        BabyCompanion.companion(for: matchedAnimal.id)
+    }
+
+    private var progressValue: CGFloat {
+        if prefillFromProfile {
+            switch stage {
+            case .profile: return 0.18
+            case .quiz: return 0.18 + 0.62 * CGFloat(questionIndex + 1) / CGFloat(TemperamentQuestion.all.count)
+            case .result: return 1
+            default: return 0
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if step > 0 {
-                        Button {
-                            step -= 1
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 17, weight: .semibold))
-                        }
-                        .tint(DesignToken.textPrimary)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Text("\(step + 1)/\(totalSteps)")
-                        .font(BBBFont.font(size: 13, weight: .bold))
-                        .foregroundStyle(DesignToken.textSecondary)
-                }
-            }
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .onAppear(perform: hydrateFromProfileIfNeeded)
+        }
+
+        switch stage {
+        case .hook: return 0.06
+        case .profile: return 0.18
+        case .quiz: return 0.18 + 0.34 * CGFloat(questionIndex + 1) / CGFloat(TemperamentQuestion.all.count)
+        case .result: return 0.62
+        case .value: return 0.75
+        case .activation: return 0.88
+        case .offer: return 1
         }
     }
 
+    private var topBar: some View {
+        HStack(spacing: 14) {
+            if stage == .hook {
+                Color.clear.frame(width: 44, height: 44)
+            } else {
+                Button(action: handleBack) {
+                    Image(systemName: prefillFromProfile && stage == .profile ? "xmark" : "chevron.left")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(DesignToken.textPrimary.opacity(0.82))
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(.ultraThinMaterial))
+                        .overlay(Circle().stroke(DesignToken.glassStroke.opacity(0.78), lineWidth: 1))
+                }
+                .buttonStyle(ScaleButtonStyle())
+                .accessibilityLabel(prefillFromProfile && stage == .profile ? "关闭" : "返回")
+            }
+
+            GeometryReader { proxy in
+                Capsule(style: .continuous)
+                    .fill(DesignToken.surfaceRaised.opacity(0.72))
+                    .overlay(alignment: .leading) {
+                        Capsule(style: .continuous)
+                            .fill(DesignToken.primaryGradient)
+                            .frame(width: max(12, proxy.size.width * progressValue))
+                    }
+                    .overlay(Capsule().stroke(DesignToken.glassStroke.opacity(0.7), lineWidth: 0.8))
+            }
+            .frame(height: 7)
+
+            Text(stage == .quiz ? "\(questionIndex + 1)/\(TemperamentQuestion.all.count)" : "BBBuddy")
+                .font(BBBFont.font(size: 12, weight: .bold))
+                .foregroundStyle(DesignToken.textSecondary)
+                .frame(width: 58, alignment: .trailing)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
     private var onboardingBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(hex: "#F8F7FB"),
-                Color(hex: "#F2F7FB"),
-                Color(hex: "#F8F1F5")
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        ZStack(alignment: .top) {
+            DesignToken.canvas
+
+            ZStack {
+                LinearGradient(
+                    colors: onboardingBackgroundColors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                Circle()
+                    .fill(DesignToken.primary.opacity(colorScheme == .dark ? 0.07 : 0.25))
+                    .frame(width: 300, height: 300)
+                    .blur(radius: 70)
+                    .offset(x: 140, y: -80)
+
+                Circle()
+                    .fill(DesignToken.accentBlue.opacity(colorScheme == .dark ? 0.055 : 0.30))
+                    .frame(width: 330, height: 330)
+                    .blur(radius: 80)
+                    .offset(x: -130, y: 150)
+
+                Circle()
+                    .fill(DesignToken.reward.opacity(colorScheme == .dark ? 0.045 : 0.22))
+                    .frame(width: 250, height: 250)
+                    .blur(radius: 72)
+                    .offset(x: 30, y: -190)
+
+                Rectangle().fill(.ultraThinMaterial).opacity(0.14)
+
+                LinearGradient(
+                    colors: [DesignToken.canvas.opacity(0), DesignToken.canvas.opacity(0.28), DesignToken.canvas],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .frame(height: 500)
+            .clipped()
+        }
         .ignoresSafeArea()
     }
 
+    private var onboardingBackgroundColors: [Color] {
+        if colorScheme == .dark {
+            return [DesignToken.canvas, DesignToken.surface, DesignToken.surfaceSoft.opacity(0.82)]
+        }
+        return [DesignToken.easyEatSoft, DesignToken.easySleepSoft, DesignToken.activityDiaperSoft]
+    }
+
+    private var hookPage: some View {
+        pageShell {
+            VStack(spacing: 26) {
+                VStack(spacing: 12) {
+                    Text("少一点猜测，\n多一点看懂")
+                        .font(BBBFont.font(size: 36, weight: .heavy))
+                        .foregroundStyle(DesignToken.textPrimary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+
+                    Text("BBBuddy 把零碎照护变成宝宝的节奏，\n再用一位 Buddy 陪你们一路成长。")
+                        .font(BBBFont.font(size: 15, weight: .semibold))
+                        .foregroundStyle(DesignToken.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                }
+                .padding(.top, 18)
+
+                buddyConstellation
+
+                HStack(spacing: 8) {
+                    valuePill("快速记录", color: DesignToken.easyEat)
+                    valuePill("看见节奏", color: DesignToken.easySleep)
+                    valuePill("收藏成长", color: DesignToken.easyYearning)
+                }
+            }
+        } footer: {
+            primaryActionButton("认识我的宝宝") {
+                go(to: .profile)
+            }
+        }
+    }
+
+    private var buddyConstellation: some View {
+        ZStack {
+            Circle()
+                .fill(DesignToken.surfaceRaised.opacity(0.72))
+                .frame(width: 270, height: 270)
+                .blur(radius: 2)
+
+            Circle()
+                .stroke(DesignToken.glassStroke.opacity(0.82), lineWidth: 1)
+                .frame(width: 234, height: 234)
+
+            if BabyCompanion.all.count >= 3 {
+                CompanionAnimalFigure(companion: BabyCompanion.all[1], isUnlocked: true, size: 128)
+                    .rotationEffect(.degrees(-7))
+                    .offset(x: -92, y: 26)
+                    .opacity(0.82)
+
+                CompanionAnimalFigure(companion: BabyCompanion.all[2], isUnlocked: true, size: 176)
+                    .shadow(color: DesignToken.primary.opacity(0.18), radius: 20, y: 12)
+                    .offset(y: isBuddyFloating ? -8 : 3)
+                    .zIndex(2)
+
+                CompanionAnimalFigure(companion: BabyCompanion.all[5], isUnlocked: true, size: 126)
+                    .rotationEffect(.degrees(7))
+                    .offset(x: 94, y: 30)
+                    .opacity(0.82)
+            }
+        }
+        .frame(height: 300)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("BBBuddy 动物伙伴")
+    }
+
     private var profilePage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                header(
-                    title: "认识宝宝",
-                    subtitle: "先记录基础信息，再为宝宝找到最像的气质小伙伴。"
+        pageShell {
+            VStack(alignment: .leading, spacing: 24) {
+                pageHeader(
+                    eyebrow: "先认识一下",
+                    title: "怎么称呼宝宝？",
+                    subtitle: "出生日期会用来定位月龄内容，其他资料以后都能修改。"
                 )
 
-                VStack(spacing: 14) {
-                    TextField("宝宝名字", text: $babyName)
-                        .textInputAutocapitalization(.never)
-                        .font(BBBFont.font(size: 17, weight: .semibold))
-                        .padding(16)
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white))
-
-                    Picker("性别", selection: $gender) {
-                        ForEach(BabyGender.allCases) { gender in
-                            Text("\(gender.emoji) \(genderTitle(gender))").tag(gender)
-                        }
+                VStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        fieldLabel("宝宝名字")
+                        TextField("输入小名或名字", text: $babyName)
+                            .textInputAutocapitalization(.never)
+                            .font(BBBFont.font(size: 18, weight: .semibold))
+                            .foregroundStyle(DesignToken.textPrimary)
+                            .padding(.horizontal, 16)
+                            .frame(height: 56)
+                            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(DesignToken.surfaceRaised.opacity(0.88)))
                     }
-                    .pickerStyle(.segmented)
 
-                    DatePicker("出生日期", selection: $birthDate, in: ...Date(), displayedComponents: .date)
-                        .datePickerStyle(.compact)
-                        .font(BBBFont.font(size: 17, weight: .semibold))
-                        .padding(16)
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white))
+                    VStack(alignment: .leading, spacing: 8) {
+                        fieldLabel("出生日期")
+                        DatePicker("出生日期", selection: $birthDate, in: ...Date(), displayedComponents: .date)
+                            .labelsHidden()
+                            .datePickerStyle(.compact)
+                            .font(BBBFont.font(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .frame(height: 56)
+                            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(DesignToken.surfaceRaised.opacity(0.88)))
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        fieldLabel("宝宝")
+                        Picker("宝宝", selection: $gender) {
+                            ForEach(BabyGender.allCases) { item in
+                                Text(genderTitle(item)).tag(item)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
                 }
-
-                Spacer(minLength: 18)
-
-                Button {
-                    saveProfile()
-                    step = 1
-                } label: {
-                    Text("开始气质小测试")
-                        .frame(maxWidth: .infinity)
-                }
-                .primaryButtonStyle()
-                .font(BBBFont.font(size: 17, weight: .bold))
-                .disabled(!canContinueProfile)
-                .opacity(canContinueProfile ? 1 : 0.45)
+                .padding(18)
+                .background(onboardingGlassCard(cornerRadius: 28))
             }
-            .padding(22)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        } footer: {
+            primaryActionButton("看看宝宝的气质", disabled: !canContinueProfile) {
+                saveProfile()
+                go(to: .quiz)
+            }
         }
     }
 
     private var quizPage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                header(
-                    title: "9 个小问题",
-                    subtitle: "按宝宝大多数时候的样子选择就好，没有标准答案。"
+        pageShell {
+            VStack(alignment: .leading, spacing: 22) {
+                pageHeader(
+                    eyebrow: "凭第一感觉就好",
+                    title: "这句话像 \(displayName) 吗？",
+                    subtitle: "没有标准答案，选择宝宝大多数时候的样子。"
                 )
 
-                VStack(spacing: 12) {
-                    ForEach(TemperamentQuestion.all) { question in
-                        questionRow(question)
+                VStack(alignment: .leading, spacing: 22) {
+                    Text(currentQuestion.text.localized)
+                        .font(BBBFont.font(size: 24, weight: .bold))
+                        .foregroundStyle(DesignToken.textPrimary)
+                        .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    VStack(spacing: 10) {
+                        ForEach(1...5, id: \.self) { score in
+                            scoreOption(score, for: currentQuestion.dimension)
+                        }
                     }
                 }
-
-                Button {
-                    selectedCompanionID = nil
-                    result = TemperamentEngine.match(scores: answers)
-                    step = 2
-                } label: {
-                    Text("查看宝宝的小伙伴")
-                        .frame(maxWidth: .infinity)
-                }
-                .primaryButtonStyle()
-                .font(BBBFont.font(size: 17, weight: .bold))
-                .padding(.top, 8)
+                .padding(20)
+                .background(onboardingGlassCard(cornerRadius: 30))
             }
-            .padding(22)
+        } footer: {
+            primaryActionButton(
+                questionIndex == TemperamentQuestion.all.count - 1 ? "找到我的 Buddy" : "下一题",
+                disabled: !answeredDimensions.contains(currentQuestion.dimension)
+            ) {
+                advanceQuiz()
+            }
         }
     }
 
     private var resultPage: some View {
-        let matchedAnimal = result ?? TemperamentEngine.match(scores: answers)
-        let selectedCompanion = selectedCompanionID.flatMap { id in
-            BabyCompanion.all.first(where: { $0.id == id })
-        } ?? BabyCompanion.companion(for: matchedAnimal.id)
-        let selectedAnimal = TemperamentEngine.animal(for: selectedCompanion.id)
-        let displayAnimal = selectedAnimal ?? matchedAnimal
-        let savedType = selectedAnimal?.type ?? matchedAnimal.type
-
-        return ScrollView {
+        pageShell {
             VStack(spacing: 20) {
-                header(
-                    title: "\(displayName) 的气质小伙伴",
-                    subtitle: "这是一份当前倾向，不是固定标签。宝宝的节奏会随着成长继续变化。"
+                pageHeader(
+                    eyebrow: "匹配完成",
+                    title: "\(displayName) 的 Buddy 来了",
+                    subtitle: "这是一份当下的气质倾向，不是给宝宝贴上的固定标签。",
+                    alignment: .center
                 )
 
-                resultCard(
-                    companion: selectedCompanion,
-                    animal: selectedAnimal,
-                    accent: displayAnimal.accent
-                )
+                resultCard(companion: matchedCompanion, animal: matchedAnimal)
 
-                HStack(spacing: 10) {
-                    resultActionButton(title: "更改测试结果", icon: "slider.horizontal.3") {
-                        selectedCompanionID = nil
-                        step = 1
+                VStack(spacing: 12) {
+                    HStack(spacing: -8) {
+                        ForEach(Array(BabyCompanion.all.dropFirst(10).prefix(5))) { companion in
+                            CompanionAnimalFigure(companion: companion, isUnlocked: false, size: 54)
+                                .frame(width: 46, height: 54)
+                                .background(Circle().fill(DesignToken.surfaceRaised.opacity(0.84)))
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(DesignToken.glassStroke.opacity(0.9), lineWidth: 1))
+                        }
                     }
 
-                    resultActionButton(title: "恢复推荐", icon: "arrow.counterclockwise") {
-                        selectedCompanionID = nil
-                    }
-                    .opacity(selectedCompanion.id == matchedAnimal.id ? 0.45 : 1)
-                    .disabled(selectedCompanion.id == matchedAnimal.id)
+                    Text("还有 \(max(BabyCompanion.all.count - 1, 0)) 位 Buddy，\n会在一次次照护与成长里前来相遇。")
+                        .font(BBBFont.font(size: 13, weight: .semibold))
+                        .foregroundStyle(DesignToken.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
                 }
-
-                buddySelectionSection(
-                    selectedCompanion: selectedCompanion,
-                    matchedAnimal: matchedAnimal
-                )
-
-                Button {
-                    saveProfile()
-                    temperamentStore.update(
-                        BabyTemperamentResult(
-                            animalID: selectedCompanion.id,
-                            type: savedType,
-                            scores: answers,
-                            completedAt: Date()
-                        )
-                    )
-                    companionStore.selectedID = selectedCompanion.id
-                    if prefillFromProfile {
-                        onComplete()
-                    } else {
-                        step = 3
-                    }
-                } label: {
-                    Text(prefillFromProfile ? "保存并返回" : "选择首页模式")
-                        .frame(maxWidth: .infinity)
-                }
-                .primaryButtonStyle()
-                .font(BBBFont.font(size: 17, weight: .bold))
+                .padding(.top, 2)
             }
-            .padding(22)
+        } footer: {
+            VStack(spacing: 8) {
+                primaryActionButton(prefillFromProfile ? "保存这位 Buddy" : "领取 \(matchedCompanion.localizedName)") {
+                    acceptMatchedBuddy()
+                }
+
+                Button("重新测一次") {
+                    questionIndex = 0
+                    go(to: .quiz, direction: -1)
+                }
+                .font(BBBFont.font(size: 13, weight: .semibold))
+                .foregroundStyle(DesignToken.textSecondary)
+                .frame(minHeight: DesignToken.minimumTapSize)
+            }
         }
     }
 
-    private var homeModePage: some View {
-        ScrollView {
+    private var valuePage: some View {
+        pageShell {
             VStack(alignment: .leading, spacing: 22) {
-                header(
-                    title: "选择首页模式",
-                    subtitle: "之后可以在设置里随时切换，所有记录数据都会保持一致。"
+                pageHeader(
+                    eyebrow: "不是多记一份表格",
+                    title: "记录一次，少猜一点",
+                    subtitle: "BBBuddy 会把当天的照护整理成看得懂的节奏，也把成长中的第一次留在正确的月龄。"
+                )
+
+                VStack(spacing: 14) {
+                    trustFeatureCard(
+                        title: "EASY 照护节奏",
+                        subtitle: "把吃、活动、睡眠串成顺序，帮助你回看宝宝自己的规律。",
+                        badge: "灵活，不强迫作息"
+                    ) {
+                        HStack(spacing: 8) {
+                            rhythmToken("E", title: "吃", color: DesignToken.easyEat)
+                            rhythmToken("A", title: "玩", color: DesignToken.easyActivity)
+                            rhythmToken("S", title: "睡", color: DesignToken.easySleep)
+                            rhythmToken("Y", title: "状态", color: DesignToken.easyYearning)
+                        }
+                    }
+
+                    trustFeatureCard(
+                        title: "月龄成长里程碑",
+                        subtitle: "沿着月龄保存值得纪念的变化，也知道下一阶段可以观察什么。",
+                        badge: "参考 CDC / AAP 观察框架"
+                    ) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(DesignToken.primary)
+                                .frame(width: 42, height: 42)
+                                .background(Circle().fill(DesignToken.primary.opacity(0.13)))
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("这个月的新变化")
+                                    .font(BBBFont.font(size: 14, weight: .bold))
+                                    .foregroundStyle(DesignToken.textPrimary)
+                                Text("观察 · 记录 · 与专业人士沟通")
+                                    .font(BBBFont.font(size: 11, weight: .semibold))
+                                    .foregroundStyle(DesignToken.textSecondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+
+                Text("里程碑用于日常观察与记录，不替代标准化发育筛查或医疗建议。")
+                    .font(BBBFont.font(size: 11, weight: .medium))
+                    .foregroundStyle(DesignToken.textSecondary.opacity(0.86))
+                    .lineSpacing(3)
+                    .padding(.horizontal, 4)
+            }
+        } footer: {
+            primaryActionButton("选择我的记录方式") {
+                go(to: .activation)
+            }
+        }
+    }
+
+    private var activationPage: some View {
+        pageShell {
+            VStack(alignment: .leading, spacing: 22) {
+                pageHeader(
+                    eyebrow: "马上开始",
+                    title: "你想怎样看见今天？",
+                    subtitle: "两种模式共用同一份记录，之后可以随时切换。"
                 )
 
                 VStack(spacing: 12) {
-                    ForEach(RecordHomeMode.allCases) { mode in
+                    ForEach(activationModeOrder, id: \.self) { mode in
                         homeModeOption(mode)
                     }
                 }
-
-                Button {
-                    onComplete()
-                } label: {
-                    Text("进入 BabyBuddy")
-                        .frame(maxWidth: .infinity)
-                }
-                .primaryButtonStyle()
-                .font(BBBFont.font(size: 17, weight: .bold))
-                .padding(.top, 8)
             }
-            .padding(22)
+        } footer: {
+            primaryActionButton(recordHomeModeRaw == RecordHomeMode.easy.rawValue ? "使用 EASY 开始" : "使用基础记录开始") {
+                go(to: .offer)
+            }
         }
     }
 
-    private func homeModeOption(_ mode: RecordHomeMode) -> some View {
-        let isSelected = recordHomeModeRaw == mode.rawValue
-        return Button {
-            recordHomeModeRaw = mode.rawValue
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: mode == .easy ? "repeat.circle.fill" : "list.bullet.rectangle.fill")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(isSelected ? .white : DesignToken.primary)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(isSelected ? DesignToken.primary : DesignToken.primary.opacity(0.12)))
+    private var activationModeOrder: [RecordHomeMode] {
+        guard dynamicTypeSize.isAccessibilitySize,
+              let selectedMode = RecordHomeMode(rawValue: recordHomeModeRaw) else {
+            return [.easy, .basic]
+        }
+        return selectedMode == .easy ? [.easy, .basic] : [.basic, .easy]
+    }
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(mode.title)
-                        .font(BBBFont.font(size: 17, weight: .heavy))
-                        .foregroundStyle(DesignToken.textPrimary)
-                    Text(mode.subtitle)
-                        .font(BBBFont.font(size: 13, weight: .semibold))
-                        .foregroundStyle(DesignToken.textSecondary)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
+    private var offerPage: some View {
+        pageShell {
+            VStack(spacing: 22) {
+                ZStack {
+                    Circle()
+                        .fill(DesignToken.primary.opacity(0.14))
+                        .frame(width: 180, height: 180)
+                    CompanionAnimalFigure(companion: matchedCompanion, isUnlocked: true, size: 165)
+                        .offset(y: isBuddyFloating ? -6 : 3)
                 }
+                .frame(height: 190)
+
+                pageHeader(
+                    eyebrow: membershipStore.isPlusActive ? "PLUS 已准备好" : "把陪伴留给全家",
+                    title: membershipStore.isPlusActive ? "一起开始吧" : "需要更多时，再升级",
+                    subtitle: membershipStore.isPlusActive
+                        ? "\(matchedCompanion.localizedName) 和宝宝的首页都已经准备好了。"
+                        : "免费版可以直接开始。Plus 当前用于邀请另一位家长共同查看和记录。",
+                    alignment: .center
+                )
+
+                if !membershipStore.isPlusActive {
+                    VStack(spacing: 0) {
+                        offerBenefit("person.2.fill", "家庭共享同步")
+                    }
+                    .padding(.horizontal, 16)
+                    .background(onboardingGlassCard(cornerRadius: 26))
+                }
+            }
+        } footer: {
+            VStack(spacing: 8) {
+                primaryActionButton(membershipStore.isPlusActive ? "进入 BBBuddy" : "查看 Plus 方案") {
+                    if membershipStore.isPlusActive {
+                        onComplete()
+                    } else {
+                        showPlusMembership = true
+                    }
+                }
+
+                if !membershipStore.isPlusActive {
+                    Button("先使用免费版") {
+                        onComplete()
+                    }
+                    .font(BBBFont.font(size: 13, weight: .semibold))
+                    .foregroundStyle(DesignToken.textSecondary)
+                    .frame(minHeight: DesignToken.minimumTapSize)
+                }
+            }
+        }
+    }
+
+    private func pageShell<Content: View, Footer: View>(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer
+    ) -> some View {
+        ScrollView(showsIndicators: false) {
+            content()
+                .padding(.horizontal, DesignToken.screenHorizontalPadding)
+                .padding(.top, 18)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 620)
+                .frame(maxWidth: .infinity)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            footer()
+                .padding(.horizontal, DesignToken.screenHorizontalPadding)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
+                .frame(maxWidth: 620)
+                .frame(maxWidth: .infinity)
+                .background(
+                    LinearGradient(
+                    colors: [DesignToken.canvas.opacity(0), DesignToken.canvas.opacity(0.94), DesignToken.canvas],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                    .ignoresSafeArea()
+                )
+        }
+    }
+
+    private func pageHeader(
+        eyebrow: String,
+        title: String,
+        subtitle: String,
+        alignment: TextAlignment = .leading
+    ) -> some View {
+        VStack(alignment: alignment == .center ? .center : .leading, spacing: 9) {
+            Text(eyebrow.localized.uppercased())
+                .font(BBBFont.scaledFont(size: 11, weight: .bold, relativeTo: .caption1, maximumPointSize: 17))
+                .tracking(1.2)
+                .foregroundStyle(DesignToken.primary)
+            Text(title.localized)
+                .font(BBBFont.scaledFont(size: 28, weight: .bold, relativeTo: .largeTitle, maximumPointSize: 42))
+                .foregroundStyle(DesignToken.textPrimary)
+                .multilineTextAlignment(alignment)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
+            Text(subtitle.localized)
+                .font(BBBFont.scaledFont(size: 14, weight: .semibold, relativeTo: .body, maximumPointSize: 23))
+                .foregroundStyle(DesignToken.textSecondary)
+                .multilineTextAlignment(alignment)
+                .lineSpacing(4)
+                .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: alignment == .center ? .center : .leading)
+    }
+
+    private func fieldLabel(_ title: String) -> some View {
+        Text(title.localized)
+            .font(BBBFont.font(size: 12, weight: .bold))
+            .foregroundStyle(DesignToken.textSecondary)
+    }
+
+    private func valuePill(_ title: String, color: Color) -> some View {
+        Text(title.localized)
+            .font(BBBFont.font(size: 11, weight: .bold))
+            .foregroundStyle(DesignToken.textPrimary.opacity(0.82))
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(Capsule().fill(color.opacity(0.12)))
+            .overlay(Capsule().stroke(DesignToken.glassStroke.opacity(0.82), lineWidth: 0.8))
+    }
+
+    private func scoreOption(_ score: Int, for dimension: TemperamentDimension) -> some View {
+        let isSelected = currentScore(for: dimension) == Double(score) && answeredDimensions.contains(dimension)
+
+        return Button {
+            answers[dimension] = Double(score)
+            answeredDimensions.insert(dimension)
+            selectionFeedbackTrigger += 1
+        } label: {
+            HStack(spacing: 12) {
+                Text("\(score)")
+                    .font(BBBFont.font(size: 13, weight: .bold))
+                    .foregroundStyle(isSelected ? DesignToken.onPrimary : DesignToken.textSecondary)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(isSelected ? DesignToken.primary : DesignToken.surfaceRaised.opacity(0.82)))
+
+                Text(scoreLabel(score).localized)
+                    .font(BBBFont.scaledFont(size: 15, weight: isSelected ? .bold : .semibold, relativeTo: .body, maximumPointSize: 24))
+                    .foregroundStyle(DesignToken.textPrimary)
 
                 Spacer()
 
                 if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 22, weight: .bold))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(DesignToken.primary)
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 13)
+            .frame(minHeight: 48)
+            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 6 : 0)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(.white.opacity(0.9))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(isSelected ? DesignToken.primary.opacity(0.62) : DesignToken.line.opacity(0.38), lineWidth: isSelected ? 1.8 : 1)
-                    )
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? DesignToken.primary.opacity(0.12) : DesignToken.surfaceRaised.opacity(0.76))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? DesignToken.primary.opacity(0.52) : DesignToken.glassStroke.opacity(0.62), lineWidth: isSelected ? 1.3 : 0.8)
             )
         }
         .buttonStyle(ScaleButtonStyle())
     }
 
-    private func resultCard(companion: BabyCompanion, animal: TemperamentAnimal?, accent: Color) -> some View {
-        VStack(spacing: 18) {
+    private func scoreLabel(_ score: Int) -> String {
+        switch score {
+        case 1: return "很不像"
+        case 2: return "不太像"
+        case 3: return "说不准"
+        case 4: return "比较像"
+        default: return "很像"
+        }
+    }
+
+    private func resultCard(companion: BabyCompanion, animal: TemperamentAnimal) -> some View {
+        VStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(accent.opacity(0.16))
-                    .frame(width: 210, height: 210)
+                    .fill(animal.accent.opacity(0.15))
+                    .frame(width: 220, height: 220)
                 Circle()
-                    .fill(.white.opacity(0.88))
-                    .frame(width: 174, height: 174)
-                RoundedRectangle(cornerRadius: 44, style: .continuous)
-                    .stroke(accent.opacity(0.20), lineWidth: 1.5)
-                    .frame(width: 174, height: 174)
-                CompanionAnimalFigure(companion: companion, isUnlocked: true, size: 190)
-                    .shadow(color: accent.opacity(0.18), radius: 18, y: 10)
+                    .stroke(DesignToken.glassStroke.opacity(0.86), lineWidth: 1.2)
+                    .frame(width: 188, height: 188)
+                CompanionAnimalFigure(companion: companion, isUnlocked: true, size: 200)
+                    .shadow(color: animal.accent.opacity(0.18), radius: 20, y: 10)
+                    .offset(y: isBuddyFloating ? -5 : 3)
             }
-            .frame(height: 214)
+            .frame(height: 224)
 
-            VStack(spacing: 6) {
-                Text("\(companion.chineseName) · \(companion.species)")
-                    .font(BBBFont.font(size: 20, weight: .heavy))
+            VStack(spacing: 5) {
+                Text("\(companion.catalogNumber) · \(companion.localizedName)")
+                    .font(BBBFont.font(size: 22, weight: .heavy))
                     .foregroundStyle(DesignToken.textPrimary)
-                    .multilineTextAlignment(.center)
-                Text(resultSlogan(for: animal, companion: companion))
-                    .font(BBBFont.font(size: 15, weight: .bold))
-                    .foregroundStyle(accent)
-                    .multilineTextAlignment(.center)
+                Text(animal.slogan.localized)
+                    .font(BBBFont.font(size: 14, weight: .bold))
+                    .foregroundStyle(animal.accent)
             }
 
-            Text(companion.intro)
-                .font(BBBFont.font(size: 15, weight: .heavy))
-                .foregroundStyle(DesignToken.textPrimary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    Capsule()
-                        .fill(accent.opacity(0.14))
-                )
-
-            Text(resultSummary(for: animal, companion: companion))
-                .font(BBBFont.font(size: 17, weight: .semibold))
-                .foregroundStyle(DesignToken.textPrimary)
-                .multilineTextAlignment(.center)
-
-            Text(resultPersonality(for: animal, companion: companion))
-                .font(BBBFont.font(size: 15, weight: .semibold))
+            Text(animal.personality.localized)
+                .font(BBBFont.font(size: 14, weight: .semibold))
                 .foregroundStyle(DesignToken.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
+
+            Text(companion.localizedTemperamentLabel)
+                .font(BBBFont.font(size: 11, weight: .bold))
+                .foregroundStyle(companion.temperamentStyle.text)
+                .padding(.horizontal, 12)
+                .frame(height: 28)
+                .background(Capsule().fill(companion.temperamentStyle.tint.opacity(0.34)))
         }
-        .padding(22)
-        .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(.white.opacity(0.9)))
+        .padding(20)
+        .background(onboardingGlassCard(cornerRadius: 32))
     }
 
-    private func buddySelectionSection(selectedCompanion: BabyCompanion, matchedAnimal: TemperamentAnimal) -> some View {
+    private func trustFeatureCard<Preview: View>(
+        title: String,
+        subtitle: String,
+        badge: String,
+        @ViewBuilder preview: () -> Preview
+    ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("自选 Buddy")
-                        .font(BBBFont.font(size: 19, weight: .heavy))
-                        .foregroundStyle(DesignToken.textPrimary)
-                    Text("测评推荐：\(matchedAnimal.name)")
-                        .font(BBBFont.font(size: 12, weight: .bold))
-                        .foregroundStyle(DesignToken.textSecondary)
-                }
-
-                Spacer()
-
-                if selectedCompanion.id != matchedAnimal.id {
-                    Text("已自选")
-                        .font(BBBFont.font(size: 11, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .frame(height: 24)
-                        .background(Capsule().fill(DesignToken.primaryGradient))
-                }
-            }
-
-            LazyVGrid(columns: buddyColumns, spacing: 10) {
-                ForEach(BabyCompanion.all) { companion in
-                    companionOptionButton(
-                        companion,
-                        selectedID: selectedCompanion.id,
-                        matchedID: matchedAnimal.id,
-                        accent: TemperamentEngine.animal(for: companion.id)?.accent ?? DesignToken.primary
-                    )
-                }
-            }
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(.white.opacity(0.88)))
-    }
-
-    private func companionOptionButton(_ companion: BabyCompanion, selectedID: String, matchedID: String, accent: Color) -> some View {
-        let isSelected = companion.id == selectedID
-        let isMatched = companion.id == matchedID
-
-        return Button {
-            selectedCompanionID = companion.id
-        } label: {
-            VStack(spacing: 6) {
-                ZStack(alignment: .topTrailing) {
-                    Circle()
-                        .fill(accent.opacity(isSelected ? 0.18 : 0.10))
-                        .frame(width: 66, height: 66)
-                    CompanionAnimalFigure(companion: companion, isUnlocked: true, size: 68)
-                        .shadow(color: accent.opacity(isSelected ? 0.18 : 0.08), radius: 10, y: 5)
-
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(DesignToken.primary)
-                            .background(Circle().fill(.white))
-                            .offset(x: 3, y: -1)
-                    }
-                }
-                .frame(height: 70)
-
-                Text(companion.chineseName)
-                    .font(BBBFont.font(size: 13, weight: .heavy))
+                Text(title.localized)
+                    .font(BBBFont.font(size: 18, weight: .bold))
                     .foregroundStyle(DesignToken.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-
-                Text(isMatched ? "测评推荐" : companion.species)
-                    .font(BBBFont.font(size: 10, weight: .bold))
-                    .foregroundStyle(isMatched ? DesignToken.primary : DesignToken.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
+                Spacer(minLength: 8)
+                Text(badge.localized)
+                    .font(BBBFont.font(size: 9, weight: .bold))
+                    .foregroundStyle(DesignToken.primary)
+                    .padding(.horizontal, 8)
+                    .frame(height: 23)
+                    .background(Capsule().fill(DesignToken.primary.opacity(0.10)))
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
-            .frame(height: 128)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(isSelected ? accent.opacity(0.13) : .white.opacity(0.9))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(isSelected ? accent.opacity(0.72) : DesignToken.line.opacity(0.34), lineWidth: isSelected ? 1.8 : 1)
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
-    }
 
-    private func resultActionButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .heavy))
-                Text(title)
-                    .font(BBBFont.font(size: 13, weight: .heavy))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-            }
-            .foregroundStyle(DesignToken.textPrimary)
-            .frame(maxWidth: .infinity)
-            .frame(height: 46)
-            .background(
-                Capsule()
-                    .fill(.white.opacity(0.9))
-                    .overlay(Capsule().stroke(DesignToken.line.opacity(0.42), lineWidth: 1))
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
-    }
-
-    private func header(title: String, subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(BBBFont.font(size: 28, weight: .heavy))
-                .foregroundStyle(DesignToken.textPrimary)
-            Text(subtitle)
-                .font(BBBFont.font(size: 15, weight: .semibold))
+            Text(subtitle.localized)
+                .font(BBBFont.font(size: 13, weight: .semibold))
                 .foregroundStyle(DesignToken.textSecondary)
                 .lineSpacing(3)
+
+            preview()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(onboardingGlassCard(cornerRadius: 26))
     }
 
-    private func questionRow(_ question: TemperamentQuestion) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(question.text)
-                .font(BBBFont.font(size: 17, weight: .semibold))
-                .foregroundStyle(DesignToken.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
+    private func rhythmToken(_ letter: String, title: String, color: Color) -> some View {
+        VStack(spacing: 5) {
+            Text(letter)
+                .font(BBBFont.font(size: 14, weight: .heavy))
+                .foregroundStyle(DesignToken.onPrimary)
+                .frame(width: 34, height: 34)
+                .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(color))
+            Text(title.localized)
+                .font(BBBFont.font(size: 10, weight: .bold))
+                .foregroundStyle(DesignToken.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
 
-            HStack(spacing: 10) {
-                Text("不像")
-                Slider(
-                    value: binding(for: question.dimension),
-                    in: 1...5,
-                    step: 1
-                )
-                .tint(DesignToken.primary)
-                Text("很像")
-            }
-            .font(BBBFont.font(size: 12, weight: .bold))
-            .foregroundStyle(DesignToken.textSecondary)
+    private func homeModeOption(_ mode: RecordHomeMode) -> some View {
+        let isSelected = recordHomeModeRaw == mode.rawValue
 
-            HStack {
-                ForEach(1...5, id: \.self) { value in
-                    Text("\(value)")
-                        .font(BBBFont.font(size: 11, weight: .bold))
-                        .foregroundStyle(currentScore(for: question.dimension) == Double(value) ? DesignToken.primary : DesignToken.textSecondary.opacity(0.55))
-                        .frame(maxWidth: .infinity)
+        return Button {
+            recordHomeModeRaw = mode.rawValue
+            selectionFeedbackTrigger += 1
+        } label: {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Label(
+                        mode.shortTitle,
+                        systemImage: mode == .easy ? AppSemanticIcon.easyMode : AppSemanticIcon.basicMode
+                    )
+                        .font(BBBFont.scaledFont(size: 13, weight: .heavy, relativeTo: .headline, maximumPointSize: 20))
+                        .foregroundStyle(isSelected ? DesignToken.onPrimary : DesignToken.primary)
+                        .padding(.horizontal, 11)
+                        .frame(minHeight: 28)
+                        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 4 : 0)
+                        .background(Capsule().fill(isSelected ? DesignToken.primary : DesignToken.primary.opacity(0.10)))
+
+                    if mode == .easy {
+                        Label("推荐", systemImage: AppSemanticIcon.recommended)
+                            .font(BBBFont.scaledFont(size: 10, weight: .bold, relativeTo: .caption2, maximumPointSize: 15))
+                            .foregroundStyle(DesignToken.easyYearning)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 21, weight: .bold))
+                        .foregroundStyle(isSelected ? DesignToken.primary : DesignToken.textSecondary.opacity(0.34))
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(mode == .easy ? "跟着宝宝的节奏记录" : "按单项快速记录")
+                        .font(BBBFont.scaledFont(size: 18, weight: .bold, relativeTo: .title3, maximumPointSize: 28))
+                        .foregroundStyle(DesignToken.textPrimary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(mode == .easy ? "吃、玩、睡自动串成今天的照护循环。" : "喂养、尿布、睡眠保持熟悉的时间线。")
+                        .font(BBBFont.scaledFont(size: 13, weight: .semibold, relativeTo: .subheadline, maximumPointSize: 21))
+                        .foregroundStyle(DesignToken.textSecondary)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if mode == .easy {
+                    HStack(spacing: 6) {
+                        ForEach(Array(zip(["E", "A", "S", "Y"], [DesignToken.easyEat, DesignToken.easyActivity, DesignToken.easySleep, DesignToken.easyYearning])), id: \.0) { item in
+                            Text(item.0)
+                                .font(BBBFont.font(size: 11, weight: .heavy))
+                                .foregroundStyle(DesignToken.onPrimary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 30)
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(item.1))
+                        }
+                    }
                 }
             }
+            .padding(18)
+            .background(onboardingGlassCard(cornerRadius: 26))
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(isSelected ? DesignToken.primary.opacity(0.56) : Color.clear, lineWidth: 1.5)
+            )
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white.opacity(0.92)))
+        .buttonStyle(ScaleButtonStyle())
     }
 
-    private func binding(for dimension: TemperamentDimension) -> Binding<Double> {
-        Binding {
-            answers[dimension] ?? 3
-        } set: { newValue in
-            answers[dimension] = newValue
+    private func offerBenefit(_ icon: String, _ title: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(DesignToken.primary)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(DesignToken.primary.opacity(0.11)))
+            Text(title.localized)
+                .font(BBBFont.font(size: 14, weight: .bold))
+                .foregroundStyle(DesignToken.textPrimary)
+            Spacer()
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(DesignToken.easyYearning)
+        }
+        .frame(height: 54)
+    }
+
+    private func primaryActionButton(_ title: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    Text(title.localized)
+                        .lineLimit(1)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .bold))
+                }
+
+                HStack(spacing: 8) {
+                    Text(compactActionTitle(for: title).localized)
+                        .lineLimit(1)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .bold))
+                }
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 17, weight: .bold))
+                    .accessibilityHidden(true)
+            }
+            .font(BBBFont.scaledFont(size: 16, weight: .bold, relativeTo: .headline, maximumPointSize: 25))
+            .foregroundStyle(DesignToken.onPrimary)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 54)
+            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 6 : 0)
+            .background(Capsule(style: .continuous).fill(DesignToken.primaryGradient))
+            .shadow(color: DesignToken.primary.opacity(disabled ? 0 : 0.22), radius: 16, y: 8)
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .disabled(disabled)
+        .opacity(disabled ? 0.42 : 1)
+        .accessibilityLabel(title.localized)
+    }
+
+    private func compactActionTitle(for title: String) -> String {
+        switch title {
+        case "找到我的 Buddy": return "找 Buddy"
+        case "使用基础记录开始": return "使用基础记录"
+        case "保存这位 Buddy": return "保存 Buddy"
+        case "查看 Plus 方案": return "Plus"
+        default: return title
         }
     }
 
-    private func currentScore(for dimension: TemperamentDimension) -> Double {
-        answers[dimension] ?? 3
+    private func onboardingGlassCard(cornerRadius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(DesignToken.surfaceRaised.opacity(0.82))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(DesignToken.glassStroke.opacity(0.82), lineWidth: 1)
+            )
+            .shadow(color: DesignToken.shadowColor.opacity(0.07), radius: 18, y: 8)
+    }
+
+    private func advanceQuiz() {
+        guard answeredDimensions.contains(currentQuestion.dimension) else { return }
+
+        if questionIndex < TemperamentQuestion.all.count - 1 {
+            transitionDirection = 1
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                questionIndex += 1
+            }
+        } else {
+            result = TemperamentEngine.match(scores: answers)
+            go(to: .result)
+        }
+    }
+
+    private func acceptMatchedBuddy() {
+        let animal = matchedAnimal
+        let companion = BabyCompanion.companion(for: animal.id)
+
+        saveProfile()
+        temperamentStore.update(
+            BabyTemperamentResult(
+                animalID: companion.id,
+                type: animal.type,
+                scores: answers,
+                completedAt: Date()
+            )
+        )
+        companionStore.selectedID = companion.id
+
+        if prefillFromProfile {
+            onComplete()
+        } else {
+            go(to: .value)
+        }
+    }
+
+    private func go(to newStage: OnboardingStage, direction: Int = 1) {
+        transitionDirection = direction
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
+            stage = newStage
+        }
+    }
+
+    private func handleBack() {
+        if prefillFromProfile && stage == .profile {
+            onComplete()
+            return
+        }
+
+        if stage == .quiz, questionIndex > 0 {
+            transitionDirection = -1
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                questionIndex -= 1
+            }
+            return
+        }
+
+        switch stage {
+        case .hook:
+            break
+        case .profile:
+            go(to: .hook, direction: -1)
+        case .quiz:
+            go(to: .profile, direction: -1)
+        case .result:
+            questionIndex = TemperamentQuestion.all.count - 1
+            go(to: .quiz, direction: -1)
+        case .value:
+            go(to: .result, direction: -1)
+        case .activation:
+            go(to: .value, direction: -1)
+        case .offer:
+            go(to: .activation, direction: -1)
+        }
     }
 
     private var displayName: String {
@@ -540,9 +1017,13 @@ struct OnboardingView: View {
 
     private func genderTitle(_ gender: BabyGender) -> String {
         switch gender {
-        case .boy: return "男宝"
-        case .girl: return "女宝"
+        case .boy: return "男宝".localized
+        case .girl: return "女宝".localized
         }
+    }
+
+    private func currentScore(for dimension: TemperamentDimension) -> Double {
+        answers[dimension] ?? 3
     }
 
     private func hydrateFromProfileIfNeeded() {
@@ -559,12 +1040,8 @@ struct OnboardingView: View {
                 hydratedAnswers[dimension] = score
             }
             answers = hydratedAnswers
+            answeredDimensions = Set(savedResult.scores.keys)
             result = TemperamentEngine.animal(for: savedResult.animalID) ?? TemperamentEngine.match(scores: hydratedAnswers)
-            selectedCompanionID = BabyCompanion.all.contains(where: { $0.id == savedResult.animalID })
-                ? savedResult.animalID
-                : companionStore.selectedID
-        } else {
-            selectedCompanionID = companionStore.selectedID
         }
 
         didHydrateFromProfile = true
@@ -587,25 +1064,19 @@ struct OnboardingView: View {
                 avatarMotionEnabled: currentProfile.isAvatarMotionEnabled
             )
         } else {
-            profileStore.create(
-                name: trimmedName,
-                gender: gender,
-                birthDate: birthDate
-            )
+            profileStore.create(name: trimmedName, gender: gender, birthDate: birthDate)
         }
     }
+}
 
-    private func resultSlogan(for animal: TemperamentAnimal?, companion: BabyCompanion) -> String {
-        animal?.slogan ?? "你为宝宝选中的小伙伴"
-    }
-
-    private func resultSummary(for animal: TemperamentAnimal?, companion: BabyCompanion) -> String {
-        animal?.summary ?? "\(companion.chineseName)会成为宝宝当前的 Buddy，也会出现在陪伴页。"
-    }
-
-    private func resultPersonality(for animal: TemperamentAnimal?, companion: BabyCompanion) -> String {
-        animal?.personality ?? "测试答案会继续保留；这一次，你可以按直觉选择最想陪在宝宝身边的伙伴。"
-    }
+private enum OnboardingStage: Int {
+    case hook
+    case profile
+    case quiz
+    case result
+    case value
+    case activation
+    case offer
 }
 
 private struct TemperamentQuestion: Identifiable {
@@ -679,15 +1150,15 @@ private enum TemperamentEngine {
     ]
 
     private static let animals: [TemperamentAnimal] = [
-        .init(id: "bunny_lulu", name: "洛噗", species: "荷兰垂耳兔宝宝", type: .easy, emoji: "🐰", accent: Color(hex: "#E7A7C4"), slogan: "软软甜甜的小太阳", characterLine: "稳定亲近、反应柔和，是容易被轻轻引导的小甜心。", personality: "洛噗通常节奏稳定，笑容很多，遇到新变化也愿意慢慢试试看。", summary: "大多数时候都比较轻松好带，也很愿意和熟悉的人互动。", profile: [.activityLevel: 3, .regularity: 5, .approach: 4, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
-        .init(id: "fawn_mimi", name: "西咔", species: "梅花鹿宝宝", type: .easy, emoji: "🦌", accent: Color(hex: "#D8A96A"), slogan: "温柔安静的小晨光", characterLine: "安静细腻、喜欢熟悉节奏，需要被温柔守护。", personality: "西咔温和细腻，作息比较有节奏，和熟悉的人在一起时特别放松。", summary: "她带着柔和的小步调，让陪伴变得轻轻的、稳稳的。", profile: [.activityLevel: 2, .regularity: 5, .approach: 3, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
-        .init(id: "cal", name: "柯噜", species: "柯尔鸭宝宝", type: .easy, emoji: "🦆", accent: Color(hex: "#F0C85A"), slogan: "慢半拍的小圆团", characterLine: "圆滚滚、步伐慢半拍，擅长把普通日常变得可爱。", personality: "柯噜总是带着慢半拍的小节奏，回应温和，也很容易被日常里的小事情逗开心。", summary: "像一只把好心情慢慢带来的小鸭子，让照护节奏变得轻松又可爱。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 2, .distractibility: 4, .sensorySensitivity: 2]),
-        .init(id: "samoyed_momo", name: "摩耶", species: "萨摩耶宝宝", type: .easy, emoji: "🐶", accent: Color(hex: "#A8C7FF"), slogan: "笑眯眯的小棉花糖", characterLine: "亲和稳定、适应力强，像随时给人安心的陪伴。", personality: "摩耶亲和、情绪稳定，进入新场景时往往也比较从容。", summary: "稳定、亲近，也很容易让照护者找到节奏。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
-        .init(id: "otter_tangtang", name: "欧缇", species: "亚洲小爪水獭宝宝", type: .intermediate, emoji: "🦦", accent: Color(hex: "#8BC7B1"), slogan: "今天想撒娇，明天想探险", characterLine: "状态丰富、节奏多变，需要弹性和耐心配合。", personality: "欧缇有时轻松好带，有时又特别有自己的节奏，像在不同状态间轻轻切换。", summary: "不是一种固定模板，而是很有层次的小宝宝。", profile: [.activityLevel: 3, .regularity: 3, .approach: 4, .adaptability: 3, .intensity: 3, .mood: 4, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 3]),
-        .init(id: "fenny", name: "芬灵", species: "耳廓狐宝宝", type: .intermediate, emoji: "🦊", accent: Color(hex: "#E9A05E"), slogan: "机灵又讲感觉的小观察家", characterLine: "敏锐聪明、先观察再靠近，对环境里的细节特别有感觉。", personality: "芬灵对外界很敏锐，有时热情靠近，有时又想先看看再说。", summary: "他有自己的感受节奏，需要被理解，而不是被催着快一点。", profile: [.activityLevel: 4, .regularity: 3, .approach: 3, .adaptability: 3, .intensity: 3, .mood: 3, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 5]),
-        .init(id: "redpanda_youyou", name: "瑞迪", species: "小熊猫宝宝", type: .intermediate, emoji: "🐾", accent: Color(hex: "#C88968"), slogan: "有主见的小团子", characterLine: "柔软但有主见，喜欢按自己的方式慢慢进入状态。", personality: "瑞迪既有柔软的一面，也有坚持自己步调的一面，时而乖巧，时而很有态度。", summary: "不是不好带，只是更需要按自己的方式慢慢配合。", profile: [.activityLevel: 3, .regularity: 3, .approach: 3, .adaptability: 2, .intensity: 3, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 3]),
-        .init(id: "koala_anan", name: "阿考", species: "昆士兰考拉宝宝", type: .slowToWarmUp, emoji: "🐨", accent: Color(hex: "#9BB1B8"), slogan: "慢热但很认真的小月亮", characterLine: "慢热谨慎、观察力强，安全感足够后会认真靠近。", personality: "阿考不急着靠近世界，更喜欢先观察，等准备好了才慢慢伸出小手。", summary: "不是慢，而是会先把安全感装满。", profile: [.activityLevel: 2, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 5]),
-        .init(id: "sloth_nono", name: "霍菲", species: "霍氏树懒宝宝", type: .slowToWarmUp, emoji: "🌿", accent: Color(hex: "#8FB98A"), slogan: "慢一点，也一样很可爱", characterLine: "慢节奏、低刺激偏好，需要更从容的过渡时间。", personality: "霍菲喜欢按照自己的小节奏前进，换环境时会先停一停、看一看。", summary: "给他一点缓冲时间，他会用自己的方式慢慢打开。", profile: [.activityLevel: 1, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
-        .init(id: "chipmunk_huohuo", name: "奇比", species: "西伯利亚花栗鼠宝宝", type: .highSensitivity, emoji: "✨", accent: Color(hex: "#FF7A70"), slogan: "反应快、感觉多的小火花", characterLine: "感受强烈、反应很快，需要更多安抚和提前预告。", personality: "奇比感受丰富、反应迅速，喜欢立刻表达自己的不舒服，也常常需要更多安抚和理解。", summary: "不是故意难带，只是比别人更敏锐、更强烈地感受这个世界。", profile: [.activityLevel: 4, .regularity: 1, .approach: 2, .adaptability: 1, .intensity: 5, .mood: 2, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 5])
+        .init(id: "bunny_lulu", name: "洛噗", species: "荷兰垂耳兔宝宝", type: .easy, emoji: "🐰", accent: TemperamentAnimalPalette.bunny, slogan: "软软甜甜的小太阳", characterLine: "稳定亲近、反应柔和，是容易被轻轻引导的小甜心。", personality: "洛噗通常节奏稳定，笑容很多，遇到新变化也愿意慢慢试试看。", summary: "大多数时候都比较轻松好带，也很愿意和熟悉的人互动。", profile: [.activityLevel: 3, .regularity: 5, .approach: 4, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
+        .init(id: "fawn_mimi", name: "西咔", species: "梅花鹿宝宝", type: .easy, emoji: "🦌", accent: TemperamentAnimalPalette.fawn, slogan: "温柔安静的小晨光", characterLine: "安静细腻、喜欢熟悉节奏，需要被温柔守护。", personality: "西咔温和细腻，作息比较有节奏，和熟悉的人在一起时特别放松。", summary: "她带着柔和的小步调，让陪伴变得轻轻的、稳稳的。", profile: [.activityLevel: 2, .regularity: 5, .approach: 3, .adaptability: 5, .intensity: 2, .mood: 5, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
+        .init(id: "cal", name: "柯噜", species: "柯尔鸭宝宝", type: .easy, emoji: "🦆", accent: TemperamentAnimalPalette.duck, slogan: "慢半拍的小圆团", characterLine: "圆滚滚、步伐慢半拍，擅长把普通日常变得可爱。", personality: "柯噜总是带着慢半拍的小节奏，回应温和，也很容易被日常里的小事情逗开心。", summary: "像一只把好心情慢慢带来的小鸭子，让照护节奏变得轻松又可爱。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 2, .distractibility: 4, .sensorySensitivity: 2]),
+        .init(id: "samoyed_momo", name: "摩耶", species: "萨摩耶宝宝", type: .easy, emoji: "🐶", accent: TemperamentAnimalPalette.samoyed, slogan: "笑眯眯的小棉花糖", characterLine: "亲和稳定、适应力强，像随时给人安心的陪伴。", personality: "摩耶亲和、情绪稳定，进入新场景时往往也比较从容。", summary: "稳定、亲近，也很容易让照护者找到节奏。", profile: [.activityLevel: 3, .regularity: 5, .approach: 5, .adaptability: 5, .intensity: 3, .mood: 5, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 2]),
+        .init(id: "otter_tangtang", name: "欧缇", species: "亚洲小爪水獭宝宝", type: .intermediate, emoji: "🦦", accent: TemperamentAnimalPalette.otter, slogan: "今天想撒娇，明天想探险", characterLine: "状态丰富、节奏多变，需要弹性和耐心配合。", personality: "欧缇有时轻松好带，有时又特别有自己的节奏，像在不同状态间轻轻切换。", summary: "不是一种固定模板，而是很有层次的小宝宝。", profile: [.activityLevel: 3, .regularity: 3, .approach: 4, .adaptability: 3, .intensity: 3, .mood: 4, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 3]),
+        .init(id: "fenny", name: "芬灵", species: "耳廓狐宝宝", type: .intermediate, emoji: "🦊", accent: TemperamentAnimalPalette.fennec, slogan: "机灵又讲感觉的小观察家", characterLine: "敏锐聪明、先观察再靠近，对环境里的细节特别有感觉。", personality: "芬灵对外界很敏锐，有时热情靠近，有时又想先看看再说。", summary: "他有自己的感受节奏，需要被理解，而不是被催着快一点。", profile: [.activityLevel: 4, .regularity: 3, .approach: 3, .adaptability: 3, .intensity: 3, .mood: 3, .attentionPersistence: 3, .distractibility: 3, .sensorySensitivity: 5]),
+        .init(id: "redpanda_youyou", name: "瑞迪", species: "小熊猫宝宝", type: .intermediate, emoji: "🐾", accent: TemperamentAnimalPalette.redPanda, slogan: "有主见的小团子", characterLine: "柔软但有主见，喜欢按自己的方式慢慢进入状态。", personality: "瑞迪既有柔软的一面，也有坚持自己步调的一面，时而乖巧，时而很有态度。", summary: "不是不好带，只是更需要按自己的方式慢慢配合。", profile: [.activityLevel: 3, .regularity: 3, .approach: 3, .adaptability: 2, .intensity: 3, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 3]),
+        .init(id: "koala_anan", name: "阿考", species: "昆士兰考拉宝宝", type: .slowToWarmUp, emoji: "🐨", accent: TemperamentAnimalPalette.koala, slogan: "慢热但很认真的小月亮", characterLine: "慢热谨慎、观察力强，安全感足够后会认真靠近。", personality: "阿考不急着靠近世界，更喜欢先观察，等准备好了才慢慢伸出小手。", summary: "不是慢，而是会先把安全感装满。", profile: [.activityLevel: 2, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 5, .distractibility: 2, .sensorySensitivity: 5]),
+        .init(id: "sloth_nono", name: "霍菲", species: "霍氏树懒宝宝", type: .slowToWarmUp, emoji: "🌿", accent: TemperamentAnimalPalette.sloth, slogan: "慢一点，也一样很可爱", characterLine: "慢节奏、低刺激偏好，需要更从容的过渡时间。", personality: "霍菲喜欢按照自己的小节奏前进，换环境时会先停一停、看一看。", summary: "给他一点缓冲时间，他会用自己的方式慢慢打开。", profile: [.activityLevel: 1, .regularity: 3, .approach: 1, .adaptability: 2, .intensity: 2, .mood: 3, .attentionPersistence: 3, .distractibility: 2, .sensorySensitivity: 3]),
+        .init(id: "chipmunk_huohuo", name: "奇比", species: "西伯利亚花栗鼠宝宝", type: .highSensitivity, emoji: "✨", accent: TemperamentAnimalPalette.chipmunk, slogan: "反应快、感觉多的小火花", characterLine: "感受强烈、反应很快，需要更多安抚和提前预告。", personality: "奇比感受丰富、反应迅速，喜欢立刻表达自己的不舒服，也常常需要更多安抚和理解。", summary: "不是故意难带，只是比别人更敏锐、更强烈地感受这个世界。", profile: [.activityLevel: 4, .regularity: 1, .approach: 2, .adaptability: 1, .intensity: 5, .mood: 2, .attentionPersistence: 3, .distractibility: 4, .sensorySensitivity: 5])
     ]
 }

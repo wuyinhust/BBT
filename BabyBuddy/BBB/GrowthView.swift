@@ -5,6 +5,7 @@ struct MyPageView: View {
     @EnvironmentObject private var stickerStore: AchievementStickerStore
     @EnvironmentObject private var growthMetricStore: GrowthMetricStore
     @EnvironmentObject private var recruitmentStore: CompanionRecruitmentStore
+    @State private var isBBBucksHistoryPresented = false
 
     private let openMetricSheet: ((GrowthMetricKind) -> Void)?
 
@@ -22,20 +23,25 @@ struct MyPageView: View {
             ZStack {
                 HomeSoftBackground()
 
-                VStack(spacing: 14) {
+                VStack(spacing: DesignToken.contentSpacing) {
                     growthTopBar
-                        .padding(.top, 8)
+                        .padding(.top, 10)
 
                     BabyAchievementsView(showsHeader: false, isEmbedded: true)
                         .environmentObject(stickerStore)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DesignToken.compactHorizontalPadding)
                 .padding(.bottom, 0)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $isBBBucksHistoryPresented) {
+            BBBucksHistoryView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     private var profile: BabyProfileData {
@@ -43,40 +49,33 @@ struct MyPageView: View {
     }
 
     private var growthTopBar: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 8) {
+        HStack(spacing: 0) {
+            NavigationLink {
+                ProfileView()
+            } label: {
                 BabyProfileAvatarView(
                     profile: profile,
-                    size: 40,
-                    emojiSize: 19,
-                    lineWidth: 2,
+                    size: 34,
+                    emojiSize: 16,
+                    lineWidth: 1.5,
                     motionScale: 0.65
                 )
-
-                Text(profile.name)
-                    .font(BBBFont.font(size: 17, weight: .heavy))
-                    .foregroundStyle(DesignToken.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.70)
+                .frame(width: 40, height: DesignToken.minimumTapSize)
+                .contentShape(Circle())
             }
-            .frame(minWidth: 84, maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(ScaleButtonStyle())
+            .accessibilityLabel("设置与账号")
+
+            Spacer(minLength: 18)
 
             metricChip(kind: .height, value: heightText)
+            Spacer(minLength: 18)
             metricChip(kind: .weight, value: weightText)
+            Spacer(minLength: 18)
             bucksChip
-            settingsEntry
         }
-        .padding(.horizontal, 10)
-        .frame(height: 58)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.white.opacity(0.88))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(.white.opacity(0.9), lineWidth: 1)
-                )
-                .shadow(color: Color(hex: "#4D4B70").opacity(0.06), radius: 14, y: 6)
-        )
+        .padding(.horizontal, 6)
+        .frame(height: DesignToken.minimumTapSize)
     }
 
     @ViewBuilder
@@ -94,66 +93,58 @@ struct MyPageView: View {
     }
 
     private func metricChipContent(icon: String, value: String, tint: Color) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .heavy))
-                .foregroundStyle(tint)
+                .foregroundStyle(DesignToken.onPrimary)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(tint))
+                .overlay(Circle().stroke(DesignToken.onPrimary.opacity(0.72), lineWidth: 1))
+                .shadow(color: tint.opacity(0.20), radius: 3, y: 1)
             Text(value.replacingOccurrences(of: " ", with: ""))
-                .font(BBBFont.font(size: 11, weight: .heavy))
+                .font(BBBFont.font(size: 13, weight: .heavy))
                 .foregroundStyle(DesignToken.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.62)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 34)
-        .background(Capsule(style: .continuous).fill(Color(hex: "#F4F1FA")))
+        .frame(minHeight: DesignToken.minimumTapSize)
+        .contentShape(Rectangle())
     }
 
     private var bucksChip: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "hexagon.fill")
-                .font(.system(size: 11, weight: .heavy))
-                .foregroundStyle(Color(hex: "#42C8F5"))
-            Text("\(recruitmentStore.bbBucks)")
-                .font(BBBFont.font(size: 12, weight: .heavy))
-                .foregroundStyle(Color(hex: "#26AEE8"))
-                .lineLimit(1)
-                .minimumScaleFactor(0.70)
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 34)
-        .background(Capsule(style: .continuous).fill(Color(hex: "#EDF8FF")))
-        .accessibilityLabel("BBBUCKS \(recruitmentStore.bbBucks)")
-    }
-
-    private var settingsEntry: some View {
-        NavigationLink {
-            ProfileView(showBabyInfo: .constant(false))
+        Button {
+            isBBBucksHistoryPresented = true
         } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 14, weight: .heavy))
-                .foregroundStyle(DesignToken.primary)
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(Color(hex: "#F3EEFF")))
+            HStack(spacing: 6) {
+                Image("bbbucks_coin")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                    .shadow(color: DesignToken.reward.opacity(0.18), radius: 3, y: 1)
+                Text("\(recruitmentStore.bbBucks)")
+                    .font(BBBFont.font(size: 13, weight: .heavy))
+                    .foregroundStyle(DesignToken.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
+            }
+            .frame(minHeight: DesignToken.minimumTapSize)
+            .contentShape(Rectangle())
         }
         .buttonStyle(ScaleButtonStyle())
-        .accessibilityLabel("设置与账号")
+        .accessibilityLabel("BB Bucks \(recruitmentStore.bbBucks)")
+        .accessibilityHint("查看获取记录")
     }
 
     private var heightText: String {
-        metricText(growthMetricStore.latest(kind: .height)?.value ?? profile.heightCm, unit: "cm")
+        guard let value = growthMetricStore.latest(kind: .height)?.value ?? profile.heightCm,
+              value.isFinite else { return "-- \(AppMeasurementFormat.heightUnit)" }
+        return AppMeasurementFormat.height(value)
     }
 
     private var weightText: String {
-        metricText(growthMetricStore.latest(kind: .weight)?.value ?? profile.weightKg, unit: "kg")
-    }
-
-    private func metricText(_ value: Double?, unit: String) -> String {
-        guard let value else {
-            return "-- \(unit)"
-        }
-        let numberText = value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
-        return "\(numberText) \(unit)"
+        guard let value = growthMetricStore.latest(kind: .weight)?.value ?? profile.weightKg,
+              value.isFinite else { return "-- \(AppMeasurementFormat.weightPrimaryUnit)" }
+        return AppMeasurementFormat.weight(value)
     }
 }
 

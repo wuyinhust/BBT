@@ -18,8 +18,8 @@ enum PlusMembershipPlan: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .monthly: return "7 天免费试用"
-        case .yearly: return "推荐 · 7 天免费试用"
+        case .monthly: return "按月自动续费"
+        case .yearly: return "按年自动续费 · 推荐"
         case .lifetime: return "一次开通，长期使用"
         }
     }
@@ -61,7 +61,7 @@ final class PlusMembershipStore: ObservableObject {
     }
 
     var profileSubtitle: String {
-        isPlusActive ? "已开通 · 查看权益" : "家庭协作 · 成长回顾 · 纪念创作"
+        isPlusActive ? "每轮 +1 · 三位 Buddy 愿望队列" : "成长加速 · 家庭共同记录"
     }
 
     init() {
@@ -78,7 +78,7 @@ final class PlusMembershipStore: ObservableObject {
     }
 
     func loadProductsIfNeeded() async {
-        guard products.isEmpty else { return }
+        guard products.isEmpty, purchaseState == .idle else { return }
         purchaseState = .loadingProducts
         do {
             let loadedProducts = try await Product.products(for: productIDs)
@@ -96,6 +96,7 @@ final class PlusMembershipStore: ObservableObject {
     }
 
     func purchase(_ product: Product) async {
+        guard purchaseState == .idle else { return }
         purchaseState = .purchasing(product.id)
         errorMessage = nil
         do {
@@ -117,6 +118,7 @@ final class PlusMembershipStore: ObservableObject {
     }
 
     func restorePurchases() async {
+        guard purchaseState == .idle else { return }
         purchaseState = .refreshing
         errorMessage = nil
         do {

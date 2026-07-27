@@ -32,9 +32,10 @@ struct FeedingSheet: View {
     @State private var manualTimeSpanEnd = Date()
     @State private var recordTime = Date()
     @State private var layoutHeight: CGFloat = 800
+    @State private var timerTick = Date()
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    private let bottleRange: ClosedRange<Double> = 0...260
+    private let bottleRange: ClosedRange<Double> = 0...240
     private var isCompactHeight: Bool {
         layoutHeight < 760
     }
@@ -88,6 +89,10 @@ struct FeedingSheet: View {
         get { draftStore.activeBreastStartAt }
         nonmutating set { draftStore.activeBreastStartAt = newValue }
     }
+    private var breastTimingStartedAt: Date? {
+        get { draftStore.breastTimingStartedAt }
+        nonmutating set { draftStore.breastTimingStartedAt = newValue }
+    }
     private var hitMilestones: Set<Int> {
         get { draftStore.hitMilestones }
         nonmutating set { draftStore.hitMilestones = newValue }
@@ -109,6 +114,10 @@ struct FeedingSheet: View {
     private var bottleTimerStartedAt: Date? {
         get { draftStore.bottleTimerStartedAt }
         nonmutating set { draftStore.bottleTimerStartedAt = newValue }
+    }
+    private var bottleTimingStartedAt: Date? {
+        get { draftStore.bottleTimingStartedAt }
+        nonmutating set { draftStore.bottleTimingStartedAt = newValue }
     }
     private var solidFood: SolidFood {
         get { draftStore.solidFood }
@@ -157,14 +166,15 @@ struct FeedingSheet: View {
         }
         .presentationDragIndicator(.visible)
         .onReceive(timer) { date in
+            timerTick = date
             draftStore.updateCurrentTime(date)
             checkBreastMilestones()
-            persistDraftIfNeeded()
         }
         .onAppear {
             restoreDraft()
             selectedKind = FeedingKind.kindFor(type: type, solidFood: solidFood)
             draftStore.didSave = false
+            timerTick = Date()
             draftStore.updateCurrentTime(Date())
             recordTime = Date()
         }
@@ -173,8 +183,8 @@ struct FeedingSheet: View {
                 persistDraft()
             }
         }
-        .onChange(of: selectedPhoto) {
-            Task { await loadSelectedPhoto() }
+        .task(id: selectedPhoto) {
+            await loadSelectedPhoto()
         }
         .onChange(of: scenePhase) { persistDraft() }
         .onChange(of: showMoreInfo) { _, isShown in
@@ -267,13 +277,13 @@ struct FeedingSheet: View {
         }
         .confirmationDialog("选择奶源", isPresented: $showBottleMilkTypePicker, titleVisibility: .visible) {
             ForEach(MilkType.allCases) { item in
-                Button(item.displayName) {
+                Button(item.localizedDisplayName) {
                     setBottleMilkType(item)
                 }
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("当前：\(milkType.displayName)")
+            Text("当前：\(milkType.localizedDisplayName)")
         }
     }
 
@@ -394,9 +404,10 @@ struct FeedingSheet: View {
                 .scaledToFit()
                 .opacity(0.68)
         } else {
-            Text("🤱")
-                .font(.system(size: 168 * S))
-                .opacity(0.68)
+            Image(systemName: "heart.circle.fill")
+                .font(.system(size: 132 * S, weight: .light))
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(DesignToken.feedingBreast, Color.white.opacity(0.72))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(
                     Circle()
@@ -508,7 +519,7 @@ struct FeedingSheet: View {
         let bottleCenterY = stageHeight * 0.5 + (bottleLayout.bottleY - metrics.stageY)
 
         return ZStack {
-            InteractiveBottleView(amount: bottleAmountBinding, range: bottleRange, step: 10, tint: selectedKind.accent)
+            FeedingSheetInteractiveBottleView(amount: bottleAmountBinding, range: bottleRange, step: bottleAdjustmentStep, tint: selectedKind.accent)
                 .frame(width: bottleHeight * 0.56, height: bottleHeight)
                 .position(x: metrics.W * 0.5, y: bottleCenterY)
 
@@ -531,17 +542,17 @@ struct FeedingSheet: View {
         return HStack(spacing: 22 * S) {
             bottleAmountButton(systemIcon: "minus", S: S) {
                 withAnimation(.spring(response: 0.24, dampingFraction: 0.76)) {
-                    bottleAmount = max(bottleRange.lowerBound, bottleAmount - 10)
+                    bottleAmount = max(bottleRange.lowerBound, bottleAmount - bottleAdjustmentStep)
                 }
                 persistDraft()
             }
 
-            BottleAmountReadout(amount: bottleAmount, unit: "ml", S: S)
+            BottleAmountReadout(amount: bottleAmount, S: S)
                 .frame(minWidth: 110 * S)
 
             bottleAmountButton(systemIcon: "plus", S: S) {
                 withAnimation(.spring(response: 0.24, dampingFraction: 0.76)) {
-                    bottleAmount = min(bottleRange.upperBound, bottleAmount + 10)
+                    bottleAmount = min(bottleRange.upperBound, bottleAmount + bottleAdjustmentStep)
                 }
                 persistDraft()
             }
@@ -598,8 +609,10 @@ struct FeedingSheet: View {
                     .offset(y: 26 * S)
                     .blur(radius: 2 * S)
 
-                Text("🥣")
-                    .font(.system(size: 108 * S))
+                Image(systemName: "fork.knife.circle.fill")
+                    .font(.system(size: 92 * S, weight: .light))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(DesignToken.feedingSolid, Color.white.opacity(0.82))
                     .shadow(color: Color.white.opacity(0.45), radius: 10 * S, y: -2 * S)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -643,7 +656,7 @@ struct FeedingSheet: View {
                     Text("选择辅食")
                         .font(BBBFont.font(size: 20, weight: .heavy))
                         .foregroundStyle(DesignToken.textPrimary)
-                    Text("\(solidFoodSummary) · 共 \(Int(solidAmount))\(solidUnit.displayName)")
+                    Text("\(solidFoodSummary) · 共 \(solidDisplayText(solidAmount))")
                         .font(BBBFont.font(size: 12, weight: .bold))
                         .foregroundStyle(DesignToken.textSecondary)
                         .lineLimit(1)
@@ -682,9 +695,12 @@ struct FeedingSheet: View {
             toggleSolidFood(food)
         } label: {
             VStack(spacing: 7) {
-                Text(food.emoji)
-                    .font(.system(size: 22))
-                Text(food.displayName)
+                Text(food.shortLabel.localized)
+                    .font(BBBFont.font(size: 13, weight: .bold))
+                    .foregroundStyle(FeedingType.solid.accent)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(FeedingType.solid.accent.opacity(0.12)))
+                Text(food.localizedDisplayName.localized)
                     .font(BBBFont.font(size: 12, weight: .heavy))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -724,7 +740,7 @@ struct FeedingSheet: View {
             HStack(alignment: .firstTextBaseline, spacing: 2 * S) {
                 Text("\(Int(solidAmount))")
                     .font(BBBFont.font(size: 36 * S, weight: .bold))
-                Text(solidUnit.displayName)
+                Text(solidUnit.localizedDisplayName.localized)
                     .font(BBBFont.font(size: 18 * S, weight: .medium))
             }
             .foregroundStyle(DesignToken.feedingSolid)
@@ -764,7 +780,7 @@ struct FeedingSheet: View {
             VStack(spacing: 0) {
                 Text("\(amount)")
                     .font(BBBFont.font(size: 14 * S, weight: selected ? .bold : .semibold))
-                Text(solidUnit.displayName)
+                Text(solidUnit.localizedDisplayName.localized)
                     .font(BBBFont.font(size: 10 * S, weight: .bold))
             }
             .foregroundStyle(selected ? DesignToken.feedingSolid : DesignToken.textPrimary.opacity(0.76))
@@ -842,7 +858,7 @@ struct FeedingSheet: View {
                 bottleStageGlow(W: W, S: S)
                     .position(x: W * 0.5, y: bottleY + bottleHeight * 0.18)
 
-                InteractiveBottleView(amount: bottleAmountBinding, range: bottleRange, step: 10, tint: selectedKind.accent)
+                FeedingSheetInteractiveBottleView(amount: bottleAmountBinding, range: bottleRange, step: bottleAdjustmentStep, tint: selectedKind.accent)
                     .frame(width: bottleHeight * 0.56, height: bottleHeight)
                     .position(x: W * 0.5, y: bottleY)
 
@@ -860,14 +876,14 @@ struct FeedingSheet: View {
 
                 HStack(spacing: 22 * S) {
                     bottleAmountButton(systemIcon: "minus", S: S) {
-                        bottleAmount = max(bottleRange.lowerBound, bottleAmount - 10)
+                        bottleAmount = max(bottleRange.lowerBound, bottleAmount - bottleAdjustmentStep)
                         persistDraft()
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: 2 * S) {
-                        Text("\(Int(bottleAmount))")
+                        Text(bottleDisplayNumber(bottleAmount))
                             .font(BBBFont.font(size: 36 * S, weight: .bold))
-                        Text("ml")
+                        Text(AppMeasurementFormat.volumeUnit)
                             .font(BBBFont.font(size: 18 * S, weight: .medium))
                     }
                     .foregroundStyle(DesignToken.feedingBottle)
@@ -875,7 +891,7 @@ struct FeedingSheet: View {
                     .frame(minWidth: 110 * S)
 
                     bottleAmountButton(systemIcon: "plus", S: S) {
-                        bottleAmount = min(bottleRange.upperBound, bottleAmount + 10)
+                        bottleAmount = min(bottleRange.upperBound, bottleAmount + bottleAdjustmentStep)
                         persistDraft()
                     }
                 }
@@ -974,15 +990,15 @@ struct FeedingSheet: View {
     private func bottleAmountLayer(W: CGFloat, H: CGFloat, S: CGFloat) -> some View {
         ZStack {
             bottleAmountButton(systemIcon: "minus", S: S) {
-                bottleAmount = max(bottleRange.lowerBound, bottleAmount - 10)
+                bottleAmount = max(bottleRange.lowerBound, bottleAmount - bottleAdjustmentStep)
                 persistDraft()
             }
             .position(x: W * 0.24, y: H * 0.69)
 
             HStack(alignment: .firstTextBaseline, spacing: 2 * S) {
-                Text("\(Int(bottleAmount))")
+                Text(bottleDisplayNumber(bottleAmount))
                     .font(BBBFont.font(size: 48 * S, weight: .bold))
-                Text("ml")
+                Text(AppMeasurementFormat.volumeUnit)
                     .font(BBBFont.font(size: 24 * S, weight: .semibold))
             }
             .foregroundStyle(DesignToken.feedingBottle)
@@ -990,12 +1006,12 @@ struct FeedingSheet: View {
             .position(x: W * 0.5, y: H * 0.69)
 
             bottleAmountButton(systemIcon: "plus", S: S) {
-                bottleAmount = min(bottleRange.upperBound, bottleAmount + 10)
+                bottleAmount = min(bottleRange.upperBound, bottleAmount + bottleAdjustmentStep)
                 persistDraft()
             }
             .position(x: W * 0.76, y: H * 0.69)
 
-            Text("\(milkType.displayName)量 · \(lastIntervalText)")
+            Text("\(milkType.localizedDisplayName)量 · \(lastIntervalText)")
                 .font(BBBFont.font(size: 15 * S, weight: .semibold))
                 .foregroundStyle(DesignToken.textSecondary.opacity(0.92))
                 .lineLimit(1)
@@ -1125,9 +1141,9 @@ struct FeedingSheet: View {
             selectKind(kind)
         } content: { kind, isSelected in
             VStack(spacing: 4 * S) {
-                Text(kind.emoji)
-                    .font(.system(size: 20 * S))
-                Text(kind.label)
+                Image(systemName: kind.systemImage)
+                    .font(.system(size: 17 * S, weight: .semibold))
+                Text(kind.label.localized)
                     .font(BBBFont.font(size: 12 * S, weight: isSelected ? .bold : .semibold))
                     .lineLimit(1)
             }
@@ -1255,9 +1271,9 @@ struct FeedingSheet: View {
 
     private func bottleDoseLabel(amount: Int, selected: Bool, S: CGFloat) -> some View {
         VStack(spacing: 0) {
-            Text("\(amount)")
+            Text(bottleDisplayNumber(Double(amount)))
                 .font(BBBFont.font(size: 14 * S, weight: selected ? .bold : .semibold))
-            Text("ml")
+            Text(AppMeasurementFormat.volumeUnit)
                 .font(BBBFont.font(size: 10 * S, weight: .bold))
         }
         .foregroundStyle(selected ? selectedKind.accent : DesignToken.textPrimary.opacity(0.76))
@@ -1311,10 +1327,10 @@ struct FeedingSheet: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {
                     VStack(spacing: 0) {
-                        Text("\(amount)")
+                        Text(bottleDisplayNumber(Double(amount)))
                             .font(BBBFont.font(size: amount == Int(bottleAmount) ? 18 : 15, weight: .heavy))
                             .foregroundStyle(amount == Int(bottleAmount) ? selectedKind.accent : DesignToken.textStrong.opacity(0.80))
-                        Text("ml")
+                        Text(AppMeasurementFormat.volumeUnit)
                             .font(BBBFont.font(size: 9, weight: .bold))
                             .foregroundStyle(amount == Int(bottleAmount) ? selectedKind.accent.opacity(0.86) : DesignToken.textMuted.opacity(0.74))
                     }
@@ -1372,7 +1388,7 @@ struct FeedingSheet: View {
         case .nursing:
             return "\(feedingStore.breastDuration)min"
         case .bottle:
-            return "\(feedingStore.formulaML + feedingStore.expressedMilkML)ml"
+            return AppMeasurementFormat.volume(Double(feedingStore.formulaML + feedingStore.expressedMilkML))
         default:
             return "\(feedingStore.solidsGram)g"
         }
@@ -1411,7 +1427,7 @@ struct FeedingSheet: View {
     private var bottleStage: some View {
         VStack(spacing: isCompactHeight ? 6 : 8) {
             ZStack {
-                InteractiveBottleView(amount: bottleAmountBinding, range: bottleRange, step: 10, tint: selectedKind.accent)
+                FeedingSheetInteractiveBottleView(amount: bottleAmountBinding, range: bottleRange, step: bottleAdjustmentStep, tint: selectedKind.accent)
                     .frame(width: isCompactHeight ? 268 : 312, height: isCompactHeight ? 268 : 312)
                     .frame(maxWidth: .infinity)
 
@@ -1434,7 +1450,7 @@ struct FeedingSheet: View {
                 isCompactHeight: isCompactHeight
             )
 
-            Text("\(milkType.displayName)量 · \(lastIntervalText)")
+            Text("\(milkType.localizedDisplayName)量 · \(lastIntervalText)")
                 .font(BBBFont.font(size: 14, weight: .bold))
                 .foregroundStyle(DesignToken.textSecondary)
                 .lineLimit(1)
@@ -1453,9 +1469,10 @@ struct FeedingSheet: View {
     private var solidsBowlStage: some View {
         VStack(spacing: isCompactHeight ? 10 : 14) {
             ZStack {
-                // 碗 emoji 占位（后续替换素材）
-                Text("🥣")
-                    .font(.system(size: isCompactHeight ? 152 : 180))
+                Image(systemName: "fork.knife.circle.fill")
+                    .font(.system(size: isCompactHeight ? 124 : 148, weight: .light))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(selectedKind.accent, Color.white.opacity(0.84))
                     .frame(width: isCompactHeight ? 286 : 340, height: isCompactHeight ? 286 : 340)
                     .frame(maxWidth: .infinity)
                     .background(
@@ -1478,7 +1495,7 @@ struct FeedingSheet: View {
                 value: solidAmountBinding,
                 range: 5...300,
                 step: 5,
-                unit: solidUnit.displayName,
+                unit: solidUnit.localizedDisplayName,
                 tint: selectedKind.accent,
                 isCompactHeight: isCompactHeight
             )
@@ -1486,13 +1503,13 @@ struct FeedingSheet: View {
             // 单位切换
             Picker("单位", selection: solidUnitBinding) {
                 ForEach(SolidUnit.allCases) { unit in
-                    Text(unit.displayName).tag(unit)
+                    Text(unit.displayName.localized).tag(unit)
                 }
             }
             .pickerStyle(.menu)
             .tint(selectedKind.accent)
 
-            Text("\(solidFoodSummary) · \(Int(solidAmount))\(solidUnit.displayName) · \(lastIntervalText)")
+            Text("\(solidFoodSummary) · \(solidDisplayText(solidAmount)) · \(lastIntervalText)")
                 .font(BBBFont.font(size: 13, weight: .bold))
                 .foregroundStyle(DesignToken.textSecondary)
                 .lineLimit(1)
@@ -1540,7 +1557,7 @@ struct FeedingSheet: View {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .heavy))
-                Text(title)
+                Text(title.localized)
                     .font(BBBFont.font(size: 15, weight: .heavy))
             }
             .foregroundStyle(DesignToken.textPrimary)
@@ -1567,7 +1584,7 @@ struct FeedingSheet: View {
                     }
                     persistDraft()
                 } label: {
-                    Label(type.displayName, systemImage: milkType == type ? "checkmark" : "")
+                    Label(type.localizedDisplayName, systemImage: milkType == type ? "checkmark" : "")
                 }
             }
         } label: {
@@ -1793,12 +1810,13 @@ struct FeedingSheet: View {
     private var solidStage: some View {
         VStack(spacing: isCompactHeight ? 9 : 14) {
             VStack(spacing: isCompactHeight ? 5 : 8) {
-                Text(selectedKind.emoji)
-                    .font(.system(size: isCompactHeight ? 38 : 48))
+                Image(systemName: selectedKind.systemImage)
+                    .font(.system(size: isCompactHeight ? 30 : 36, weight: .semibold))
+                    .foregroundStyle(selectedKind.accent)
                     .frame(width: isCompactHeight ? 78 : 102, height: isCompactHeight ? 78 : 102)
                     .background(Circle().fill(selectedKind.accent.opacity(0.14)))
 
-                Text(selectedKind.label)
+                Text(selectedKind.label.localized)
                     .font(BBBFont.font(size: 14, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
             }
@@ -1807,14 +1825,14 @@ struct FeedingSheet: View {
                 value: solidAmountBinding,
                 range: 5...300,
                 step: 5,
-                unit: solidUnit.displayName,
+                unit: solidUnit.localizedDisplayName,
                 tint: selectedKind.accent,
                 isCompactHeight: isCompactHeight
             )
 
             Picker("单位", selection: solidUnitBinding) {
                 ForEach(SolidUnit.allCases) { unit in
-                    Text(unit.displayName).tag(unit)
+                    Text(unit.displayName.localized).tag(unit)
                 }
             }
             .pickerStyle(.menu)
@@ -1833,9 +1851,9 @@ struct FeedingSheet: View {
                         selectKind(kind)
                     } label: {
                         VStack(spacing: 7) {
-                            Text(kind.emoji)
-                                .font(.system(size: isCompactHeight ? 22 : 25))
-                            Text(kind.label)
+                            Image(systemName: kind.systemImage)
+                                .font(.system(size: isCompactHeight ? 18 : 20, weight: .semibold))
+                            Text(kind.label.localized)
                                 .font(BBBFont.font(size: isCompactHeight ? 14 : 16, weight: .heavy))
                                 .lineLimit(1)
                         }
@@ -2107,12 +2125,12 @@ struct FeedingSheet: View {
                 VStack(spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         TextField("0", text: $customBottleAmountText)
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .font(BBBFont.font(size: 42, weight: .heavy))
                             .foregroundStyle(DesignToken.textPrimary)
                             .frame(width: 128)
-                        Text("ml")
+                        Text(AppMeasurementFormat.volumeUnit)
                             .font(BBBFont.font(size: 30, weight: .heavy))
                             .foregroundStyle(DesignToken.textPrimary)
                     }
@@ -2152,7 +2170,7 @@ struct FeedingSheet: View {
     private func manualMinutesControl(title: String, value: Binding<Double>) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(title)
+                Text(title.localized)
                 Spacer()
                 Text("\(Int(value.wrappedValue)) 分钟")
                     .fontWeight(.bold)
@@ -2223,12 +2241,38 @@ struct FeedingSheet: View {
         DesignToken.primaryGradient
     }
 
-    private var leftSeconds: Int { breastSeconds(for: .left) }
-    private var rightSeconds: Int { breastSeconds(for: .right) }
-    private var totalBottleMinutes: Double { draftStore.totalBottleMinutes }
+    private var leftSeconds: Int { breastSeconds(for: .left, at: timerTick) }
+    private var rightSeconds: Int { breastSeconds(for: .right, at: timerTick) }
+    private var totalBottleMinutes: Double {
+        guard let bottleTimerStartedAt else { return bottleMinutes }
+        return bottleMinutes + max(timerTick.timeIntervalSince(bottleTimerStartedAt) / 60, 0)
+    }
 
     private var canSave: Bool {
         recordTime <= Date() && (!entries.isEmpty || leftSeconds + rightSeconds > 0 || (type == .bottle && bottleAmount > 0) || (type == .solid && solidAmount > 0))
+    }
+
+    private var bottleAdjustmentStep: Double {
+        AppMeasurementFormat.currentSystem == .metric
+            ? 10
+            : AppMeasurementFormat.milliliters(fromVolumeValue: 0.5)
+    }
+
+    private func bottleDisplayNumber(_ canonicalMilliliters: Double) -> String {
+        let value = AppMeasurementFormat.volumeValue(fromMilliliters: canonicalMilliliters)
+        return AppMeasurementFormat.inputNumber(
+            value,
+            maximumFractionDigits: AppMeasurementFormat.currentSystem == .metric ? 0 : 1
+        )
+    }
+
+    private func solidDisplayText(_ canonicalAmount: Double) -> String {
+        switch solidUnit {
+        case .g: return AppMeasurementFormat.mass(canonicalAmount)
+        case .ml: return AppMeasurementFormat.volume(canonicalAmount)
+        default:
+            return "\(AppMeasurementFormat.inputNumber(canonicalAmount)) \(solidUnit.localizedDisplayName)"
+        }
     }
 
     private var manualButtonTitle: String {
@@ -2244,9 +2288,9 @@ struct FeedingSheet: View {
         case .nursing:
             return durationText(leftSeconds + rightSeconds)
         case .bottle:
-            return "\(Int(bottleAmount))ml"
+            return AppMeasurementFormat.volume(bottleAmount)
         default:
-            return "\(Int(solidAmount))\(solidUnit.displayName)"
+            return solidDisplayText(solidAmount)
         }
     }
 
@@ -2256,7 +2300,7 @@ struct FeedingSheet: View {
             return "亲喂时长 · \(lastIntervalText)"
         case .bottle:
             let duration = totalBottleMinutes > 0 ? " · \(max(Int(totalBottleMinutes), 1))分钟" : ""
-            return "\(milkType.displayName)量\(duration) · \(lastIntervalText)"
+            return "\(milkType.localizedDisplayName)量\(duration) · \(lastIntervalText)"
         default:
             return "\(selectedKind.label)分量 · \(lastIntervalText)"
         }
@@ -2274,17 +2318,19 @@ struct FeedingSheet: View {
     }
 
     private var lastIntervalText: String {
-        guard let last = feedingStore.lastFeedingTime() else { return "距上次喂养暂无" }
-        let minutes = max(Int(recordTime.timeIntervalSince(last) / 60), 0)
-        if minutes < 60 { return "距上次喂养\(minutes)分钟" }
-        return "距上次喂养\(minutes / 60)时\(minutes % 60)分"
+        let last = feedingStore.lastFeedingTime(relativeTo: recordTime)
+        let distance = CareRecencyTimeFormatter.distanceText(
+            since: last,
+            relativeTo: recordTime
+        )
+        return "距上次喂养\(distance)"
     }
 
     private var lastIntervalStatText: String {
-        guard let last = feedingStore.lastFeedingTime() else { return "暂无" }
-        let minutes = max(Int(recordTime.timeIntervalSince(last) / 60), 0)
-        if minutes < 60 { return "\(minutes)分钟" }
-        return "\(minutes / 60)时\(minutes % 60)分"
+        CareRecencyTimeFormatter.distanceText(
+            since: feedingStore.lastFeedingTime(relativeTo: recordTime),
+            relativeTo: recordTime
+        )
     }
 
     private func breastTimer(_ side: BreastSide, seconds: Int) -> some View {
@@ -2297,7 +2343,7 @@ struct FeedingSheet: View {
                         .stroke(FeedingType.breast.accent, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 5) {
-                        Text(side.displayName)
+                        Text(side.localizedDisplayName.localized)
                             .font(BBBFont.font(size: 14, weight: .bold))
                             .foregroundStyle(DesignToken.textSecondary)
                         Text(durationText(seconds))
@@ -2335,6 +2381,7 @@ struct FeedingSheet: View {
             activeBreastStartAt = nil
         } else {
             commitActiveBreastElapsed(at: now)
+            breastTimingStartedAt = breastTimingStartedAt ?? now
             activeBreastSide = side
             activeBreastStartAt = now
         }
@@ -2360,6 +2407,7 @@ struct FeedingSheet: View {
             bottleMinutes += max(now.timeIntervalSince(started) / 60, 0)
             bottleTimerStartedAt = nil
         } else {
+            bottleTimingStartedAt = bottleTimingStartedAt ?? now
             bottleTimerStartedAt = now
         }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2387,7 +2435,7 @@ struct FeedingSheet: View {
 
     private func checkBreastMilestones() {
         guard let activeBreastSide else { return }
-        checkMilestone(breastSeconds(for: activeBreastSide, at: currentTime))
+        checkMilestone(breastSeconds(for: activeBreastSide, at: timerTick))
     }
 
     private func checkMilestone(_ seconds: Int) {
@@ -2473,7 +2521,7 @@ struct FeedingSheet: View {
         case .nursing:
             openManualInput()
         case .bottle:
-            customBottleAmountText = "\(Int(bottleAmount))"
+            customBottleAmountText = bottleDisplayNumber(bottleAmount)
             showCustomBottleAmount = true
         default:
             solidAmount = min(300, solidAmount + 5)
@@ -2515,9 +2563,10 @@ struct FeedingSheet: View {
     private var solidFoodSummary: String {
         let foods = selectedSolidFoods
         if foods.count <= 2 {
-            return foods.map(\.displayName).joined(separator: "、")
+            return AppLocalization.list(foods.map(\.localizedDisplayName))
         }
-        return foods.prefix(2).map(\.displayName).joined(separator: "、") + "等\(foods.count)种"
+        let names = AppLocalization.list(foods.prefix(2).map(\.localizedDisplayName))
+        return AppLocalization.format("food.selection.more", names, foods.count)
     }
 
     private func toggleSolidFood(_ food: SolidFood) {
@@ -2542,9 +2591,9 @@ struct FeedingSheet: View {
     }
 
     private func applyCustomBottleAmount() {
-        let filtered = customBottleAmountText.filter(\.isNumber)
-        let value = Double(filtered) ?? 0
-        bottleAmount = min(max(value, bottleRange.lowerBound), bottleRange.upperBound)
+        let displayValue = AppMeasurementFormat.parseNumber(customBottleAmountText) ?? 0
+        let canonicalValue = AppMeasurementFormat.milliliters(fromVolumeValue: displayValue)
+        bottleAmount = min(max(canonicalValue, bottleRange.lowerBound), bottleRange.upperBound)
         persistDraft()
         showCustomBottleAmount = false
     }
@@ -2552,14 +2601,35 @@ struct FeedingSheet: View {
     private func entrySummary(_ entry: FeedingEntry) -> String {
         switch entry.type {
         case .breast:
-            let mode = entry.breastMode?.displayName ?? "亲喂"
-            return "\(mode) \(entry.breastSide?.displayName ?? "") \(entry.breastDuration ?? 0)分钟"
+            let mode = entry.breastMode?.localizedDisplayName ?? "亲喂".localized
+            let side = entry.breastSide?.localizedDisplayName ?? ""
+            return AppLocalization.format("feeding.entry.nursing", mode, side, entry.breastDuration ?? 0)
         case .bottle:
-            let name = entry.milkType?.displayName ?? "奶瓶"
-            let minutes = entry.bottleDuration.map { " · \($0)分钟" } ?? ""
-            return "\(name) \(entry.bottleAmount ?? 0)ml\(minutes)"
+            let name = entry.milkType?.localizedDisplayName ?? "奶瓶".localized
+            let amount = AppMeasurementFormat.volume(Double(entry.bottleAmount ?? 0))
+            if let duration = entry.bottleDuration {
+                return AppLocalization.format(
+                    "feeding.entry.localized_amount_duration",
+                    name,
+                    amount,
+                    AppQuantityFormat.minutes(duration)
+                )
+            }
+            return AppLocalization.format("feeding.entry.localized_amount", name, amount)
         case .solid:
-            return "\(entry.solidFood?.emoji ?? "🍽️") \(entry.solidFood?.displayName ?? "辅食") \(Int(entry.solidAmount ?? 0))\(entry.solidUnit?.displayName ?? "g")"
+            let canonicalAmount = entry.solidAmount ?? 0
+            let amount: String
+            switch entry.solidUnit ?? .g {
+            case .g: amount = AppMeasurementFormat.mass(canonicalAmount)
+            case .ml: amount = AppMeasurementFormat.volume(canonicalAmount)
+            default:
+                amount = "\(AppMeasurementFormat.inputNumber(canonicalAmount)) \((entry.solidUnit ?? .g).localizedDisplayName)"
+            }
+            return AppLocalization.format(
+                "feeding.entry.localized_amount",
+                entry.solidFood?.localizedDisplayName ?? "辅食".localized,
+                amount
+            )
         }
     }
 
@@ -2585,11 +2655,16 @@ struct FeedingSheet: View {
 
     private func loadSelectedPhoto() async {
         guard let selectedPhoto,
-              let data = try? await selectedPhoto.loadTransferable(type: Data.self),
-              let image = UIImage(data: data),
-              let jpeg = image.jpegData(compressionQuality: 0.8) else {
+              let data = try? await selectedPhoto.loadTransferable(type: Data.self) else {
             return
         }
+        guard !Task.isCancelled else { return }
+        let jpeg = await Task.detached(priority: .userInitiated) {
+            autoreleasepool {
+                UIImage(data: data)?.jpegData(compressionQuality: 0.8)
+            }
+        }.value
+        guard !Task.isCancelled, let jpeg else { return }
         imageData = jpeg
         persistDraft()
     }
@@ -2746,6 +2821,15 @@ private enum FeedingKind: String, CaseIterable, Identifiable {
         }
     }
 
+    var systemImage: String {
+        switch self {
+        case .nursing: return "heart.fill"
+        case .bottle: return "waterbottle.fill"
+        case .solids, .rice, .porridge, .vegetable, .fruit, .meat, .fish, .egg, .noodle, .yogurt:
+            return "fork.knife"
+        }
+    }
+
     var label: String {
         switch self {
         case .nursing: return "亲喂"
@@ -2814,17 +2898,19 @@ private enum FeedingKind: String, CaseIterable, Identifiable {
 
 private struct BottleAmountReadout: View {
     let amount: Double
-    let unit: String
     let S: CGFloat
     @State private var isPulsing = false
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 2 * S) {
-            Text("\(Int(amount))")
+            Text(AppMeasurementFormat.inputNumber(
+                AppMeasurementFormat.volumeValue(fromMilliliters: amount),
+                maximumFractionDigits: AppMeasurementFormat.currentSystem == .metric ? 0 : 1
+            ))
                 .font(BBBFont.font(size: 36 * S, weight: .bold))
                 .contentTransition(.numericText(value: amount))
 
-            Text(unit)
+            Text(AppMeasurementFormat.volumeUnit)
                 .font(BBBFont.font(size: 18 * S, weight: .medium))
         }
         .foregroundStyle(DesignToken.feedingBottle)
@@ -2843,7 +2929,7 @@ private struct BottleAmountReadout: View {
     }
 }
 
-struct InteractiveBottleView: View {
+private struct FeedingSheetInteractiveBottleView: View {
     @Binding var amount: Double
     let range: ClosedRange<Double>
     let step: Double
@@ -2875,7 +2961,7 @@ struct InteractiveBottleView: View {
                     .clipped()
                     .scaleEffect(fillPulse ? 1.012 : 1, anchor: .bottom)
                     .mask(alignment: .bottom) {
-                        BottleMilkMask(
+                        FeedingSheetBottleMilkMask(
                             progress: progress,
                             topRatio: bottleFillTop,
                             bottomRatio: bottleFillBottom
@@ -2885,7 +2971,7 @@ struct InteractiveBottleView: View {
                     .allowsHitTesting(false)
                     .animation(.spring(response: 0.32, dampingFraction: 0.82), value: progress)
 
-                BottleMilkSurfaceGlow(
+                FeedingSheetBottleMilkSurfaceGlow(
                     progress: progress,
                     topRatio: bottleFillTop,
                     bottomRatio: bottleFillBottom,
@@ -2920,7 +3006,7 @@ struct InteractiveBottleView: View {
             )
         }
         .accessibilityLabel("奶瓶量")
-        .accessibilityValue("\(Int(amount))ml")
+        .accessibilityValue(AppMeasurementFormat.volume(amount))
         .onChange(of: amount) { _, _ in
             fillPulse = true
             Task { @MainActor in
@@ -2936,7 +3022,7 @@ struct InteractiveBottleView: View {
     }
 }
 
-private struct BottleMilkMask: Shape {
+private struct FeedingSheetBottleMilkMask: Shape {
     var progress: Double
     let topRatio: CGFloat
     let bottomRatio: CGFloat
@@ -2967,7 +3053,7 @@ private struct BottleMilkMask: Shape {
     }
 }
 
-private struct BottleMilkSurfaceGlow: View {
+private struct FeedingSheetBottleMilkSurfaceGlow: View {
     let progress: Double
     let topRatio: CGFloat
     let bottomRatio: CGFloat
@@ -3024,9 +3110,12 @@ private struct BottleAmountScrubber: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text("\(Int(amount))")
+                Text(AppMeasurementFormat.inputNumber(
+                    AppMeasurementFormat.volumeValue(fromMilliliters: amount),
+                    maximumFractionDigits: AppMeasurementFormat.currentSystem == .metric ? 0 : 1
+                ))
                     .font(BBBFont.font(size: isCompactHeight ? 42 : 48, weight: .heavy))
-                Text("ml")
+                Text(AppMeasurementFormat.volumeUnit)
                     .font(BBBFont.font(size: isCompactHeight ? 24 : 28, weight: .heavy))
             }
                 .foregroundStyle(DesignToken.textPrimary)

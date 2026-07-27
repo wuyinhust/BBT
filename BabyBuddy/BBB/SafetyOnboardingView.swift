@@ -29,7 +29,7 @@ struct SafetyOnboardingView: View {
 
                 // Action
                 bottomButton
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, DesignToken.screenHorizontalPadding)
                     .padding(.bottom, 34)
             }
         }
@@ -57,7 +57,7 @@ struct SafetyOnboardingView: View {
             title: "声音安全",
             subtitle: "为宝宝打造的音频空间",
             body: "本功能定位为「睡眠环境与安抚辅助」，不是医疗器械，不宣称治疗效果。\n\n每次播放都经过自动安全限制，确保音量和频率在宝宝安全范围内。",
-            color: Color(hex: "#BDA6F2")
+            color: DesignToken.primary
         )
     }
 
@@ -67,7 +67,7 @@ struct SafetyOnboardingView: View {
             title: "低音量 · 远距离",
             subtitle: "两个关键安全准则",
             body: "• 请将设备音量控制在较低水平\n• 设备应放置在距宝宝床至少 2 米处\n• 播放器已内置振幅上限，无需担心突发高音\n\n2014年《Pediatrics》研究指出：宝宝睡眠机在近距离高音量下可能达到危险声压水平。",
-            color: Color(hex: "#A5C8FF")
+            color: DesignToken.easySleep
         )
     }
 
@@ -77,7 +77,7 @@ struct SafetyOnboardingView: View {
             title: "适度使用",
             subtitle: "不是整晚播放",
             body: "• 夜间最长连续播放 60 分钟\n• 白天小睡最长 45 分钟\n• 达到上限后自动暂停\n• 如需继续，手动再次播放即可\n\nWHO 建议卧室夜间保持低噪环境。连续播放时间过长并不利于宝宝建立自主入睡能力。",
-            color: Color(hex: "#FFD4A8")
+            color: DesignToken.warning
         )
     }
 
@@ -87,7 +87,7 @@ struct SafetyOnboardingView: View {
             title: "家长须知",
             subtitle: "音乐辅助 ≠ 替代监护",
             body: "• 播放期间仍需保持对宝宝的关注\n• 若宝宝异常哭闹不止，请暂停播放并及时就医\n• 白噪音安抚效果因人而异，请观察宝宝反应\n• 如出现不适，立刻停止使用\n\n让音乐成为睡眠环境的一部分，而不是唯一的安抚工具。",
-            color: Color(hex: "#F4C7D9")
+            color: DesignToken.easyActivity
         )
     }
 
@@ -100,12 +100,12 @@ struct SafetyOnboardingView: View {
                 .foregroundStyle(color)
                 .padding(.bottom, 20)
 
-            Text(title)
+            Text(title.localized)
                 .font(BBBFont.font(size: 26, weight: .heavy))
                 .foregroundStyle(DesignToken.textPrimary)
                 .padding(.bottom, 6)
 
-            Text(subtitle)
+            Text(subtitle.localized)
                 .font(BBBFont.font(size: 15, weight: .semibold))
                 .foregroundStyle(color)
 
@@ -114,7 +114,7 @@ struct SafetyOnboardingView: View {
                 .foregroundStyle(DesignToken.textSecondary)
                 .multilineTextAlignment(.leading)
                 .lineSpacing(5)
-                .padding(.horizontal, 28)
+                .padding(.horizontal, DesignToken.screenHorizontalPadding)
                 .padding(.top, 24)
 
             Spacer()
@@ -135,9 +135,9 @@ struct SafetyOnboardingView: View {
         } label: {
             Text(currentPage < totalPages - 1 ? "继续" : "我知道了")
                 .font(BBBFont.font(size: 16, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignToken.onPrimary)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .frame(minHeight: 50)
                 .background(Capsule().fill(DesignToken.primaryGradient))
         }
         .buttonStyle(ScaleButtonStyle())
@@ -173,8 +173,8 @@ struct SafetyStatusBar: View {
                         .fill(
                             LinearGradient(
                                 colors: remainingPercent > 0.3
-                                    ? [Color(hex: "#BDA6F2"), Color(hex: "#A5C8FF")]
-                                    : [Color(hex: "#FFB5A0"), Color(hex: "#F4C7D9")],
+                                    ? [DesignToken.primary, DesignToken.easySleep]
+                                    : [DesignToken.warning, DesignToken.easyActivity],
                                 startPoint: .leading, endPoint: .trailing
                             )
                         )
@@ -193,9 +193,9 @@ struct SafetyStatusBar: View {
 
                 // Noise ratio indicators
                 HStack(spacing: 4) {
-                    noiseDot(color: Color(hex: "#E8E8F0"), ratio: noiseRatios.white, label: "白")
-                    noiseDot(color: Color(hex: "#F0D0D0"), ratio: noiseRatios.pink, label: "粉")
-                    noiseDot(color: Color(hex: "#D0C8B8"), ratio: noiseRatios.brown, label: "棕")
+                    noiseDot(color: DesignToken.grayNeutral, ratio: noiseRatios.white, label: "白")
+                    noiseDot(color: DesignToken.easyActivitySoft, ratio: noiseRatios.pink, label: "粉")
+                    noiseDot(color: DesignToken.rewardSoft, ratio: noiseRatios.brown, label: "棕")
                 }
 
                 Spacer()
@@ -203,13 +203,13 @@ struct SafetyStatusBar: View {
                 // Remaining time
                 Text(remainingText)
                     .font(BBBFont.font(size: 11, weight: .bold))
-                    .foregroundStyle(remainingPercent > 0.3 ? DesignToken.textSecondary : Color(hex: "#E07060"))
+                    .foregroundStyle(remainingPercent > 0.3 ? DesignToken.textSecondary : DesignToken.error)
             }
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.white.opacity(0.85))
+                .fill(DesignToken.surfaceRaised.opacity(0.85))
         )
     }
 
@@ -219,7 +219,7 @@ struct SafetyStatusBar: View {
                 .fill(color)
                 .frame(width: 6, height: 6)
                 .opacity(ratio > 0.15 ? 1 : 0.3)
-            Text(label)
+            Text(label.localized)
                 .font(.system(size: 9, weight: .medium))
                 .foregroundStyle(DesignToken.textSecondary.opacity(ratio > 0.15 ? 1 : 0.4))
         }
@@ -245,7 +245,7 @@ struct SafetyTipFooter: View {
                 Text(distanceText)
                     .font(BBBFont.font(size: 11, weight: .semibold))
             }
-            .foregroundStyle(Color(hex: "#D6A95C"))
+            .foregroundStyle(DesignToken.rewardText)
 
             Text(safetyNote)
                 .font(BBBFont.font(size: 10, weight: .medium))
@@ -255,7 +255,7 @@ struct SafetyTipFooter: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(hex: "#FFF8E8").opacity(0.6))
+                .fill(DesignToken.rewardSoft.opacity(0.6))
         )
     }
 }

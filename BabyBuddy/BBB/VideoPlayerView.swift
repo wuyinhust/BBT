@@ -1,6 +1,11 @@
 import SwiftUI
 import AVKit
 
+private enum VideoRenderPalette {
+    static let playbackCanvas = Color.black // color-audit: allow-fixed video playback canvas
+    static let onPlayback = Color.white // color-audit: allow-fixed video playback foreground
+}
+
 struct VideoPlayerView: View {
     enum PlayerStyle {
         case card
@@ -10,6 +15,7 @@ struct VideoPlayerView: View {
     let videoFileName: String
     var style: PlayerStyle = .card
     @State private var player: AVPlayer?
+    @State private var playbackEndObserver: NSObjectProtocol?
 
     var body: some View {
         ZStack {
@@ -18,11 +24,11 @@ struct VideoPlayerView: View {
                 case .card:
                     VideoPlayer(player: player)
                         .clipShape(RoundedRectangle(cornerRadius: 24))
-                        .background(RoundedRectangle(cornerRadius: 24).fill(.pink.opacity(0.15)))
+                        .background(RoundedRectangle(cornerRadius: 24).fill(DesignToken.easyActivitySoft))
                         .onAppear { player.play() }
                 case .fullscreen:
                     FullscreenAVPlayerView(player: player)
-                        .background(.black)
+                        .background(VideoRenderPalette.playbackCanvas)
                         .onAppear { player.play() }
                 }
             } else {
@@ -35,6 +41,9 @@ struct VideoPlayerView: View {
         .onAppear {
             loadVideo()
         }
+        .onDisappear {
+            releasePlayer()
+        }
     }
 
     private var placeholder: some View {
@@ -42,9 +51,9 @@ struct VideoPlayerView: View {
             switch style {
             case .card:
                 RoundedRectangle(cornerRadius: 24)
-                    .fill(.pink.opacity(0.15))
+                    .fill(DesignToken.easyActivitySoft)
             case .fullscreen:
-                Color.black
+                VideoRenderPalette.playbackCanvas
             }
 
             VStack(spacing: 12) {
@@ -54,37 +63,47 @@ struct VideoPlayerView: View {
                     .symbolEffect(.pulse)
                 Text("等待视频资源")
                     .font(BBBFont.font(size: 15, weight: .semibold))
-                    .foregroundStyle(style == .fullscreen ? .white : DesignToken.textPrimary)
+                    .foregroundStyle(style == .fullscreen ? VideoRenderPalette.onPlayback : DesignToken.textPrimary)
                 Text("\(videoFileName).mp4")
                     .font(BBBFont.font(size: 12, weight: .regular))
-                    .foregroundStyle(style == .fullscreen ? .white.opacity(0.65) : .secondary)
+                    .foregroundStyle(style == .fullscreen ? VideoRenderPalette.onPlayback.opacity(0.65) : DesignToken.textMuted)
                 Text("请将视频放入 Videos/ 子目录或 App Bundle 根目录")
                     .font(BBBFont.font(size: 11, weight: .regular))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(style == .fullscreen ? .white.opacity(0.55) : .secondary)
+                    .foregroundStyle(style == .fullscreen ? VideoRenderPalette.onPlayback.opacity(0.55) : DesignToken.textMuted)
             }
             .padding()
         }
     }
 
     private func loadVideo() {
+        releasePlayer()
         let url = Bundle.main.url(forResource: videoFileName, withExtension: "mp4", subdirectory: "Videos")
             ?? Bundle.main.url(forResource: videoFileName, withExtension: "mp4")
 
         if let url {
             let newPlayer = AVPlayer(url: url)
             newPlayer.actionAtItemEnd = .none
-            NotificationCenter.default.addObserver(
+            playbackEndObserver = NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
                 object: newPlayer.currentItem,
                 queue: .main
-            ) { _ in
-                newPlayer.seek(to: .zero)
+            ) { [weak newPlayer] _ in
+                newPlayer?.seek(to: .zero)
             }
             self.player = newPlayer
         } else {
             self.player = nil
         }
+    }
+
+    private func releasePlayer() {
+        if let playbackEndObserver {
+            NotificationCenter.default.removeObserver(playbackEndObserver)
+            self.playbackEndObserver = nil
+        }
+        player?.pause()
+        player = nil
     }
 }
 

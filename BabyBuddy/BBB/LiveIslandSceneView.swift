@@ -2,6 +2,15 @@ import SpriteKit
 import SwiftUI
 import UIKit
 
+/// Pixel-space fallback pigments used only when a bundled scene asset is unavailable.
+/// They intentionally do not participate in the app interface color system.
+private enum LiveIslandRenderPalette {
+    static let fallbackTerrain = UIColor(hex: "#BEEA9A") // color-audit: allow-fixed SpriteKit fallback pigment
+    static let animalShadow = UIColor.black.withAlphaComponent(0.12) // color-audit: allow-fixed SpriteKit rendered shadow
+    static let fallbackAnimal = UIColor(hex: "#BDA6F2") // color-audit: allow-fixed SpriteKit fallback pigment
+    static let fallbackAnimalStroke = UIColor.white.withAlphaComponent(0.74) // color-audit: allow-fixed SpriteKit rendered highlight
+}
+
 struct LiveIslandSceneView: View {
     @EnvironmentObject private var companionStore: CompanionStore
     @EnvironmentObject private var recruitmentStore: CompanionRecruitmentStore
@@ -169,7 +178,7 @@ final class LiveIslandScene: SKScene {
         } else {
             let fallback = SKShapeNode(rectOf: worldSize)
             fallback.position = CGPoint(x: worldSize.width / 2, y: worldSize.height / 2)
-            fallback.fillColor = UIColor(hex: "#BEEA9A")
+            fallback.fillColor = LiveIslandRenderPalette.fallbackTerrain
             fallback.strokeColor = .clear
             fallback.zPosition = -100
             worldNode.addChild(fallback)
@@ -202,7 +211,7 @@ final class LiveIslandScene: SKScene {
         root.addChild(visual)
 
         let shadow = SKShapeNode(ellipseOf: CGSize(width: spec.height * 0.58, height: spec.height * 0.16))
-        shadow.fillColor = UIColor.black.withAlphaComponent(0.12)
+        shadow.fillColor = LiveIslandRenderPalette.animalShadow
         shadow.strokeColor = .clear
         shadow.position = CGPoint(x: 0, y: spec.height * 0.05)
         root.addChild(shadow)
@@ -216,8 +225,8 @@ final class LiveIslandScene: SKScene {
             visual.addChild(animal)
         } else {
             let fallback = SKShapeNode(circleOfRadius: spec.height * 0.38)
-            fallback.fillColor = UIColor(hex: "#BDA6F2")
-            fallback.strokeColor = UIColor.white.withAlphaComponent(0.74)
+            fallback.fillColor = LiveIslandRenderPalette.fallbackAnimal
+            fallback.strokeColor = LiveIslandRenderPalette.fallbackAnimalStroke
             fallback.lineWidth = 3
             fallback.position = CGPoint(x: 0, y: spec.height * 0.38)
             visual.addChild(fallback)

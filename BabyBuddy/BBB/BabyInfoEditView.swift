@@ -11,6 +11,7 @@ struct BabyInfoEditView: View {
     @State private var draftBirthDate = Date()
     @State private var draftHeightCm = ""
     @State private var draftWeightKg = ""
+    @State private var draftWeightOunces = ""
     @State private var draftAvatarEmoji: String?
     @State private var draftAvatarImageData: Data?
     @State private var draftAvatarCompanionID: String?
@@ -22,8 +23,6 @@ struct BabyInfoEditView: View {
     @State private var showAvatarPicker = false
     @State private var showAvatarRecorder = false
     @State private var avatarImportError: String?
-
-    private let avatarOptions = ["👶🏻", "👶🏼", "👶🏽", "👦🏻", "👧🏻", "🧒🏻", "😊", "🥰", "😴", "🍼", "🌙", "⭐️"]
 
     var body: some View {
         NavigationStack {
@@ -85,7 +84,7 @@ struct BabyInfoEditView: View {
                                         .foregroundStyle(DesignToken.textPrimary)
                                         .font(BBBFont.font(size: 14, weight: .semibold))
                                         .frame(maxWidth: 74)
-                                    Text("cm")
+                                    Text(AppMeasurementFormat.heightUnit)
                                         .foregroundStyle(DesignToken.textSecondary)
                                         .font(BBBFont.font(size: 13, weight: .semibold))
                                 }
@@ -101,22 +100,34 @@ struct BabyInfoEditView: View {
                                         .foregroundStyle(DesignToken.textPrimary)
                                         .font(BBBFont.font(size: 14, weight: .semibold))
                                         .frame(maxWidth: 74)
-                                    Text("kg")
+                                    Text(AppMeasurementFormat.weightPrimaryUnit)
                                         .foregroundStyle(DesignToken.textSecondary)
                                         .font(BBBFont.font(size: 13, weight: .semibold))
+
+                                    if AppMeasurementFormat.currentSystem == .imperial {
+                                        TextField("--", text: $draftWeightOunces)
+                                            .keyboardType(.decimalPad)
+                                            .multilineTextAlignment(.trailing)
+                                            .foregroundStyle(DesignToken.textPrimary)
+                                            .font(BBBFont.font(size: 14, weight: .semibold))
+                                            .frame(maxWidth: 58)
+                                        Text(AppMeasurementFormat.weightSecondaryUnit)
+                                            .foregroundStyle(DesignToken.textSecondary)
+                                            .font(BBBFont.font(size: 13, weight: .semibold))
+                                    }
                                 }
                             }
                         }
                         .padding(.vertical, 2)
-                        .softProfileCard(cornerRadius: 22)
+                        .softProfileCard(cornerRadius: DesignToken.largeCardRadius)
 
                         Button {
                             profileStore.create(
                                 name: draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "宝宝" : draftName.trimmingCharacters(in: .whitespacesAndNewlines),
                                 gender: draftGender,
                                 birthDate: draftBirthDate,
-                                heightCm: decimalValue(from: draftHeightCm),
-                                weightKg: decimalValue(from: draftWeightKg),
+                                heightCm: canonicalHeightValue,
+                                weightKg: canonicalWeightValue,
                                 avatarEmoji: draftAvatarEmoji,
                                 avatarImageData: draftAvatarImageData,
                                 avatarCompanionID: draftAvatarCompanionID,
@@ -143,9 +154,9 @@ struct BabyInfoEditView: View {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(DesignToken.textPrimary)
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(.white.opacity(0.92)))
-                            .overlay(Circle().stroke(.white.opacity(0.86), lineWidth: 1))
+                            .frame(width: DesignToken.minimumTapSize, height: DesignToken.minimumTapSize)
+                            .background(Circle().fill(DesignToken.surfaceRaised.opacity(0.92)))
+                            .overlay(Circle().stroke(DesignToken.glassStroke.opacity(0.86), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }
@@ -161,16 +172,15 @@ struct BabyInfoEditView: View {
                 draftName = profile.name
                 draftGender = profile.gender
                 draftBirthDate = profile.birthDate
-                draftHeightCm = metricText(profile.heightCm)
-                draftWeightKg = metricText(profile.weightKg)
+                loadMeasurementDrafts(profile)
                 draftAvatarEmoji = profile.avatarEmoji
                 draftAvatarImageData = profile.avatarImageData
                 draftAvatarCompanionID = profile.avatarCompanionID
                 draftAvatarVideoFilename = profile.avatarVideoFilename
                 draftAvatarHistory = profile.avatarHistoryItems
             }
-            .onChange(of: selectedPhoto) { _, item in
-                Task { await loadAvatarImage(from: item) }
+            .task(id: selectedPhoto) {
+                await loadAvatarImage(from: selectedPhoto)
             }
             .sheet(isPresented: $showAvatarRecorder) {
                 AvatarVideoRecorder { url in
@@ -185,7 +195,7 @@ struct BabyInfoEditView: View {
                         .foregroundStyle(DesignToken.textPrimary)
                     Picker("性别", selection: $draftGender) {
                         ForEach(BabyGender.allCases) { gender in
-                            Text("\(gender.emoji) \(genderTitle(gender))").tag(gender)
+                            Text(genderTitle(gender)).tag(gender)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -237,7 +247,7 @@ struct BabyInfoEditView: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    .white,
+                                    DesignToken.surfaceRaised,
                                     DesignToken.primary.opacity(0.16)
                                 ],
                                 startPoint: .topLeading,
@@ -250,10 +260,10 @@ struct BabyInfoEditView: View {
 
                     Image(systemName: "camera.fill")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DesignToken.onPrimary)
                         .frame(width: 27, height: 27)
                         .background(Circle().fill(DesignToken.primaryGradient))
-                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                        .overlay(Circle().stroke(DesignToken.onPrimary, lineWidth: 2))
                         .offset(x: -2, y: -2)
                 }
             }
@@ -272,9 +282,9 @@ struct BabyInfoEditView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
-        .padding(.horizontal, 18)
-        .softProfileCard(cornerRadius: 22)
+        .padding(.vertical, 16)
+        .padding(.horizontal, DesignToken.compactHorizontalPadding)
+        .softProfileCard(cornerRadius: DesignToken.largeCardRadius)
     }
 
     private var avatarPickerSheet: some View {
@@ -289,7 +299,7 @@ struct BabyInfoEditView: View {
                     Button {
                         showAvatarRecorder = true
                     } label: {
-                        avatarSourceTile(icon: "video.fill", title: "录个动态头像", tint: Color(hex: "#6FA8FF"))
+                        avatarSourceTile(icon: "video.fill", title: "录个动态头像", tint: DesignToken.accentBlue)
                     }
                     .buttonStyle(ScaleButtonStyle())
                     .frame(maxWidth: .infinity)
@@ -330,7 +340,7 @@ struct BabyInfoEditView: View {
                                             .scaledToFit()
                                             .padding(7)
                                             .frame(width: 62, height: 62)
-                                            .background(Circle().fill(.white.opacity(0.94)))
+                                            .background(Circle().fill(DesignToken.surfaceRaised.opacity(0.94)))
                                             .overlay(
                                                 Circle()
                                                     .stroke(
@@ -338,7 +348,7 @@ struct BabyInfoEditView: View {
                                                         lineWidth: draftAvatarCompanionID == companion.id ? 2.5 : 1
                                                     )
                                             )
-                                        Text(companion.chineseName)
+                                        Text(companion.localizedName)
                                             .font(BBBFont.font(size: 10, weight: .semibold))
                                             .foregroundStyle(DesignToken.textSecondary)
                                             .lineLimit(1)
@@ -380,38 +390,8 @@ struct BabyInfoEditView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("表情头像")
-                        .font(BBBFont.font(size: 13, weight: .bold))
-                        .foregroundStyle(DesignToken.textSecondary)
-
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 12) {
-                        ForEach(avatarOptions, id: \.self) { avatar in
-                            Button {
-                                draftAvatarEmoji = avatar
-                                draftAvatarImageData = nil
-                                draftAvatarCompanionID = nil
-                                draftAvatarVideoFilename = nil
-                                showAvatarPicker = false
-                            } label: {
-                                Text(avatar)
-                                    .font(.system(size: 28))
-                                    .frame(width: 50, height: 50)
-                                    .background(
-                                        Circle()
-                                            .fill(avatar == selectedAvatar && draftAvatarImageData == nil && draftAvatarCompanionID == nil && draftAvatarVideoFilename == nil ? DesignToken.primary.opacity(0.20) : .white)
-                                    )
-                                    .overlay(
-                                        Circle()
-                                            .stroke(avatar == selectedAvatar && draftAvatarImageData == nil && draftAvatarCompanionID == nil && draftAvatarVideoFilename == nil ? DesignToken.primary : DesignToken.line.opacity(0.34), lineWidth: avatar == selectedAvatar ? 2 : 1)
-                                    )
-                            }
-                            .buttonStyle(ScaleButtonStyle())
-                        }
-                    }
-                }
             }
-            .padding(20)
+            .padding(DesignToken.screenHorizontalPadding)
         }
         .background(ProfileSoftBackground())
     }
@@ -420,7 +400,7 @@ struct BabyInfoEditView: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignToken.onPrimary)
                 .frame(width: 58, height: 58)
                 .background(
                     Circle()
@@ -433,7 +413,7 @@ struct BabyInfoEditView: View {
                         )
                         .shadow(color: tint.opacity(0.22), radius: 10, y: 5)
                 )
-            Text(title)
+            Text(title.localized)
                 .font(BBBFont.font(size: 11, weight: .bold))
                 .foregroundStyle(DesignToken.textPrimary)
                 .multilineTextAlignment(.center)
@@ -492,8 +472,8 @@ struct BabyInfoEditView: View {
             name: draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "宝宝" : draftName,
             gender: draftGender,
             birthDate: draftBirthDate,
-            heightCm: decimalValue(from: draftHeightCm),
-            weightKg: decimalValue(from: draftWeightKg),
+            heightCm: canonicalHeightValue,
+            weightKg: canonicalWeightValue,
             avatarEmoji: draftAvatarEmoji,
             avatarImageData: draftAvatarImageData,
             avatarCompanionID: draftAvatarCompanionID,
@@ -528,11 +508,16 @@ struct BabyInfoEditView: View {
     @MainActor
     private func loadAvatarImage(from item: PhotosPickerItem?) async {
         guard let item,
-              let data = try? await item.loadTransferable(type: Data.self),
-              let image = UIImage(data: data),
-              let compressed = image.jpegData(compressionQuality: 0.82) else {
+              let data = try? await item.loadTransferable(type: Data.self) else {
             return
         }
+        guard !Task.isCancelled else { return }
+        let compressed = await Task.detached(priority: .userInitiated) {
+            autoreleasepool {
+                UIImage(data: data)?.jpegData(compressionQuality: 0.82)
+            }
+        }.value
+        guard !Task.isCancelled, let compressed else { return }
         draftAvatarImageData = compressed
         draftAvatarEmoji = nil
         draftAvatarCompanionID = nil
@@ -564,7 +549,7 @@ struct BabyInfoEditView: View {
 
     private func groupRow<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         HStack {
-            Text(title)
+            Text(title.localized)
                 .font(BBBFont.font(size: 13, weight: .semibold))
                 .foregroundStyle(DesignToken.textSecondary)
             Spacer()
@@ -577,24 +562,58 @@ struct BabyInfoEditView: View {
 
     private func genderTitle(_ gender: BabyGender) -> String {
         switch gender {
-        case .boy: return "男宝"
-        case .girl: return "女宝"
+        case .boy: return "男宝".localized
+        case .girl: return "女宝".localized
         }
     }
 
     private func metricText(_ value: Double?) -> String {
-        guard let value else { return "" }
+        guard let value, value.isFinite else { return "" }
         if value.rounded() == value {
             return String(Int(value))
         }
         return String(format: "%.1f", value)
     }
 
+    private var canonicalHeightValue: Double? {
+        guard let displayValue = decimalValue(from: draftHeightCm) else { return nil }
+        return AppMeasurementFormat.centimeters(fromHeightValue: displayValue)
+    }
+
+    private var canonicalWeightValue: Double? {
+        guard let primaryValue = decimalValue(from: draftWeightKg) else { return nil }
+        guard AppMeasurementFormat.currentSystem == .imperial else { return primaryValue }
+        let ounces = AppMeasurementFormat.parseNumber(draftWeightOunces) ?? 0
+        return AppMeasurementFormat.kilograms(pounds: primaryValue, ounces: ounces)
+    }
+
+    private func loadMeasurementDrafts(_ profile: BabyProfileData) {
+        if let height = profile.heightCm, height.isFinite {
+            let displayHeight = AppMeasurementFormat.heightValue(fromCentimeters: height)
+            draftHeightCm = AppMeasurementFormat.inputNumber(displayHeight, maximumFractionDigits: 1)
+        } else {
+            draftHeightCm = ""
+        }
+
+        guard let weight = profile.weightKg, weight.isFinite else {
+            draftWeightKg = ""
+            draftWeightOunces = ""
+            return
+        }
+
+        if AppMeasurementFormat.currentSystem == .imperial {
+            let displayWeight = AppMeasurementFormat.poundsAndOunces(fromKilograms: weight)
+            draftWeightKg = String(displayWeight.pounds)
+            draftWeightOunces = AppMeasurementFormat.inputNumber(displayWeight.ounces, maximumFractionDigits: 1)
+        } else {
+            draftWeightKg = metricText(weight)
+            draftWeightOunces = ""
+        }
+    }
+
     private func decimalValue(from text: String) -> Double? {
-        let normalized = text
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: ",", with: ".")
-        guard let value = Double(normalized), value > 0 else {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = AppMeasurementFormat.parseNumber(normalized), value > 0 else {
             return nil
         }
         return value

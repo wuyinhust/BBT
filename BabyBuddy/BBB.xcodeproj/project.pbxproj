@@ -12,42 +12,80 @@
 		38FA07B2E571E9AC19D6C52E /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB127FE032B7ABC2205A055 /* Models.swift */; };
 		6657DB659C8DB7D27868FEB1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E62A96081C4DA27A68905E70 /* ContentView.swift */; };
 		6FF7C2646CC91F66F477EC86 /* BBBApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0572B03F18DDC9494FC72E4B /* BBBApp.swift */; };
-		APPVARBLD0000000000001 /* AppVariant.swift in Sources */ = {isa = PBXBuildFile; fileRef = APPVARREF0000000000001 /* AppVariant.swift */; };
 		8ADB314B96B7460DD0133AA0 /* ShakeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A83CB333C6C586A43AE6264 /* ShakeDetector.swift */; };
 		8F8574101C82F9F5B7E6C3A0 /* BaByBuddyWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 99B3394530EE8E6934513A41 /* BaByBuddyWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A3239C72CEC527C89372AF63 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C94D1EB326D2FD84913950C8 /* Foundation.framework */; };
 		ACHSTKBLD00000000000001 /* AchievementStickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACHSTKREF00000000000001 /* AchievementStickerStore.swift */; };
+		APPVARBLD0000000000001 /* AppVariant.swift in Sources */ = {isa = PBXBuildFile; fileRef = APPVARREF0000000000001 /* AppVariant.swift */; };
 		AST01BLD000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AST01REF000000000000001 /* Assets.xcassets */; };
 		ASTWGTBLD00000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ASTWGTREF00000000000001 /* Assets.xcassets */; };
 		B564EB58B2155D6DE2AA8A37 /* FeedingActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1AF612DA59E32807FC8FFD /* FeedingActivityAttributes.swift */; };
+		BAE01BLD0000000000000001 /* BabyAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE01REF0000000000000001 /* BabyAudioEngine.swift */; };
 		BBBFONTBLD0000000000001 /* BBBFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBFONTREF0000000000001 /* BBBFont.swift */; };
 		BBBFONTRES0000000000001 /* AlimamaFangYuanTiVF-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */; };
+		BBBTESTUIBLD00000000001 /* BBBUILocalizationScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBTESTUIREF00000000001 /* BBBUILocalizationScreenshotTests.swift */; };
+		BBBTESTUNITBLD000000001 /* AppMeasurementFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBTESTUNITREF000000001 /* AppMeasurementFormatTests.swift */; };
+		BBBTESTEASYBLD0000000001 /* EasyCycleFeedStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBTESTEASYREF0000000001 /* EasyCycleFeedStateTests.swift */; };
+		BBBTESTUNITLOCBLD000001 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = LOCAPPREF000000000000001 /* Localization.swift */; };
+		BBCOLORAPPBLD0000000001 /* BBBuddyColors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BBCOLORREF000000000001 /* BBBuddyColors.xcassets */; };
+		BBCOLORWGTBLD0000000001 /* BBBuddyColors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BBCOLORREF000000000001 /* BBBuddyColors.xcassets */; };
 		BCV01BLD000000000000001 /* BuddyChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCV01REF000000000000001 /* BuddyChatView.swift */; };
 		BIE01BLD000000000000001 /* BabyInfoEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BIE01REF000000000000001 /* BabyInfoEditView.swift */; };
 		CPV01BLD000000000000001 /* CompanionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CPV01REF000000000000001 /* CompanionPickerView.swift */; };
+		CRS01BLD0000000000000001 /* CareRecencyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CRS01REF0000000000000001 /* CareRecencyStore.swift */; };
+		CRSHAREDAPPBLD000000001 /* CareRecency.swift in Sources */ = {isa = PBXBuildFile; fileRef = CRSHAREDREF000000000001 /* CareRecency.swift */; };
+		CRSHAREDWGTBLD000000001 /* CareRecency.swift in Sources */ = {isa = PBXBuildFile; fileRef = CRSHAREDREF000000000001 /* CareRecency.swift */; };
 		DD5114F47B635FE842294EA7 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9055D29909109FB3B0237737 /* VideoPlayerView.swift */; };
+		F00D000000000000000000002 /* InteractiveBottleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00D000000000000000000001 /* InteractiveBottleView.swift */; };
 		FCS01BLD000000000000001 /* FamilyCloudStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCS01REF000000000000001 /* FamilyCloudStore.swift */; };
 		FDS01BLD000000000000001 /* FeedingDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDS01REF000000000000001 /* FeedingDraftStore.swift */; };
-		FS001BLD0000000000000001 /* FeedingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FS001REF0000000000000001 /* FeedingSheet.swift */; };
+		GMR01BLD000000000000001 /* GrowthMetricRecorderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = GMR01REF000000000000001 /* GrowthMetricRecorderSheet.swift */; };
+		GRW01BLD0000000000000001 /* GrowthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = GRW01REF0000000000000001 /* GrowthView.swift */; };
+		HARBETHBLD0000000000001 /* Harbeth in Frameworks */ = {isa = PBXBuildFile; productRef = HARBETHPROD000000000001 /* Harbeth */; };
 		HV001BLD0000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = HV001REF0000000000000001 /* HomeView.swift */; };
-		LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LIS01REF000000000000001 /* LiveIslandSceneView.swift */; };
+		INFOPLISTLOCAPPBLD000001 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = INFOPLISTLOCREF000000001 /* InfoPlist.xcstrings */; };
 		LDTDSBLD00000000000001 /* LocalDebugTodayDataSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = LDTDSREF00000000000001 /* LocalDebugTodayDataSeeder.swift */; };
+		LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LIS01REF000000000000001 /* LiveIslandSceneView.swift */; };
+		LOCALIZABLEAPPBLD0000001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = LOCALIZABLEREF000000001 /* Localizable.xcstrings */; };
+		LOCALIZABLEWGTBLD0000001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = LOCALIZABLEREF000000001 /* Localizable.xcstrings */; };
+		LOCAPPBLD000000000000001 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = LOCAPPREF000000000000001 /* Localization.swift */; };
+		LOCWGTBLD000000000000001 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = LOCAPPREF000000000000001 /* Localization.swift */; };
 		ONB01BLD000000000000001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONB01REF000000000000001 /* OnboardingView.swift */; };
 		OP001BLD0000000000000001 /* OtherPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP001REF0000000000000001 /* OtherPages.swift */; };
 		PLUSSTOREBLD00000000001 /* PlusMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = PLUSSTOREREF00000000001 /* PlusMembershipStore.swift */; };
 		PLUSVIEWBLD000000000001 /* PlusMembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PLUSVIEWREF000000000001 /* PlusMembershipView.swift */; };
+		PRIVACYAPPBLD0000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIVACYREF00000000000001 /* PrivacyInfo.xcprivacy */; };
+		PRIVACYWGTBLD0000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIVACYREF00000000000001 /* PrivacyInfo.xcprivacy */; };
 		PV001BLD0000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV001REF0000000000000001 /* ProfileView.swift */; };
 		RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = RES01REF000000000000001 /* RecordEditSheets.swift */; };
+		RHEASYBLD00000000000001 /* RecordHomeEasyFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = RHEASYREF00000000000001 /* RecordHomeEasyFeed.swift */; };
 		RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RHV01REF000000000000001 /* RecordHomeView.swift */; };
+		RPS01BLD0000000000000001 /* RhythmParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = RPS01REF0000000000000001 /* RhythmParameters.swift */; };
 		SDS01BLD000000000000001 /* SleepDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = SDS01REF000000000000001 /* SleepDraftStore.swift */; };
+		SOB01BLD0000000000000001 /* SafetyOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SOB01REF0000000000000001 /* SafetyOnboardingView.swift */; };
+		SUBJSTATEBLD00000000001 /* SubjectiveState.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBJSTATEREF00000000001 /* SubjectiveState.swift */; };
 		VID01BLD000000000000001 /* Videos in Resources */ = {isa = PBXBuildFile; fileRef = VID01REF000000000000001 /* Videos */; };
-		GRW01BLD0000000000000001 /* GrowthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = GRW01REF0000000000000001 /* GrowthView.swift */; };
+		WHOGROWTHBLD000000000001 /* WHOGrowthStandards.swift in Sources */ = {isa = PBXBuildFile; fileRef = WHOGROWTHREF000000000001 /* WHOGrowthStandards.swift */; };
 		WRC01BLD0000000000000001 /* WeeklyRhythmComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = WRC01REF0000000000000001 /* WeeklyRhythmComposer.swift */; };
 		WRV01BLD0000000000000001 /* WeeklyRhythmPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WRV01REF0000000000000001 /* WeeklyRhythmPlayerView.swift */; };
-		RPS01BLD0000000000000001 /* RhythmParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = RPS01REF0000000000000001 /* RhythmParameters.swift */; };
-		BAE01BLD0000000000000001 /* BabyAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE01REF0000000000000001 /* BabyAudioEngine.swift */; };
-		SOB01BLD0000000000000001 /* SafetyOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SOB01REF0000000000000001 /* SafetyOnboardingView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BBBTESTUIPROXY000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 41FEED048C0EAB561C002544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C11DB6D9AB3DD4FBF8072B84;
+			remoteInfo = BBB;
+		};
+		WGTDEPPROXY00000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 41FEED048C0EAB561C002544 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA060C4F86BED67B58651A90;
+			remoteInfo = BaByBuddyWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		B7DB63C0D87180D31288423D /* Embed Foundation Extensions */ = {
@@ -62,16 +100,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
-
-/* Begin PBXContainerItemProxy section */
-		WGTDEPPROXY00000000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 41FEED048C0EAB561C002544 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = DA060C4F86BED67B58651A90;
-			remoteInfo = BaByBuddyWidgetExtension;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0572B03F18DDC9494FC72E4B /* BBBApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BBBApp.swift; path = BBB/BBBApp.swift; sourceTree = "<group>"; };
@@ -88,45 +116,76 @@
 		APPVARREF0000000000001 /* AppVariant.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppVariant.swift; path = BBB/AppVariant.swift; sourceTree = "<group>"; };
 		AST01REF000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = BBB/Assets.xcassets; sourceTree = "<group>"; };
 		ASTWGTREF00000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = BaByBuddyWidget/Assets.xcassets; sourceTree = "<group>"; };
+		BAE01REF0000000000000001 /* BabyAudioEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BabyAudioEngine.swift; path = BBB/BabyAudioEngine.swift; sourceTree = "<group>"; };
+		BBBFONTREF0000000000001 /* BBBFont.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BBBFont.swift; path = BBB/BBBFont.swift; sourceTree = "<group>"; };
+		BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = "AlimamaFangYuanTiVF-Thin.ttf"; path = "BBB/Fonts/AlimamaFangYuanTiVF-Thin.ttf"; sourceTree = "<group>"; };
+		BBBTESTUIPRODUCT0000001 /* BBBUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BBBUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBBTESTUIREF00000000001 /* BBBUILocalizationScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBBUILocalizationScreenshotTests.swift; sourceTree = "<group>"; };
+		BBBTESTUNITPRODUCT00001 /* BBBTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BBBTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBBTESTUNITREF000000001 /* AppMeasurementFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMeasurementFormatTests.swift; sourceTree = "<group>"; };
+		BBBTESTEASYREF0000000001 /* EasyCycleFeedStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EasyCycleFeedStateTests.swift; sourceTree = "<group>"; };
+		BBCOLORREF000000000001 /* BBBuddyColors.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = BBBuddyColors.xcassets; path = Shared/BBBuddyColors.xcassets; sourceTree = "<group>"; };
 		BCV01REF000000000000001 /* BuddyChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BuddyChatView.swift; path = BBB/BuddyChatView.swift; sourceTree = "<group>"; };
 		BIE01REF000000000000001 /* BabyInfoEditView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BabyInfoEditView.swift; path = BBB/BabyInfoEditView.swift; sourceTree = "<group>"; };
-		BBBFONTREF0000000000001 /* BBBFont.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BBBFont.swift; path = BBB/BBBFont.swift; sourceTree = "<group>"; };
-		BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = AlimamaFangYuanTiVF-Thin.ttf; path = BBB/Fonts/AlimamaFangYuanTiVF-Thin.ttf; sourceTree = "<group>"; };
 		C94D1EB326D2FD84913950C8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		CPV01REF000000000000001 /* CompanionPickerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CompanionPickerView.swift; path = BBB/CompanionPickerView.swift; sourceTree = "<group>"; };
+		CRS01REF0000000000000001 /* CareRecencyStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CareRecencyStore.swift; path = BBB/CareRecencyStore.swift; sourceTree = "<group>"; };
+		CRSHAREDREF000000000001 /* CareRecency.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CareRecency.swift; path = Shared/CareRecency.swift; sourceTree = "<group>"; };
 		E62A96081C4DA27A68905E70 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContentView.swift; path = BBB/ContentView.swift; sourceTree = "<group>"; };
+		F00D000000000000000000001 /* InteractiveBottleView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InteractiveBottleView.swift; path = BBB/InteractiveBottleView.swift; sourceTree = "<group>"; };
 		F16851AE20788329FCEA0CA0 /* ActivityStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ActivityStore.swift; path = BBB/ActivityStore.swift; sourceTree = "<group>"; };
 		F2AE3C2B6FC0FE33BC35F395 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = BBB/Info.plist; sourceTree = "<group>"; };
 		FCS01REF000000000000001 /* FamilyCloudStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FamilyCloudStore.swift; path = BBB/FamilyCloudStore.swift; sourceTree = "<group>"; };
 		FDB127FE032B7ABC2205A055 /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Models.swift; path = BBB/Models.swift; sourceTree = "<group>"; };
 		FDS01REF000000000000001 /* FeedingDraftStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FeedingDraftStore.swift; path = BBB/FeedingDraftStore.swift; sourceTree = "<group>"; };
-		FS001REF0000000000000001 /* FeedingSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FeedingSheet.swift; path = BBB/FeedingSheet.swift; sourceTree = "<group>"; };
+		GMR01REF000000000000001 /* GrowthMetricRecorderSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GrowthMetricRecorderSheet.swift; path = BBB/GrowthMetricRecorderSheet.swift; sourceTree = "<group>"; };
+		GRW01REF0000000000000001 /* GrowthView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GrowthView.swift; path = BBB/GrowthView.swift; sourceTree = "<group>"; };
 		HV001REF0000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = BBB/HomeView.swift; sourceTree = "<group>"; };
-		LIS01REF000000000000001 /* LiveIslandSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveIslandSceneView.swift; path = BBB/LiveIslandSceneView.swift; sourceTree = "<group>"; };
+		INFOPLISTLOCREF000000001 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = InfoPlist.xcstrings; path = BBB/InfoPlist.xcstrings; sourceTree = "<group>"; };
 		LDTDSREF00000000000001 /* LocalDebugTodayDataSeeder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalDebugTodayDataSeeder.swift; path = BBB/LocalDebugTodayDataSeeder.swift; sourceTree = "<group>"; };
+		LIS01REF000000000000001 /* LiveIslandSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveIslandSceneView.swift; path = BBB/LiveIslandSceneView.swift; sourceTree = "<group>"; };
+		LOCALIZABLEREF000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = Localizable.xcstrings; path = BBB/Localizable.xcstrings; sourceTree = "<group>"; };
+		LOCAPPREF000000000000001 /* Localization.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Localization.swift; path = BBB/Localization.swift; sourceTree = "<group>"; };
 		ONB01REF000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = BBB/OnboardingView.swift; sourceTree = "<group>"; };
 		OP001REF0000000000000001 /* OtherPages.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OtherPages.swift; path = BBB/OtherPages.swift; sourceTree = "<group>"; };
 		PLUSSTOREREF00000000001 /* PlusMembershipStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusMembershipStore.swift; path = BBB/PlusMembershipStore.swift; sourceTree = "<group>"; };
 		PLUSVIEWREF000000000001 /* PlusMembershipView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusMembershipView.swift; path = BBB/PlusMembershipView.swift; sourceTree = "<group>"; };
+		PRIVACYREF00000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = BBB/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		PV001REF0000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = BBB/ProfileView.swift; sourceTree = "<group>"; };
 		RES01REF000000000000001 /* RecordEditSheets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordEditSheets.swift; path = BBB/RecordEditSheets.swift; sourceTree = "<group>"; };
+		RHEASYREF00000000000001 /* RecordHomeEasyFeed.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordHomeEasyFeed.swift; path = BBB/RecordHomeEasyFeed.swift; sourceTree = "<group>"; };
 		RHV01REF000000000000001 /* RecordHomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RecordHomeView.swift; path = BBB/RecordHomeView.swift; sourceTree = "<group>"; };
+		RPS01REF0000000000000001 /* RhythmParameters.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RhythmParameters.swift; path = BBB/RhythmParameters.swift; sourceTree = "<group>"; };
 		SDS01REF000000000000001 /* SleepDraftStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SleepDraftStore.swift; path = BBB/SleepDraftStore.swift; sourceTree = "<group>"; };
+		SOB01REF0000000000000001 /* SafetyOnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SafetyOnboardingView.swift; path = BBB/SafetyOnboardingView.swift; sourceTree = "<group>"; };
+		SUBJSTATEREF00000000001 /* SubjectiveState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SubjectiveState.swift; path = BBB/SubjectiveState.swift; sourceTree = "<group>"; };
 		VID01REF000000000000001 /* Videos */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Videos; path = BBB/Videos; sourceTree = "<group>"; };
-		GRW01REF0000000000000001 /* GrowthView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GrowthView.swift; path = BBB/GrowthView.swift; sourceTree = "<group>"; };
+		WHOGROWTHREF000000000001 /* WHOGrowthStandards.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WHOGrowthStandards.swift; path = BBB/WHOGrowthStandards.swift; sourceTree = "<group>"; };
 		WRC01REF0000000000000001 /* WeeklyRhythmComposer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WeeklyRhythmComposer.swift; path = BBB/WeeklyRhythmComposer.swift; sourceTree = "<group>"; };
 		WRV01REF0000000000000001 /* WeeklyRhythmPlayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WeeklyRhythmPlayerView.swift; path = BBB/WeeklyRhythmPlayerView.swift; sourceTree = "<group>"; };
-		RPS01REF0000000000000001 /* RhythmParameters.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RhythmParameters.swift; path = BBB/RhythmParameters.swift; sourceTree = "<group>"; };
-		BAE01REF0000000000000001 /* BabyAudioEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BabyAudioEngine.swift; path = BBB/BabyAudioEngine.swift; sourceTree = "<group>"; };
-		SOB01REF0000000000000001 /* SafetyOnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SafetyOnboardingView.swift; path = BBB/SafetyOnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		BBBTESTUIFRAMEWORKS0001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBBTESTUNITFRAMEWORKS01 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D032D8A79E22CD8FCE70ED28 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				A3239C72CEC527C89372AF63 /* Foundation.framework in Frameworks */,
+				HARBETHBLD0000000000001 /* Harbeth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -145,6 +204,8 @@
 			children = (
 				672F1785BC031C5DE275F3A3 /* BBB.app */,
 				99B3394530EE8E6934513A41 /* BaByBuddyWidgetExtension.appex */,
+				BBBTESTUNITPRODUCT00001 /* BBBTests.xctest */,
+				BBBTESTUIPRODUCT0000001 /* BBBUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -173,21 +234,29 @@
 			isa = PBXGroup;
 			children = (
 				579076D497F6554B21D4DE5F /* BBB.entitlements */,
+				LOCAPPREF000000000000001 /* Localization.swift */,
+				LOCALIZABLEREF000000001 /* Localizable.xcstrings */,
+				INFOPLISTLOCREF000000001 /* InfoPlist.xcstrings */,
 				F16851AE20788329FCEA0CA0 /* ActivityStore.swift */,
 				APPVARREF0000000000001 /* AppVariant.swift */,
 				0572B03F18DDC9494FC72E4B /* BBBApp.swift */,
 				BBBFONTREF0000000000001 /* BBBFont.swift */,
+				CRS01REF0000000000000001 /* CareRecencyStore.swift */,
 				E62A96081C4DA27A68905E70 /* ContentView.swift */,
+				F00D000000000000000000001 /* InteractiveBottleView.swift */,
 				FCS01REF000000000000001 /* FamilyCloudStore.swift */,
 				HV001REF0000000000000001 /* HomeView.swift */,
 				LIS01REF000000000000001 /* LiveIslandSceneView.swift */,
 				LDTDSREF00000000000001 /* LocalDebugTodayDataSeeder.swift */,
 				BCV01REF000000000000001 /* BuddyChatView.swift */,
+				RHEASYREF00000000000001 /* RecordHomeEasyFeed.swift */,
 				RHV01REF000000000000001 /* RecordHomeView.swift */,
+				SUBJSTATEREF00000000001 /* SubjectiveState.swift */,
 				RES01REF000000000000001 /* RecordEditSheets.swift */,
 				PV001REF0000000000000001 /* ProfileView.swift */,
 				PLUSSTOREREF00000000001 /* PlusMembershipStore.swift */,
 				PLUSVIEWREF000000000001 /* PlusMembershipView.swift */,
+				PRIVACYREF00000000000001 /* PrivacyInfo.xcprivacy */,
 				CPV01REF000000000000001 /* CompanionPickerView.swift */,
 				ONB01REF000000000000001 /* OnboardingView.swift */,
 				OP001REF0000000000000001 /* OtherPages.swift */,
@@ -195,7 +264,6 @@
 				ACHSTKREF00000000000001 /* AchievementStickerStore.swift */,
 				FDS01REF000000000000001 /* FeedingDraftStore.swift */,
 				SDS01REF000000000000001 /* SleepDraftStore.swift */,
-				FS001REF0000000000000001 /* FeedingSheet.swift */,
 				FDB127FE032B7ABC2205A055 /* Models.swift */,
 				8A83CB333C6C586A43AE6264 /* ShakeDetector.swift */,
 				VID01REF000000000000001 /* Videos */,
@@ -203,6 +271,8 @@
 				BBBFONTTTF000000000001 /* AlimamaFangYuanTiVF-Thin.ttf */,
 				9055D29909109FB3B0237737 /* VideoPlayerView.swift */,
 				GRW01REF0000000000000001 /* GrowthView.swift */,
+				WHOGROWTHREF000000000001 /* WHOGrowthStandards.swift */,
+				GMR01REF000000000000001 /* GrowthMetricRecorderSheet.swift */,
 				WRC01REF0000000000000001 /* WeeklyRhythmComposer.swift */,
 				WRV01REF0000000000000001 /* WeeklyRhythmPlayerView.swift */,
 				RPS01REF0000000000000001 /* RhythmParameters.swift */,
@@ -211,6 +281,32 @@
 				F2AE3C2B6FC0FE33BC35F395 /* Info.plist */,
 			);
 			name = BBB;
+			sourceTree = "<group>";
+		};
+		BBBTESTUIGROUP000000001 /* BBBUITests */ = {
+			isa = PBXGroup;
+			children = (
+				BBBTESTUIREF00000000001 /* BBBUILocalizationScreenshotTests.swift */,
+			);
+			path = BBBUITests;
+			sourceTree = "<group>";
+		};
+		BBBTESTUNITGROUP0000001 /* BBBTests */ = {
+			isa = PBXGroup;
+			children = (
+				BBBTESTUNITREF000000001 /* AppMeasurementFormatTests.swift */,
+				BBBTESTEASYREF0000000001 /* EasyCycleFeedStateTests.swift */,
+			);
+			path = BBBTests;
+			sourceTree = "<group>";
+		};
+		CRSHAREDGROUP0000000001 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BBCOLORREF000000000001 /* BBBuddyColors.xcassets */,
+				CRSHAREDREF000000000001 /* CareRecency.swift */,
+			);
+			name = Shared;
 			sourceTree = "<group>";
 		};
 		E3DA2F35E62B56FC4FA0701D /* Frameworks */ = {
@@ -224,6 +320,9 @@
 		FABEC31683C1DB800CBF4DE5 = {
 			isa = PBXGroup;
 			children = (
+				BBBTESTUNITGROUP0000001 /* BBBTests */,
+				BBBTESTUIGROUP000000001 /* BBBUITests */,
+				CRSHAREDGROUP0000000001 /* Shared */,
 				7A6B1B84B0B8F15398BCAE2D /* BaByBuddyWidget */,
 				21EE4963C32503F1C027F462 /* Products */,
 				E3DA2F35E62B56FC4FA0701D /* Frameworks */,
@@ -234,6 +333,39 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		BBBTESTUITARGET00000001 /* BBBUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBBTESTUICONFIGLIST0001 /* Build configuration list for PBXNativeTarget "BBBUITests" */;
+			buildPhases = (
+				BBBTESTUISOURCES0000001 /* Sources */,
+				BBBTESTUIFRAMEWORKS0001 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BBBTESTUIDEPENDENCY0001 /* PBXTargetDependency */,
+			);
+			name = BBBUITests;
+			productName = BBBUITests;
+			productReference = BBBTESTUIPRODUCT0000001 /* BBBUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		BBBTESTUNITTARGET000001 /* BBBTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBBTESTUNITCONFIGLIST01 /* Build configuration list for PBXNativeTarget "BBBTests" */;
+			buildPhases = (
+				BBBTESTUNITSOURCES00001 /* Sources */,
+				BBBTESTUNITFRAMEWORKS01 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BBBTests;
+			productName = BBBTests;
+			productReference = BBBTESTUNITPRODUCT00001 /* BBBTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		C11DB6D9AB3DD4FBF8072B84 /* BBB */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C4B84748C7FE434FC2D21D9D /* Build configuration list for PBXNativeTarget "BBB" */;
@@ -249,6 +381,9 @@
 				WGTDEP000000000000001 /* PBXTargetDependency */,
 			);
 			name = BBB;
+			packageProductDependencies = (
+				HARBETHPROD000000000001 /* Harbeth */,
+			);
 			productName = BBB;
 			productReference = 672F1785BC031C5DE275F3A3 /* BBB.app */;
 			productType = "com.apple.product-type.application";
@@ -272,14 +407,6 @@
 		};
 /* End PBXNativeTarget section */
 
-/* Begin PBXTargetDependency section */
-		WGTDEP000000000000001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = DA060C4F86BED67B58651A90 /* BaByBuddyWidgetExtension */;
-			targetProxy = WGTDEPPROXY00000000001 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
 /* Begin PBXProject section */
 		41FEED048C0EAB561C002544 /* Project object */ = {
 			isa = PBXProject;
@@ -290,19 +417,26 @@
 			};
 			buildConfigurationList = 5F88A7AE103ABE2F07B5DB80 /* Build configuration list for PBXProject "BBB" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
+				"zh-Hant",
 				Base,
 			);
 			mainGroup = FABEC31683C1DB800CBF4DE5;
+			packageReferences = (
+				HARBETHPKG0000000000001 /* XCRemoteSwiftPackageReference "Harbeth" */,
+			);
 			productRefGroup = 21EE4963C32503F1C027F462 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				C11DB6D9AB3DD4FBF8072B84 /* BBB */,
 				DA060C4F86BED67B58651A90 /* BaByBuddyWidgetExtension */,
+				BBBTESTUNITTARGET000001 /* BBBTests */,
+				BBBTESTUITARGET00000001 /* BBBUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -313,8 +447,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				AST01BLD000000000000001 /* Assets.xcassets in Resources */,
+				BBCOLORAPPBLD0000000001 /* BBBuddyColors.xcassets in Resources */,
 				BBBFONTRES0000000000001 /* AlimamaFangYuanTiVF-Thin.ttf in Resources */,
 				VID01BLD000000000000001 /* Videos in Resources */,
+				PRIVACYAPPBLD0000000001 /* PrivacyInfo.xcprivacy in Resources */,
+				LOCALIZABLEAPPBLD0000001 /* Localizable.xcstrings in Resources */,
+				INFOPLISTLOCAPPBLD000001 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -323,6 +461,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				ASTWGTBLD00000000000001 /* Assets.xcassets in Resources */,
+				BBCOLORWGTBLD0000000001 /* BBBuddyColors.xcassets in Resources */,
+				PRIVACYWGTBLD0000000001 /* PrivacyInfo.xcprivacy in Resources */,
+				LOCALIZABLEWGTBLD0000001 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,16 +474,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CRSHAREDAPPBLD000000001 /* CareRecency.swift in Sources */,
+				LOCAPPBLD000000000000001 /* Localization.swift in Sources */,
+				CRS01BLD0000000000000001 /* CareRecencyStore.swift in Sources */,
 				30EA1CB3C7BE396FE2D1E6D9 /* ActivityStore.swift in Sources */,
 				APPVARBLD0000000000001 /* AppVariant.swift in Sources */,
 				6FF7C2646CC91F66F477EC86 /* BBBApp.swift in Sources */,
 				BBBFONTBLD0000000000001 /* BBBFont.swift in Sources */,
 				6657DB659C8DB7D27868FEB1 /* ContentView.swift in Sources */,
+				F00D000000000000000000002 /* InteractiveBottleView.swift in Sources */,
 				HV001BLD0000000000000001 /* HomeView.swift in Sources */,
 				LIS01BLD000000000000001 /* LiveIslandSceneView.swift in Sources */,
 				LDTDSBLD00000000000001 /* LocalDebugTodayDataSeeder.swift in Sources */,
 				BCV01BLD000000000000001 /* BuddyChatView.swift in Sources */,
+				RHEASYBLD00000000000001 /* RecordHomeEasyFeed.swift in Sources */,
 				RHV01BLD000000000000001 /* RecordHomeView.swift in Sources */,
+				SUBJSTATEBLD00000000001 /* SubjectiveState.swift in Sources */,
 				RES01BLD000000000000001 /* RecordEditSheets.swift in Sources */,
 				PV001BLD0000000000000001 /* ProfileView.swift in Sources */,
 				PLUSSTOREBLD00000000001 /* PlusMembershipStore.swift in Sources */,
@@ -350,12 +497,13 @@
 				CPV01BLD000000000000001 /* CompanionPickerView.swift in Sources */,
 				ONB01BLD000000000000001 /* OnboardingView.swift in Sources */,
 				OP001BLD0000000000000001 /* OtherPages.swift in Sources */,
+				WHOGROWTHBLD000000000001 /* WHOGrowthStandards.swift in Sources */,
+				GMR01BLD000000000000001 /* GrowthMetricRecorderSheet.swift in Sources */,
 				BIE01BLD000000000000001 /* BabyInfoEditView.swift in Sources */,
 				ACHSTKBLD00000000000001 /* AchievementStickerStore.swift in Sources */,
 				FCS01BLD000000000000001 /* FamilyCloudStore.swift in Sources */,
 				FDS01BLD000000000000001 /* FeedingDraftStore.swift in Sources */,
 				SDS01BLD000000000000001 /* SleepDraftStore.swift in Sources */,
-				FS001BLD0000000000000001 /* FeedingSheet.swift in Sources */,
 				38FA07B2E571E9AC19D6C52E /* Models.swift in Sources */,
 				8ADB314B96B7460DD0133AA0 /* ShakeDetector.swift in Sources */,
 				DD5114F47B635FE842294EA7 /* VideoPlayerView.swift in Sources */,
@@ -368,10 +516,30 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BBBTESTUISOURCES0000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBBTESTUIBLD00000000001 /* BBBUILocalizationScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBBTESTUNITSOURCES00001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBBTESTUNITBLD000000001 /* AppMeasurementFormatTests.swift in Sources */,
+				BBBTESTEASYBLD0000000001 /* EasyCycleFeedStateTests.swift in Sources */,
+				BBBTESTUNITLOCBLD000001 /* Localization.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C025262B8CCCD53B1862BF89 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CRSHAREDWGTBLD000000001 /* CareRecency.swift in Sources */,
+				LOCWGTBLD000000000000001 /* Localization.swift in Sources */,
 				27E43B478CA3AD0673510EBF /* BaByBuddyWidgetBundle.swift in Sources */,
 				B564EB58B2155D6DE2AA8A37 /* FeedingActivityAttributes.swift in Sources */,
 			);
@@ -379,11 +547,25 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BBBTESTUIDEPENDENCY0001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C11DB6D9AB3DD4FBF8072B84 /* BBB */;
+			targetProxy = BBBTESTUIPROXY000000001 /* PBXContainerItemProxy */;
+		};
+		WGTDEP000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA060C4F86BED67B58651A90 /* BaByBuddyWidgetExtension */;
+			targetProxy = WGTDEPPROXY00000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
 		06961800CFB0033DDED9C859 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -448,13 +630,12 @@
 		45EBD33AE0ED37BE7B459ACD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconAlt1 AppIconAlt2 AppIconAlt3 AppIconAlt4 AppIconAlt5 AppIconAlt6 AppIconAlt7";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = BBB/BBB.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
@@ -479,6 +660,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -536,8 +718,8 @@
 		B680C227E6991FFF168AC3FB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconAlt1 AppIconAlt2 AppIconAlt3 AppIconAlt4 AppIconAlt5 AppIconAlt6 AppIconAlt7";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -561,6 +743,68 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
+		};
+		BBBTESTUIDEBUGCONFIG001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 73AUQDMCJ2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = BBB;
+			};
+			name = Debug;
+		};
+		BBBTESTUIRELEASECFG0001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 73AUQDMCJ2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = BBB;
+			};
+			name = Release;
+		};
+		BBBTESTUNITDEBUGCONFIG1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 73AUQDMCJ2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BBBTESTUNITRELEASECFG01 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 73AUQDMCJ2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
 		};
 		DA632ECE9C2D481A352F415D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -597,10 +841,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = BaByBuddyWidgetExtension.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development: yin wu (KHX52UYQQT)";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development: yin wu (KHX52UYQQT)";
-				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 73AUQDMCJ2;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 73AUQDMCJ2;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -613,8 +854,6 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = v.babybuddy.FeedingWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "bbb-widget";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -632,6 +871,24 @@
 			buildConfigurations = (
 				06961800CFB0033DDED9C859 /* Debug */,
 				5C83976C3943E7DE379464CF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBBTESTUICONFIGLIST0001 /* Build configuration list for PBXNativeTarget "BBBUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBBTESTUIDEBUGCONFIG001 /* Debug */,
+				BBBTESTUIRELEASECFG0001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBBTESTUNITCONFIGLIST01 /* Build configuration list for PBXNativeTarget "BBBTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBBTESTUNITDEBUGCONFIG1 /* Debug */,
+				BBBTESTUNITRELEASECFG01 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -655,6 +912,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		HARBETHPKG0000000000001 /* XCRemoteSwiftPackageReference "Harbeth" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/yangKJ/Harbeth.git";
+			requirement = {
+				kind = revision;
+				revision = 88270fca0d98132d24282341eff2e129e7abb8a0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		HARBETHPROD000000000001 /* Harbeth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = HARBETHPKG0000000000001 /* XCRemoteSwiftPackageReference "Harbeth" */;
+			productName = Harbeth;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 41FEED048C0EAB561C002544 /* Project object */;
 }

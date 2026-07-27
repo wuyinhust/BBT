@@ -234,7 +234,7 @@ struct RhythmPreset {
 
 // MARK: - Final Audio Parameters
 
-struct RhythmParameters {
+struct RhythmParameters: Sendable {
     let bpm: Int
     let whiteRatio: Double; let pinkRatio: Double; let brownRatio: Double
     let noiseLevel: Double

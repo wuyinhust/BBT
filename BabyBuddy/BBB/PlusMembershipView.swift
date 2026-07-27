@@ -10,13 +10,13 @@ struct PlusMembershipView: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
+                VStack(spacing: DesignToken.contentSpacing) {
                     heroCard
                     productsCard
                     benefitsCard
                     restoreCard
                 }
-                .padding(20)
+                .padding(DesignToken.screenHorizontalPadding)
                 .padding(.bottom, 26)
             }
             .background(ProfileSoftBackground().ignoresSafeArea())
@@ -46,7 +46,7 @@ struct PlusMembershipView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("BabyBuddy Plus")
-                        .font(BBBFont.font(size: 25, weight: .heavy))
+                        .font(BBBFont.font(size: 24, weight: .bold))
                         .foregroundStyle(DesignToken.textPrimary)
                     Text("和家人一起记录宝宝日常，把成长变成可以回看的纪念。")
                         .font(BBBFont.font(size: 13, weight: .medium))
@@ -58,7 +58,7 @@ struct PlusMembershipView: View {
 
                 Image(systemName: "sparkles")
                     .font(.system(size: 22, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignToken.onPrimary)
                     .frame(width: 48, height: 48)
                     .background(Circle().fill(DesignToken.primaryGradient))
             }
@@ -70,15 +70,15 @@ struct PlusMembershipView: View {
                 }
             }
         }
-        .padding(18)
-        .softProfileCard(cornerRadius: 22)
+        .padding(16)
+        .softProfileCard(cornerRadius: DesignToken.largeCardRadius)
     }
 
     private var productsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("选择会员")
-                    .font(BBBFont.font(size: 17, weight: .heavy))
+                    .font(BBBFont.font(size: 16, weight: .bold))
                     .foregroundStyle(DesignToken.textPrimary)
                 Spacer()
                 if membershipStore.purchaseState == .loadingProducts {
@@ -114,7 +114,7 @@ struct PlusMembershipView: View {
                     Text(primaryButtonTitle)
                 }
                 .font(BBBFont.font(size: 15, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignToken.onPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
                 .background(Capsule().fill(DesignToken.primaryGradient))
@@ -122,53 +122,38 @@ struct PlusMembershipView: View {
             .buttonStyle(ScaleButtonStyle())
             .disabled(isPrimaryButtonDisabled)
 
-            Text("月付和年付的 7 天免费试用需在 App Store Connect 配置后生效。")
-                .font(BBBFont.font(size: 11, weight: .medium))
+            Text("订阅价格和续费周期以 App Store 购买确认页为准。")
+                .font(BBBFont.font(size: 10.5, weight: .medium))
                 .foregroundStyle(DesignToken.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .softProfileCard(cornerRadius: 22)
+        .softProfileCard(cornerRadius: DesignToken.largeCardRadius)
     }
 
     private var benefitsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Plus 权益")
-                .font(BBBFont.font(size: 17, weight: .heavy))
+                .font(BBBFont.font(size: 16, weight: .bold))
                 .foregroundStyle(DesignToken.textPrimary)
 
             benefitSection(
-                title: "一起照顾",
+                title: "当前已开放",
                 items: [
+                    .init(title: "前三轮完整 EASY 每轮额外 +1 BB Buck", badge: "每日 +3"),
+                    .init(title: "三位 Buddy 愿望队列", badge: "Plus"),
+                    .init(title: "场景专属光照变体", badge: "外观"),
                     .init(title: "家庭共享同步", badge: "Plus")
                 ]
             )
-            benefitSection(
-                title: "留下纪念",
-                items: [
-                    .init(title: "成长记忆扩展", badge: "Plus"),
-                    .init(title: "无限制成就徽章", badge: "Plus"),
-                    .init(title: "稀有 Buddy", badge: "规划中")
-                ]
-            )
-            benefitSection(
-                title: "看见成长",
-                items: [
-                    .init(title: "周/月成长回顾", badge: "规划中"),
-                    .init(title: "完整历史导出", badge: "规划中")
-                ]
-            )
-            benefitSection(
-                title: "完整体验",
-                items: [
-                    .init(title: "全部小组件", badge: "规划中"),
-                    .init(title: "全部 App 桌面图标", badge: "规划中"),
-                    .init(title: "持续解锁 Plus 新功能", badge: "Plus")
-                ]
-            )
+
+            Text("Plus 不独占核心 Buddy，也不降低友情目标。到期后已获得的 BB Bucks、友情值和 Buddy 都会保留，专属外观续订后恢复。")
+                .font(BBBFont.font(size: 11.5, weight: .medium))
+                .foregroundStyle(DesignToken.textSecondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .softProfileCard(cornerRadius: 22)
+        .softProfileCard(cornerRadius: DesignToken.largeCardRadius)
     }
 
     private var restoreCard: some View {
@@ -187,7 +172,7 @@ struct PlusMembershipView: View {
                 .font(BBBFont.font(size: 14, weight: .bold))
                 .foregroundStyle(DesignToken.primary)
                 .frame(maxWidth: .infinity)
-                .frame(height: 42)
+                .frame(minHeight: DesignToken.minimumTapSize)
             }
             .buttonStyle(.plain)
 
@@ -197,6 +182,7 @@ struct PlusMembershipView: View {
                 Text("管理订阅")
                     .font(BBBFont.font(size: 13, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
+                    .frame(maxWidth: .infinity, minHeight: DesignToken.minimumTapSize)
             }
             .buttonStyle(.plain)
         }
@@ -230,23 +216,23 @@ struct PlusMembershipView: View {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(isSelected ? DesignToken.primary : Color(hex: "#C9C3D7"))
+                    .foregroundStyle(isSelected ? DesignToken.primary : DesignToken.textFaint)
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(plan.title)
+                        Text(plan.title.localized)
                             .font(BBBFont.font(size: 15, weight: .heavy))
                             .foregroundStyle(DesignToken.textPrimary)
                         if plan.isRecommended {
                             Text("推荐")
                                 .font(BBBFont.font(size: 10, weight: .heavy))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(DesignToken.onPrimary)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 3)
                                 .background(Capsule().fill(DesignToken.primary))
                         }
                     }
-                    Text(plan.subtitle)
+                    Text(plan.subtitle.localized)
                         .font(BBBFont.font(size: 11, weight: .semibold))
                         .foregroundStyle(DesignToken.textSecondary)
                 }
@@ -272,7 +258,7 @@ struct PlusMembershipView: View {
 
     private func benefitSection(title: String, items: [PlusBenefit]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(title.localized)
                 .font(BBBFont.font(size: 13, weight: .heavy))
                 .foregroundStyle(DesignToken.textPrimary)
 
@@ -281,7 +267,7 @@ struct PlusMembershipView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(DesignToken.primary)
-                    Text(item.title)
+                    Text(item.title.localized)
                         .font(BBBFont.font(size: 13, weight: .semibold))
                         .foregroundStyle(DesignToken.textPrimary)
                     Spacer()
@@ -297,7 +283,7 @@ struct PlusMembershipView: View {
     }
 
     private func statusPill(title: String, isActive: Bool) -> some View {
-        Text(title)
+        Text(title.localized)
             .font(BBBFont.font(size: 12, weight: .heavy))
             .foregroundStyle(isActive ? DesignToken.primary : DesignToken.textSecondary)
             .padding(.horizontal, 10)

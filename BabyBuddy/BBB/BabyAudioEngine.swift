@@ -119,7 +119,8 @@ struct SafetyConfig {
 @MainActor
 final class BabyAudioEngine: ObservableObject {
     @Published var isPlaying = false
-    @Published var elapsedSec: TimeInterval = 0
+    @Published private(set) var isPreparing = false
+    @Published private(set) var playbackStartedAt: Date?
     @Published var currentPresetName: String = ""
     @Published var errorMessage: String?
 
@@ -129,6 +130,7 @@ final class BabyAudioEngine: ObservableObject {
     private var currentParams: RhythmParameters?
     private var bufferSeed: UInt64 = 0
     private var elapsedTimer: Timer?
+    private var generationTask: Task<Void, Never>?
 
     private let sampleRate: Float = 22_050
     private var bufferDuration: TimeInterval { currentParams?.totalLoopSec ?? 90 }
@@ -141,8 +143,35 @@ final class BabyAudioEngine: ObservableObject {
 
     func play(with params: RhythmParameters) {
         stop()
+        currentParams = params
+        currentPresetName = params.presetName
+        bufferSeed = UInt64(Date().timeIntervalSince1970 * 1000) & 0x7FFFFFFFFFFF
+        errorMessage = nil
+        isPreparing = true
 
-        // Lazy engine initialization
+        let seed = bufferSeed
+        generationTask = Task { [weak self] in
+            let renderTask = Task.detached(priority: .userInitiated) {
+                Self.generateSamples(params: params, seed: seed)
+            }
+            let samples = await withTaskCancellationHandler {
+                await renderTask.value
+            } onCancel: {
+                renderTask.cancel()
+            }
+
+            guard !Task.isCancelled, let self else { return }
+            self.isPreparing = false
+            guard let samples,
+                  let buffer = self.makeBuffer(samples: samples) else {
+                self.errorMessage = "无法生成安抚音频，请稍后重试。"
+                return
+            }
+            self.startPlayback(buffer: buffer, params: params)
+        }
+    }
+
+    private func startPlayback(buffer: AVAudioPCMBuffer, params: RhythmParameters) {
         if engine == nil {
             let newEngine = AVAudioEngine()
             let newPlayerNode = AVAudioPlayerNode()
@@ -152,13 +181,8 @@ final class BabyAudioEngine: ObservableObject {
             playerNode = newPlayerNode
         }
 
-        guard let engine = engine, let playerNode = playerNode else { return }
+        guard let engine, let playerNode else { return }
 
-        currentParams = params
-        currentPresetName = params.presetName
-        bufferSeed = UInt64(Date().timeIntervalSince1970 * 1000) & 0x7FFFFFFFFFFF
-
-        errorMessage = nil
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
@@ -166,41 +190,46 @@ final class BabyAudioEngine: ObservableObject {
         } catch {
             isPlaying = false
             errorMessage = "无法启动音频引擎：\(error.localizedDescription)"
-            NSLog("[BabyAudioEngine] Playback error: \(error)")
             return
         }
-
-        let buffer = generateBuffer(params: params, seed: bufferSeed)
         playerNode.scheduleBuffer(buffer, at: nil, options: .loops)
         playerNode.play()
         isPlaying = true
-        elapsedSec = 0
+        playbackStartedAt = Date()
 
         startElapsedTimer(params: params)
     }
 
     func stop() {
+        generationTask?.cancel()
+        generationTask = nil
+        isPreparing = false
         playerNode?.stop()
         engine?.stop()
         isPlaying = false
+        playbackStartedAt = nil
         elapsedTimer?.invalidate()
         elapsedTimer = nil
     }
 
     func toggle(with params: RhythmParameters) {
-        isPlaying ? stop() : play(with: params)
+        (isPlaying || isPreparing) ? stop() : play(with: params)
+    }
+
+    func elapsed(at date: Date = Date()) -> TimeInterval {
+        guard let playbackStartedAt else { return 0 }
+        return max(date.timeIntervalSince(playbackStartedAt), 0)
     }
 
     // MARK: - Elapsed Timer
 
     private func startElapsedTimer(params: RhythmParameters) {
         elapsedTimer?.invalidate()
-        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
                 guard self.isPlaying else { return }
-                self.elapsedSec += 0.5
-                if self.elapsedSec >= params.maxContinuousPlaySec {
+                if self.elapsed(at: Date()) >= params.maxContinuousPlaySec {
                     self.stop()
                 }
             }
@@ -209,33 +238,53 @@ final class BabyAudioEngine: ObservableObject {
 
     // MARK: - Buffer Generation
 
-    private func generateBuffer(params: RhythmParameters, seed: UInt64) -> AVAudioPCMBuffer {
-        let frameCount = AVAudioFrameCount(sampleRate * Float(params.totalLoopSec))
-        let format = AVAudioFormat(standardFormatWithSampleRate: Double(sampleRate), channels: 2)!
-        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+    private func makeBuffer(samples: [Float]) -> AVAudioPCMBuffer? {
+        guard !samples.isEmpty,
+              samples.count <= Int(UInt32.max),
+              let format = AVAudioFormat(standardFormatWithSampleRate: Double(sampleRate), channels: 2) else {
+            return nil
+        }
+        let frameCount = AVAudioFrameCount(samples.count)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
+              let channels = buffer.floatChannelData else {
+            return nil
+        }
         buffer.frameLength = frameCount
+        samples.withUnsafeBufferPointer { source in
+            guard let baseAddress = source.baseAddress else { return }
+            channels[0].update(from: baseAddress, count: samples.count)
+            channels[1].update(from: baseAddress, count: samples.count)
+        }
+        return buffer
+    }
 
-        let left  = buffer.floatChannelData![0]
-        let right = buffer.floatChannelData![1]
-
-        let totalFrames = Int(frameCount)
-        let introFrames    = Int(sampleRate * Float(params.introSec))
-        let settlingFrames = Int(sampleRate * Float(params.settlingSec))
+    nonisolated private static func generateSamples(params: RhythmParameters, seed: UInt64) -> [Float]? {
+        let sampleRate: Float = 22_050
+        let totalLoopSec = finite(params.totalLoopSec, fallback: 90, range: 1...300)
+        let totalFrames = max(Int(sampleRate * Float(totalLoopSec)), 1)
+        let introSec = finite(params.introSec, fallback: 18, range: 0...totalLoopSec)
+        let settlingSec = finite(params.settlingSec, fallback: 30, range: 0...totalLoopSec)
+        let introFrames = min(Int(sampleRate * Float(introSec)), totalFrames)
+        let settlingFrames = min(Int(sampleRate * Float(settlingSec)), max(totalFrames - introFrames, 0))
 
         var whiteGen  = WhiteNoiseGen(seed: seed)
         var pinkGen   = PinkNoiseGen(seed: seed &+ 1)
         var brownGen  = BrownNoiseGen(seed: seed &+ 2)
-        var melodyGen = MelodyGen(bpm: params.bpm, complexity: params.melodyComplexity, sampleRate: sampleRate)
-        var hfFilter  = LowPass(cutoff: mapHFAttenuation(params.highFreqAttenuation), sampleRate: sampleRate)
+        let safeComplexity = finite(params.melodyComplexity, fallback: 0.1, range: 0...1)
+        var melodyGen = MelodyGen(bpm: min(max(params.bpm, 30), 120), complexity: safeComplexity, sampleRate: sampleRate)
+        let safeAttenuation = finite(params.highFreqAttenuation, fallback: 0.6, range: 0...1)
+        var hfFilter = LowPass(cutoff: mapHFAttenuation(safeAttenuation), sampleRate: sampleRate)
 
-        let wRatio = Float(params.whiteRatio)
-        let pRatio = Float(params.pinkRatio)
-        let bRatio = Float(params.brownRatio)
-        let noiseLvl = Float(params.noiseLevel)
-        let melVol   = Float(params.melodyVolume)
-        let dynRange = Float(params.dynamicRange)
+        let wRatio = Float(finite(params.whiteRatio, fallback: 0.2, range: 0...1))
+        let pRatio = Float(finite(params.pinkRatio, fallback: 0.5, range: 0...1))
+        let bRatio = Float(finite(params.brownRatio, fallback: 0.3, range: 0...1))
+        let noiseLvl = Float(finite(params.noiseLevel, fallback: 0.08, range: 0...0.2))
+        let melVol = Float(finite(params.melodyVolume, fallback: 0.04, range: 0...0.2))
+        let dynRange = Float(finite(params.dynamicRange, fallback: 0.5, range: 0...1))
+        var samples = [Float](repeating: 0, count: totalFrames)
 
         for frame in 0..<totalFrames {
+            if frame.isMultiple(of: 4_096), Task.isCancelled { return nil }
             let segmentPhase = segmentProgress(frame: frame, introFrames: introFrames, settlingFrames: settlingFrames)
 
             // Blended noise
@@ -247,7 +296,7 @@ final class BabyAudioEngine: ObservableObject {
 
             // Segment envelope: intro fades in noise, settling shifts, sustain holds
             let envNoise  = noiseEnvelope(segmentPhase)
-            let envMelody = melodyEnvelope(segmentPhase, complexity: params.melodyComplexity)
+            let envMelody = melodyEnvelope(segmentPhase, complexity: safeComplexity)
 
             var sample = filteredNoise * envNoise + melody * envMelody
 
@@ -257,26 +306,25 @@ final class BabyAudioEngine: ObservableObject {
             // Hard safety clamp
             sample = max(min(sample, SafetyConfig.maxAmplitude), -SafetyConfig.maxAmplitude)
 
-            left[frame]  = sample
-            right[frame] = sample * 0.97
+            samples[frame] = sample
         }
 
-        return buffer
+        return samples
     }
 
     // MARK: - Segment Helpers
 
-    private func segmentProgress(frame: Int, introFrames: Int, settlingFrames: Int) -> Float {
-        if frame < introFrames {
+    nonisolated private static func segmentProgress(frame: Int, introFrames: Int, settlingFrames: Int) -> Float {
+        if introFrames > 0, frame < introFrames {
             return 0.0 + 1.0 * Float(frame) / Float(introFrames) // 0→1 over intro
-        } else if frame < introFrames + settlingFrames {
+        } else if settlingFrames > 0, frame < introFrames + settlingFrames {
             return 1.0 + 1.0 * Float(frame - introFrames) / Float(settlingFrames) // 1→2 over settling
         } else {
             return 2.0 // sustain
         }
     }
 
-    private func noiseEnvelope(_ phase: Float) -> Float {
+    nonisolated private static func noiseEnvelope(_ phase: Float) -> Float {
         if phase < 1.0 {
             // Intro: ramp noise from 70% → 100%
             return 0.7 + 0.3 * phase
@@ -289,7 +337,7 @@ final class BabyAudioEngine: ObservableObject {
         }
     }
 
-    private func melodyEnvelope(_ phase: Float, complexity: Double) -> Float {
+    nonisolated private static func melodyEnvelope(_ phase: Float, complexity: Double) -> Float {
         let melGain: Float = Float(0.4 + complexity * 0.6) // complexity越高,旋律越突出
         if phase < 0.3 {
             return melGain * (phase / 0.3) * 0.4
@@ -302,11 +350,25 @@ final class BabyAudioEngine: ObservableObject {
         }
     }
 
-    private func mapHFAttenuation(_ att: Double) -> Float {
+    nonisolated private static func mapHFAttenuation(_ att: Double) -> Float {
         // att 0.3 → cutoff ~12000 Hz, att 0.9 → cutoff ~800 Hz
         let minHz: Float = 600
         let maxHz: Float = 11000
         return maxHz - Float(att) * (maxHz - minHz)
+    }
+
+    nonisolated private static func finite(
+        _ value: Double,
+        fallback: Double,
+        range: ClosedRange<Double>
+    ) -> Double {
+        guard value.isFinite else { return fallback }
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    deinit {
+        generationTask?.cancel()
+        elapsedTimer?.invalidate()
     }
 }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var feedingDraftStore: FeedingDraftStore
     @EnvironmentObject private var sleepDraftStore: SleepDraftStore
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("has_completed_onboarding") private var hasCompletedOnboarding = false
     @AppStorage(RecordHomeMode.storageKey) private var recordHomeModeRaw = RecordHomeMode.basic.rawValue
 
@@ -12,12 +13,13 @@ struct ContentView: View {
     @State private var activeQuickRecordKind: QuickRecordKind?
     @State private var activeQuickRecordCycleID: UUID?
     @State private var activeQuickRecordDate: Date?
-    @State private var showBabyInfo = false
     @State private var showQuickAddMenu = false
     @State private var showYearningDetailFromQuickAdd = false
+    @State private var subjectiveStatePrompt: SubjectiveStatePromptContext?
     @State private var recordStackResetID = UUID()
     @State private var companionStackResetID = UUID()
     @State private var growthStackResetID = UUID()
+    @State private var bottomDockLayoutEpoch = UUID()
 
     var body: some View {
         Group {
@@ -58,11 +60,6 @@ struct ContentView: View {
             .onChange(of: activeQuickRecordKind) { _, _ in
                 dismissQuickAddMenu()
             }
-            .onChange(of: showBabyInfo) { _, isPresented in
-                if isPresented {
-                    dismissQuickAddMenu()
-                }
-            }
             .onChange(of: showCompanionPicker) { _, isPresented in
                 if isPresented {
                     dismissQuickAddMenu()
@@ -73,25 +70,39 @@ struct ContentView: View {
                     dismissQuickAddMenu()
                 }
             }
-            .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
-                if feedingDraftStore.isRecording {
-                    feedingDraftStore.updateCurrentTime(date)
+            .onChange(of: scenePhase) { _, newPhase in
+                // A tab shell can briefly receive stale local safe-area geometry after
+                // returning from the app switcher. Recreate only this stateless overlay
+                // on the next main-loop turn, once the window has final bounds again.
+                guard newPhase == .active else { return }
+                DispatchQueue.main.async {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        bottomDockLayoutEpoch = UUID()
+                    }
                 }
-                if sleepDraftStore.isRecording {
-                    sleepDraftStore.updateCurrentTime(date)
-                }
+            }
+            .onChange(of: feedingDraftStore.activeTimingStateID) { _, _ in
+                CareRecencyCoordinator.refreshFromSharedStorage(
+                    babyAgeMonths: BabyProfileStore.shared.currentProfile.ageMonths
+                )
+            }
+            .onChange(of: sleepDraftStore.activeTimingStateID) { _, _ in
+                CareRecencyCoordinator.refreshFromSharedStorage(
+                    babyAgeMonths: BabyProfileStore.shared.currentProfile.ageMonths
+                )
             }
             .sheet(isPresented: $showCompanionPicker) {
                 CompanionPickerView(isPresented: $showCompanionPicker)
             }
-            .sheet(isPresented: recordSheetBinding(for: .feeding)) {
-                recordSheetContent(for: .feeding)
-            }
-            .fullScreenCover(item: nonFeedingRecordSheetBinding) { sheet in
+            .fullScreenCover(item: $activeRecordSheet) { sheet in
                 recordSheetContent(for: sheet)
             }
-            .sheet(isPresented: $showBabyInfo) {
-                BabyInfoEditView(isPresented: $showBabyInfo)
+            .sheet(item: $subjectiveStatePrompt) { context in
+                SubjectiveStatePickerSheet(context: context)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
     }
 
@@ -100,13 +111,9 @@ struct ContentView: View {
             .toolbar(.hidden, for: .tabBar)
             .background(SystemTabBarHiddenController())
             .tint(DesignToken.primary)
-            .safeAreaInset(edge: .bottom) {
-                Color.clear
-                    .frame(height: bottomDockContentClearance)
-                    .allowsHitTesting(false)
-            }
-            .overlay(alignment: .bottom) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 bottomDockOverlay
+                    .id(bottomDockLayoutEpoch)
             }
             .overlay {
                 if let activeQuickRecordKind {
@@ -117,12 +124,12 @@ struct ContentView: View {
                         onDismiss: {
                             closeQuickRecordCard()
                         },
-                        onOpenFullRecord: { sheet in
-                            closeQuickRecordCard()
-                            openRecordSheet(sheet)
+                        onCompletedRecord: { context in
+                            subjectiveStatePrompt = context
                         }
                     )
-                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    .ignoresSafeArea()
+                    .transition(.opacity)
                     .zIndex(20)
                 }
             }
@@ -135,22 +142,27 @@ struct ContentView: View {
                 NavigationStack {
                     RecordHomeView(
                         homeMode: recordHomeModeBinding,
-                        showBabyInfo: $showBabyInfo,
                         showYearningDetailRequest: $showYearningDetailFromQuickAdd,
                         openFeedSheet: { recordDate in
-                            openQuickRecordCard(.formulaBottle, recordDate: recordDate)
+                            openEatQuickRecordCard(recordDate: recordDate)
                         },
                         openActivitySheet: { recordDate in
-                            openQuickRecordCard(.diaper, recordDate: recordDate)
+                            openActivityQuickRecordCard(recordDate: recordDate)
                         },
                         openSleepSheet: { recordDate in
-                            openQuickRecordCard(.sleep, recordDate: recordDate)
+                            openSleepQuickRecordCard(recordDate: recordDate)
                         },
                         openSleepSheetForCycle: { cycleID, recordDate in
                             openQuickRecordCard(.sleep, targetCycleID: cycleID, recordDate: recordDate)
                         },
+                        openFeedingTiming: {
+                            resumeActiveFeedingTiming()
+                        },
                         dismissQuickAddMenu: {
                             dismissQuickAddMenu()
+                        },
+                        onSubjectiveStatePrompt: { context in
+                            subjectiveStatePrompt = context
                         }
                     )
                 }
@@ -165,7 +177,7 @@ struct ContentView: View {
                         CompanionSquareView()
                     } else {
                         CompanionLiveView(openFeedSheet: {
-                            openRecordSheet(.feeding)
+                            openEatQuickRecordCard()
                         }, openCompanionPicker: {
                             showCompanionPicker = true
                         })
@@ -189,95 +201,52 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
     private var bottomDockOverlay: some View {
-        GeometryReader { proxy in
+        if shouldShowBottomDock {
             ZStack(alignment: .bottom) {
-                if shouldShowBottomDock {
-                    BottomDockVisualProtection(safeAreaBottom: proxy.safeAreaInsets.bottom)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
+                BottomDockVisualProtection()
+                    .allowsHitTesting(false)
 
-                if shouldShowBottomDock {
-                    BottomNavigationDock(
-                        selectedTab: $selectedTab,
-                        isQuickAddExpanded: $showQuickAddMenu,
-                        safeAreaBottom: proxy.safeAreaInsets.bottom,
-                        onTabSelected: handleTabSelection,
-                        onEat: { openRecordSheet(.feeding) },
-                        onPoop: { openQuickRecordCard(.diaper) },
-                        onYearning: {
-                            dismissQuickAddMenu()
-                            selectedTab = .record
-                            showYearningDetailFromQuickAdd = true
-                        },
-                        onSleep: { openRecordSheet(.sleep) }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-
-                statusButtonsOverlay(safeAreaBottom: proxy.safeAreaInsets.bottom)
+                BottomNavigationDock(
+                    selectedTab: $selectedTab,
+                    isQuickAddExpanded: $showQuickAddMenu,
+                    onTabSelected: handleTabSelection,
+                    onEat: { openEatQuickRecordCard() },
+                    onPoop: { openActivityQuickRecordCard() },
+                    onYearning: {
+                        dismissQuickAddMenu()
+                        selectedTab = .record
+                        subjectiveStatePrompt = .manual()
+                    },
+                    onSleep: { openSleepQuickRecordCard() }
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .frame(maxWidth: .infinity, alignment: .bottom)
         }
-    }
-
-    private func statusButtonsOverlay(safeAreaBottom: CGFloat) -> some View {
-        VStack(alignment: .trailing, spacing: 10) {
-            if shouldShowFeedingStatus {
-                feedingStatusButton
-                    .transition(.scale(scale: 0.92).combined(with: .opacity))
-            }
-
-            if shouldShowSleepStatus {
-                sleepStatusButton
-                    .transition(.scale(scale: 0.92).combined(with: .opacity))
-            }
-        }
-        .padding(.bottom, statusBottomPadding(safeAreaBottom: safeAreaBottom))
-        .padding(.trailing, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
     }
 
     @ViewBuilder
     private func recordSheetContent(for sheet: RecordSheet) -> some View {
         switch sheet {
-        case .feeding:
-            FeedingSheet(isPresented: recordSheetBinding(for: .feeding))
-                .toolbar(.hidden, for: .tabBar)
-                .presentationDetents([.fraction(0.92), .large])
-                .presentationDragIndicator(.visible)
-                .presentationCornerRadius(34)
-                .presentationBackground(DesignToken.canvas)
         case .diaper:
             DiaperSheet(isPresented: recordSheetBinding(for: .diaper))
                 .ignoresSafeArea()
                 .toolbar(.hidden, for: .tabBar)
-                .presentationBackground(Color(hex: "#DDD5FF"))
+                .presentationBackground(DesignToken.surfaceSoft)
         case .sleep:
             SleepSheet(isPresented: recordSheetBinding(for: .sleep))
                 .ignoresSafeArea()
                 .toolbar(.hidden, for: .tabBar)
-                .presentationBackground(Color(hex: "#DDD5FF"))
+                .presentationBackground(DesignToken.surfaceSoft)
         case .weight:
-            GrowthMetricSheet(kind: .weight, isPresented: recordSheetBinding(for: .weight))
-                .ignoresSafeArea()
+            GrowthMetricSheet(kind: .weight)
                 .toolbar(.hidden, for: .tabBar)
-                .presentationBackground(Color(hex: "#DDD5FF"))
+                .presentationBackground(DesignToken.surfaceSoft)
         case .height:
-            GrowthMetricSheet(kind: .height, isPresented: recordSheetBinding(for: .height))
-                .ignoresSafeArea()
+            GrowthMetricSheet(kind: .height)
                 .toolbar(.hidden, for: .tabBar)
-                .presentationBackground(Color(hex: "#DDD5FF"))
-        }
-    }
-
-    private var nonFeedingRecordSheetBinding: Binding<RecordSheet?> {
-        Binding {
-            guard activeRecordSheet != .feeding else { return nil }
-            return activeRecordSheet
-        } set: { value in
-            activeRecordSheet = value
+                .presentationBackground(DesignToken.surfaceSoft)
         }
     }
 
@@ -305,7 +274,6 @@ struct ContentView: View {
                 showCompanionPicker = false
             case .growth:
                 growthStackResetID = UUID()
-                showBabyInfo = false
             }
         }
     }
@@ -313,6 +281,31 @@ struct ContentView: View {
     private func openRecordSheet(_ sheet: RecordSheet) {
         dismissQuickAddMenu()
         activeRecordSheet = sheet
+    }
+
+    private func resumeActiveFeedingTiming() {
+        let kind: QuickRecordKind
+        switch feedingDraftStore.type {
+        case .breast:
+            kind = .nursing
+        case .bottle:
+            kind = feedingDraftStore.milkType == .expressed ? .expressedBottle : .formulaBottle
+        case .solid:
+            kind = .solids
+        }
+        openQuickRecordCard(kind)
+    }
+
+    private func openEatQuickRecordCard(recordDate: Date? = nil) {
+        openQuickRecordCard(.formulaBottle, recordDate: recordDate)
+    }
+
+    private func openActivityQuickRecordCard(recordDate: Date? = nil) {
+        openQuickRecordCard(.diaper, recordDate: recordDate)
+    }
+
+    private func openSleepQuickRecordCard(recordDate: Date? = nil) {
+        openQuickRecordCard(.sleep, recordDate: recordDate)
     }
 
     private func openQuickRecordCard(_ kind: QuickRecordKind, targetCycleID: UUID? = nil, recordDate: Date? = nil) {
@@ -358,105 +351,8 @@ struct ContentView: View {
         }
     }
 
-    private var shouldShowFeedingStatus: Bool {
-        feedingDraftStore.hasDraft && activeRecordSheet != .feeding
-    }
-
-    private var shouldShowSleepStatus: Bool {
-        sleepDraftStore.isRecording && activeRecordSheet != .sleep
-    }
-
     private var shouldShowBottomDock: Bool {
         activeRecordSheet == nil
-    }
-
-    private var bottomDockContentClearance: CGFloat {
-        92
-    }
-
-    private func statusBottomPadding(safeAreaBottom: CGFloat) -> CGFloat {
-        max(safeAreaBottom, 10) + 82
-    }
-
-    private var feedingStatusButton: some View {
-        HStack(spacing: 8) {
-            Button {
-                openRecordSheet(.feeding)
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: feedingDraftStore.statusIcon)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(Circle().fill(DesignToken.primaryGradient))
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("喂养记录中")
-                            .font(BBBFont.font(size: 12, weight: .bold))
-                            .foregroundStyle(DesignToken.textPrimary)
-                        Text("\(feedingDraftStore.statusTitle) · \(feedingDraftStore.statusDetail)")
-                            .font(BBBFont.font(size: 11, weight: .semibold))
-                            .foregroundStyle(DesignToken.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                feedingDraftStore.resetDraft()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .heavy))
-                    .foregroundStyle(DesignToken.textSecondary)
-                    .frame(width: 24, height: 24)
-                    .background(Circle().fill(DesignToken.iconSoftBG))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("关闭喂养记录")
-        }
-        .padding(.leading, 7)
-        .padding(.trailing, 8)
-        .padding(.vertical, 7)
-        .background(
-            Capsule()
-                .fill(.white.opacity(0.96))
-                .shadow(color: Color(hex: "#4D4B70").opacity(0.12), radius: 14, y: 7)
-        )
-        .buttonStyle(ScaleButtonStyle())
-    }
-
-    private var sleepStatusButton: some View {
-        return Button {
-            openRecordSheet(.sleep)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "moon.zzz.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color(hex: "#6DA5F2")))
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("睡眠记录中")
-                        .font(BBBFont.font(size: 12, weight: .bold))
-                        .foregroundStyle(DesignToken.textPrimary)
-                    Text("已睡 \(sleepDraftStore.statusDetail)")
-                        .font(BBBFont.font(size: 11, weight: .semibold))
-                        .foregroundStyle(DesignToken.textSecondary)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.leading, 7)
-            .padding(.trailing, 12)
-            .padding(.vertical, 7)
-            .background(
-                Capsule()
-                    .fill(.white.opacity(0.96))
-                    .shadow(color: Color(hex: "#4D4B70").opacity(0.12), radius: 14, y: 7)
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
     }
 
     private func recordSheetBinding(for sheet: RecordSheet) -> Binding<Bool> {
@@ -471,49 +367,36 @@ struct ContentView: View {
 }
 
 private struct BottomDockVisualProtection: View {
-    let safeAreaBottom: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            bottomMaterial
-        }
-        .ignoresSafeArea(.container, edges: .bottom)
+        Rectangle()
+            .fill(bottomFade)
+            .frame(height: 148)
+            .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
     }
 
-    private var bottomMaterial: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .overlay(
-                LinearGradient(
-                    stops: [
-                        .init(color: .white.opacity(0), location: 0),
-                        .init(color: .white.opacity(0.28), location: 0.56),
-                        .init(color: .white.opacity(0.56), location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black.opacity(0.46), location: 0.44),
-                        .init(color: .black, location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(height: max(108, safeAreaBottom + 82))
+    private var bottomFade: LinearGradient {
+        let fadeColor = colorScheme == .dark ? DesignToken.scrim : DesignToken.surface
+        let middleOpacity = colorScheme == .dark ? 0.42 : 0.28
+        let bottomOpacity = colorScheme == .dark ? 0.84 : 0.56
+
+        return LinearGradient(
+            stops: [
+                .init(color: fadeColor.opacity(0), location: 0),
+                .init(color: fadeColor.opacity(middleOpacity), location: 0.54),
+                .init(color: fadeColor.opacity(bottomOpacity), location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 }
 
 private struct BottomNavigationDock: View {
     @Binding var selectedTab: RootTab
     @Binding var isQuickAddExpanded: Bool
-    let safeAreaBottom: CGFloat
     let onTabSelected: (RootTab) -> Void
     let onEat: () -> Void
     let onPoop: () -> Void
@@ -537,9 +420,7 @@ private struct BottomNavigationDock: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 20)
-        .padding(.bottom, max(safeAreaBottom - 6, 12))
-        .offset(y: safeAreaBottom)
-        .ignoresSafeArea(.container, edges: .bottom)
+        .padding(.bottom, 8)
     }
 
     private var tabCluster: some View {
@@ -612,15 +493,15 @@ private struct FloatingRecordAddButton: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignToken.onPrimary)
                     .frame(width: 56, height: 56)
                     .contentShape(Circle())
                     .rotationEffect(.degrees(isExpanded ? 45 : 0))
             }
             .buttonStyle(.plain)
             .background(mainButtonSurface)
-            .overlay(Circle().stroke(.white.opacity(0.38), lineWidth: 1))
-            .shadow(color: Color(hex: "#6D4DDB").opacity(0.18), radius: 16, y: 8)
+            .overlay(Circle().stroke(DesignToken.glassStroke.opacity(0.7), lineWidth: 1))
+            .shadow(color: DesignToken.primary.opacity(0.18), radius: 16, y: 8)
             .accessibilityLabel(isExpanded ? "收起记录菜单" : "打开记录菜单")
         }
         .animation(.interactiveSpring(response: 0.28, dampingFraction: 0.82), value: isExpanded)
@@ -629,7 +510,7 @@ private struct FloatingRecordAddButton: View {
     private var quickActionMenu: some View {
         ZStack(alignment: .bottomTrailing) {
             quickActionButton(
-                assetName: "record_action_easy_eat_icon",
+                letter: "E",
                 accessibilityLabel: "记录喂养",
                 tint: DesignToken.easyEat,
                 angle: 0,
@@ -638,7 +519,7 @@ private struct FloatingRecordAddButton: View {
             )
 
             quickActionButton(
-                assetName: "record_action_easy_activity_icon",
+                letter: "A",
                 accessibilityLabel: "记录活动",
                 tint: DesignToken.easyActivity,
                 angle: 30,
@@ -647,7 +528,7 @@ private struct FloatingRecordAddButton: View {
             )
 
             quickActionButton(
-                assetName: "record_action_easy_sleep_icon",
+                letter: "S",
                 accessibilityLabel: "记录睡眠",
                 tint: DesignToken.easySleep,
                 angle: 60,
@@ -656,8 +537,8 @@ private struct FloatingRecordAddButton: View {
             )
 
             quickActionButton(
-                assetName: "record_action_easy_yearning_icon",
-                accessibilityLabel: "查看 Yearning 详情",
+                letter: "Y",
+                accessibilityLabel: subjectiveStateQuickActionAccessibilityLabel,
                 tint: DesignToken.easyYearning,
                 angle: 90,
                 index: 3,
@@ -666,8 +547,16 @@ private struct FloatingRecordAddButton: View {
         }
     }
 
+    private var subjectiveStateQuickActionAccessibilityLabel: String {
+        switch AppLocalization.language {
+        case .simplifiedChinese: return "记录 Y 状态"
+        case .traditionalChinese: return "記錄 Y 狀態"
+        case .english: return "Record Y state"
+        }
+    }
+
     private func quickActionButton(
-        assetName: String,
+        letter: String,
         accessibilityLabel: String,
         tint: Color,
         angle: Double,
@@ -682,26 +571,24 @@ private struct FloatingRecordAddButton: View {
             }
             action()
             } label: {
-                Image(assetName)
-                    .resizable()
-                    .renderingMode(.original)
-                    .scaledToFill()
+                Text(letter)
+                    .font(BBBFont.font(size: 16, weight: .heavy))
+                    .foregroundStyle(DesignToken.onPrimary.opacity(0.94))
                     .frame(width: 38, height: 38)
-                    .clipShape(Circle())
+                    .background(Circle().fill(tint))
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .background(
-                Circle()
-                    .fill(.white.opacity(0.24))
+                Circle().fill(tint.opacity(0.14))
             )
             .overlay(
                 Circle()
                     .stroke(
                         LinearGradient(
                             colors: [
-                                .white.opacity(0.82),
-                                tint.opacity(0.28)
+                                DesignToken.onPrimary.opacity(0.88),
+                                tint.opacity(0.42)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -710,7 +597,7 @@ private struct FloatingRecordAddButton: View {
                 )
             )
         .shadow(color: tint.opacity(0.14), radius: 8, y: 4)
-        .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
+        .shadow(color: DesignToken.shadowColor.opacity(0.14), radius: 2, y: 1)
         .modifier(
             FloatingArcBurstModifier(
                 isExpanded: isExpanded,
@@ -739,9 +626,9 @@ private struct FloatingRecordAddButton: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.24),
-                                Color.white.opacity(0.04),
-                                Color(hex: "#3B2A8F").opacity(0.16)
+                                DesignToken.onPrimary.opacity(0.24),
+                                DesignToken.onPrimary.opacity(0.04),
+                                DesignToken.primary.opacity(0.16)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -752,9 +639,9 @@ private struct FloatingRecordAddButton: View {
 
     private static let babyAgeGradient = LinearGradient(
         colors: [
-            Color(hex: "#7A5BEF"),
-            Color(hex: "#9D7BFF"),
-            Color(hex: "#6B8EF6")
+            DesignToken.primary,
+            DesignToken.primarySoft,
+            DesignToken.accentBlue
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -961,17 +848,6 @@ private enum QuickRecordKind: String, CaseIterable, Identifiable {
         }
     }
 
-    var easyIconAssetName: String {
-        switch self {
-        case .formulaBottle, .expressedBottle, .nursing, .solids:
-            return "record_action_easy_eat_icon"
-        case .diaper, .activity, .bath, .tummyTime, .massage, .story, .outdoor, .play, .toothbrushing:
-            return "record_action_easy_activity_icon"
-        case .sleep:
-            return "record_action_easy_sleep_icon"
-        }
-    }
-
     var usesBottleHero: Bool {
         switch self {
         case .formulaBottle, .expressedBottle:
@@ -1017,44 +893,33 @@ private enum QuickRecordKind: String, CaseIterable, Identifiable {
 
     var valueRange: ClosedRange<Int> {
         switch self {
-        case .formulaBottle, .expressedBottle: return 10...300
+        case .formulaBottle, .expressedBottle: return 10...240
         case .nursing: return 1...60
         case .solids: return 5...300
         case .diaper: return 1...6
         case .activity: return 1...120
         case .bath, .tummyTime, .massage, .story, .outdoor, .play: return 1...120
         case .toothbrushing: return 1...10
-        case .sleep: return 5...720
-        }
-    }
-
-    var fullRecordSheet: RecordSheet {
-        switch self {
-        case .formulaBottle, .expressedBottle, .nursing, .solids:
-            return .feeding
-        case .diaper, .activity, .bath, .tummyTime, .massage, .story, .outdoor, .play, .toothbrushing:
-            return .diaper
-        case .sleep:
-            return .sleep
+        case .sleep: return 1...720
         }
     }
 
     var placeholderText: String {
         switch self {
         case .formulaBottle, .expressedBottle:
-            return "图片素材待接入，后续可做液面互动"
+            return "拖动刻度或使用加减按钮调整奶量"
         case .nursing:
-            return "后续接入左右亲喂互动"
+            return "记录左右侧时长，也可以直接输入总时长"
         case .solids:
-            return "后续接入辅食碗/勺互动"
+            return "选择食物种类并记录本次进食量"
         case .diaper:
-            return "后续接入尿布/护理素材"
+            return "选择类型和状态，记录本次护理"
         case .activity:
             return "多选活动，按类型合并记录"
         case .sleep:
-            return "后续接入睡眠小环互动"
+            return "选择开始与结束时间，保存实际睡眠"
         default:
-            return "后续接入活动素材"
+            return "选择时长，并可添加一条简短备注"
         }
     }
 }
@@ -1154,7 +1019,14 @@ private enum QuickUrineAmount: String, CaseIterable, Identifiable {
     }
 
     var detail: String {
-        "尿量：\(title)"
+        switch self {
+        case .low:
+            return "尿了一点💧"
+        case .medium:
+            return "尿了不少💧💧"
+        case .high:
+            return "尿了很多💧💧💧"
+        }
     }
 }
 
@@ -1203,7 +1075,7 @@ private enum QuickPoopTexture: String, CaseIterable, Identifiable {
     }
 
     var detail: String {
-        "便便：\(title) · \(guidance)"
+        shortText
     }
 }
 
@@ -1241,13 +1113,13 @@ private enum QuickActivityCategory: String, CaseIterable, Identifiable {
     var items: [QuickActivityItem] {
         switch self {
         case .development:
-            return ["趴卧", "抚触", "排气操", "排嗝", "飞机抱", "对视聊天", "照镜子", "黑白卡", "追物训练", "抓握"]
+            return ["趴卧", "翻身训练", "黑白卡", "追物训练", "抓握", "健身架", "悬挂玩具"]
                 .map { QuickActivityItem(category: self, title: $0) }
         case .family:
-            return ["绘本", "布书", "音乐律动", "听儿歌", "健身架", "悬挂玩具", "户外活动", "室内活动"]
+            return ["对视聊天", "照镜子", "绘本", "布书", "音乐律动", "听儿歌", "户外活动", "室内活动"]
                 .map { QuickActivityItem(category: self, title: $0) }
         case .care:
-            return ["洗澡", "剪指甲"]
+            return ["抚触", "排气操", "排嗝", "飞机抱", "洗澡", "剪指甲"]
                 .map { QuickActivityItem(category: self, title: $0) }
         }
     }
@@ -1262,17 +1134,48 @@ private struct QuickActivityItem: Hashable, Identifiable {
     }
 }
 
-private struct QuickRecordCardOverlay: View {
+enum QuickRecordEditTarget: Identifiable {
+    case feeding(FeedingSession)
+    case care(CareRecord)
+
+    var id: String {
+        switch self {
+        case .feeding(let session):
+            return "feeding-\(session.id.uuidString)"
+        case .care(let record):
+            return "care-\(record.id.uuidString)"
+        }
+    }
+}
+
+private struct QuickRecordInitialState {
+    let kind: QuickRecordKind
+    let value: Int
+    let recordedAt: Date
+    var sleepMode: QuickSleepMode = .justWoke
+    var sleepStartAt: Date = Date().addingTimeInterval(-30 * 60)
+    var sleepEndAt: Date = Date()
+    var diaperMode: QuickDiaperMode = .pee
+    var urineAmount: QuickUrineAmount = .medium
+    var poopTexture: QuickPoopTexture = .paste
+    var selectedActivityItems: Set<QuickActivityItem> = []
+    var selectedSolidFoods: Set<SolidFood> = [.rice]
+    var nursingLeftSeconds = 0
+    var nursingRightSeconds = 0
+}
+
+struct QuickRecordCardOverlay: View {
     @EnvironmentObject private var feedingStore: FeedingStore
+    @EnvironmentObject private var feedingDraftStore: FeedingDraftStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var sleepDraftStore: SleepDraftStore
     @EnvironmentObject private var easyCycleStore: EasyCycleStore
 
-    let initialKind: QuickRecordKind
-    let targetCycleID: UUID?
-    let recordDate: Date?
-    let onDismiss: () -> Void
-    let onOpenFullRecord: (RecordSheet) -> Void
+    private let targetCycleID: UUID?
+    private let recordDate: Date?
+    private let editTarget: QuickRecordEditTarget?
+    private let onDismiss: () -> Void
+    private let onCompletedRecord: (SubjectiveStatePromptContext) -> Void
 
     @State private var selectedKind: QuickRecordKind
     @State private var value: Int
@@ -1294,36 +1197,81 @@ private struct QuickRecordCardOverlay: View {
     @State private var recordTimeHour = 0
     @State private var recordTimeMinute = 0
 
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_Hans_CN")
-        formatter.dateFormat = "HH:mm"
-        return formatter
-    }()
     private static let kindSwitcherLoopCount = 5
     private static let kindSwitcherCenterLoop = 2
 
-    init(
+    fileprivate init(
         initialKind: QuickRecordKind,
         targetCycleID: UUID? = nil,
         recordDate: Date? = nil,
         onDismiss: @escaping () -> Void,
-        onOpenFullRecord: @escaping (RecordSheet) -> Void
+        onCompletedRecord: @escaping (SubjectiveStatePromptContext) -> Void = { _ in }
     ) {
-        self.initialKind = initialKind
+        let initialState = QuickRecordInitialState(
+            kind: initialKind,
+            value: initialKind.defaultValue,
+            recordedAt: Self.defaultRecordedAt(for: recordDate)
+        )
+        self.init(
+            initialState: initialState,
+            targetCycleID: targetCycleID,
+            recordDate: recordDate,
+            editTarget: nil,
+            onDismiss: onDismiss,
+            onCompletedRecord: onCompletedRecord
+        )
+    }
+
+    init(
+        editTarget: QuickRecordEditTarget,
+        onDismiss: @escaping () -> Void,
+        onCompletedRecord: @escaping (SubjectiveStatePromptContext) -> Void = { _ in }
+    ) {
+        let initialState = Self.initialState(for: editTarget)
+        self.init(
+            initialState: initialState,
+            targetCycleID: nil,
+            recordDate: initialState.recordedAt,
+            editTarget: editTarget,
+            onDismiss: onDismiss,
+            onCompletedRecord: onCompletedRecord
+        )
+    }
+
+    private init(
+        initialState: QuickRecordInitialState,
+        targetCycleID: UUID?,
+        recordDate: Date?,
+        editTarget: QuickRecordEditTarget?,
+        onDismiss: @escaping () -> Void,
+        onCompletedRecord: @escaping (SubjectiveStatePromptContext) -> Void
+    ) {
         self.targetCycleID = targetCycleID
         self.recordDate = recordDate
+        self.editTarget = editTarget
         self.onDismiss = onDismiss
-        self.onOpenFullRecord = onOpenFullRecord
-        _selectedKind = State(initialValue: initialKind)
-        _value = State(initialValue: initialKind.defaultValue)
-        _recordedAt = State(initialValue: Self.defaultRecordedAt(for: recordDate))
+        self.onCompletedRecord = onCompletedRecord
+        _selectedKind = State(initialValue: initialState.kind)
+        _value = State(initialValue: initialState.value)
+        _recordedAt = State(initialValue: initialState.recordedAt)
+        _sleepMode = State(initialValue: initialState.sleepMode)
+        _sleepStartAt = State(initialValue: initialState.sleepStartAt)
+        _sleepEndAt = State(initialValue: initialState.sleepEndAt)
+        _didConfigureSleep = State(initialValue: editTarget != nil)
+        _diaperMode = State(initialValue: initialState.diaperMode)
+        _urineAmount = State(initialValue: initialState.urineAmount)
+        _poopTexture = State(initialValue: initialState.poopTexture)
+        _didConfigureDiaper = State(initialValue: editTarget != nil)
+        _selectedActivityItems = State(initialValue: initialState.selectedActivityItems)
+        _selectedSolidFoods = State(initialValue: initialState.selectedSolidFoods)
+        _nursingLeftSeconds = State(initialValue: initialState.nursingLeftSeconds)
+        _nursingRightSeconds = State(initialValue: initialState.nursingRightSeconds)
     }
 
     var body: some View {
         ZStack {
-            Color(hex: "#191827")
-                .opacity(0.20)
+            DesignToken.scrim
+                .opacity(0.46)
                 .ignoresSafeArea()
                 .onTapGesture {
                     onDismiss()
@@ -1331,15 +1279,21 @@ private struct QuickRecordCardOverlay: View {
 
             VStack(spacing: 12) {
                 quickCard
-                kindSwitcher
-                    .padding(.horizontal, 2)
+                if editTarget == nil {
+                    kindSwitcher
+                        .padding(.horizontal, 2)
+                }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, DesignToken.screenHorizontalPadding)
             .frame(maxWidth: 430)
         }
         .onChange(of: selectedKind) { _, newValue in
+            guard editTarget == nil else { return }
             value = newValue.defaultValue
             activeNursingSide = nil
+            if newValue != .nursing {
+                feedingDraftStore.pauseBreastTimer()
+            }
             if newValue == .sleep {
                 configureSleepDefaults(force: true)
             }
@@ -1353,12 +1307,7 @@ private struct QuickRecordCardOverlay: View {
             configureDiaperDefaults(force: false)
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
-            guard selectedKind == .nursing, let activeNursingSide else { return }
-            if activeNursingSide == .left {
-                nursingLeftSeconds += 1
-            } else {
-                nursingRightSeconds += 1
-            }
+            guard selectedKind == .nursing else { return }
             value = max(nursingTotalSeconds / 60, 0)
         }
     }
@@ -1378,57 +1327,221 @@ private struct QuickRecordCardOverlay: View {
         return min(calendar.date(from: dayComponents) ?? now, now)
     }
 
+    private static func initialState(for target: QuickRecordEditTarget) -> QuickRecordInitialState {
+        switch target {
+        case .feeding(let session):
+            return feedingInitialState(for: session)
+        case .care(let record):
+            return careInitialState(for: record)
+        }
+    }
+
+    private static func feedingInitialState(for session: FeedingSession) -> QuickRecordInitialState {
+        let recordedAt = session.startAt ?? session.createdAt
+
+        switch session.type {
+        case .bottle:
+            let milkType = session.bottleMilkType ?? .formula
+            let kind: QuickRecordKind = milkType == .expressed ? .expressedBottle : .formulaBottle
+            let amount = session.entries
+                .filter { $0.type == .bottle && ($0.milkType ?? .formula) == milkType }
+                .compactMap(\.bottleAmount)
+                .reduce(0, +)
+            return QuickRecordInitialState(
+                kind: kind,
+                value: clamped(amount, for: kind),
+                recordedAt: recordedAt
+            )
+
+        case .breast:
+            let leftMinutes = session.entries
+                .filter { $0.type == .breast && ($0.breastSide ?? .left) == .left }
+                .compactMap(\.breastDuration)
+                .reduce(0, +)
+            let rightMinutes = session.entries
+                .filter { $0.type == .breast && $0.breastSide == .right }
+                .compactMap(\.breastDuration)
+                .reduce(0, +)
+            let totalMinutes = leftMinutes + rightMinutes
+            var state = QuickRecordInitialState(
+                kind: .nursing,
+                value: clamped(totalMinutes, for: .nursing),
+                recordedAt: recordedAt
+            )
+            state.nursingLeftSeconds = leftMinutes * 60
+            state.nursingRightSeconds = rightMinutes * 60
+            return state
+
+        case .solid:
+            let foods = Set(session.entries.compactMap(\.solidFood))
+            let totalAmount = session.entries
+                .filter { $0.type == .solid }
+                .compactMap(\.solidAmount)
+                .reduce(0, +)
+            var state = QuickRecordInitialState(
+                kind: .solids,
+                value: clamped(Int(totalAmount.rounded()), for: .solids),
+                recordedAt: recordedAt
+            )
+            state.selectedSolidFoods = foods.isEmpty ? [.rice] : foods
+            return state
+        }
+    }
+
+    private static func careInitialState(for record: CareRecord) -> QuickRecordInitialState {
+        switch record.kind {
+        case .diaper:
+            let type = DiaperRecordType.type(for: record.title)
+            let detail = DiaperRecordType.displayDetail(title: record.title, detail: record.detail)
+            var state = QuickRecordInitialState(kind: .diaper, value: 1, recordedAt: record.recordedAt)
+            state.diaperMode = type == .pee ? .pee : .poop
+            state.urineAmount = urineAmount(from: detail)
+            state.poopTexture = poopTexture(from: detail)
+            return state
+
+        case .activity:
+            var state = QuickRecordInitialState(
+                kind: .activity,
+                value: QuickRecordKind.activity.defaultValue,
+                recordedAt: record.recordedAt
+            )
+            state.selectedActivityItems = activityItems(from: record.title)
+            return state
+
+        case .sleep:
+            let duration = SleepRecordFormatter.durationMinutes(from: record.detail) ?? QuickRecordKind.sleep.defaultValue
+            let end = SleepRecordFormatter.endTime(start: record.recordedAt, durationMinutes: duration)
+            var state = QuickRecordInitialState(
+                kind: .sleep,
+                value: clamped(duration, for: .sleep),
+                recordedAt: record.recordedAt
+            )
+            state.sleepMode = .manual
+            state.sleepStartAt = record.recordedAt
+            state.sleepEndAt = end
+            return state
+        }
+    }
+
+    private static func clamped(_ value: Int, for kind: QuickRecordKind) -> Int {
+        min(max(value, kind.valueRange.lowerBound), kind.valueRange.upperBound)
+    }
+
+    private static func urineAmount(from detail: String) -> QuickUrineAmount {
+        let normalized = detail
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "：", with: ":")
+        if normalized.contains("尿了很多") || normalized.contains("尿量:多") || normalized.contains("尿量多") || normalized.contains("很多") {
+            return .high
+        }
+        if normalized.contains("尿了不少") || normalized.contains("尿量:中") || normalized.contains("尿量中") || normalized.contains("不少") {
+            return .medium
+        }
+        if normalized.contains("尿了一点") || normalized.contains("尿量:少") || normalized.contains("尿量少") || normalized.contains("一点") || normalized.contains("少") {
+            return .low
+        }
+        if normalized.contains("多") { return .high }
+        return .medium
+    }
+
+    private static func poopTexture(from detail: String) -> QuickPoopTexture {
+        if detail.contains("成型") || detail.contains("条") { return .formed }
+        if detail.contains("稀水") || detail.contains("稀") { return .watery }
+        if detail.contains("黏液") || detail.contains("黏") { return .mucus }
+        if detail.contains("硬结") || detail.contains("硬") { return .hard }
+        return .paste
+    }
+
+    private static func activityItems(from title: String) -> Set<QuickActivityItem> {
+        let availableItems = QuickActivityCategory.allCases.flatMap(\.items)
+        var payload = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let usesCombinedRecordTitle = payload.hasPrefix("宝宝完成了")
+        if usesCombinedRecordTitle {
+            payload.removeFirst("宝宝完成了".count)
+        }
+        if usesCombinedRecordTitle, payload.hasSuffix("活动") {
+            payload.removeLast("活动".count)
+        }
+
+        let names = payload
+            .split(separator: "、")
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        return Set(names.map { name in
+            availableItems.first(where: { $0.title == name })
+                ?? QuickActivityItem(category: .care, title: name)
+        })
+    }
+
     private var quickCard: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             header
             if showRecordTimePicker {
                 recordTimeEditor
+                    .padding(.top, 12)
                     .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             }
-            hero
-            if selectedKind == .sleep {
-                sleepModeSwitcher
-            } else if selectedKind == .diaper {
-                diaperControls
-            } else if selectedKind == .activity || selectedKind == .solids {
-                EmptyView()
-            } else if selectedKind == .nursing {
-                nursingTimerControls
-            } else {
-                controlBar
+
+            VStack(spacing: 12) {
+                hero
+                if selectedKind == .sleep, editTarget == nil {
+                    sleepModeSwitcher
+                } else if selectedKind == .diaper {
+                    diaperControls
+                } else if selectedKind == .activity || selectedKind == .solids {
+                    EmptyView()
+                } else if selectedKind == .nursing {
+                    nursingTimerControls
+                } else {
+                    controlBar
+                }
             }
+            .padding(.top, 12)
+            .frame(maxHeight: .infinity, alignment: .top)
+
             saveButton
         }
         .padding(16)
+        .frame(height: quickCardHeight, alignment: .top)
         .background(
-            RoundedRectangle(cornerRadius: 36, style: .continuous)
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.96), Color(hex: "#F9F6FF").opacity(0.94)],
+                        colors: [DesignToken.surfaceRaised, DesignToken.surfaceSoft],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 36, style: .continuous)
-                        .stroke(.white.opacity(0.90), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(DesignToken.glassStroke.opacity(0.82), lineWidth: 1)
                 )
-                .shadow(color: Color(hex: "#6D5BAA").opacity(0.16), radius: 28, y: 16)
+                .shadow(color: DesignToken.shadowColor.opacity(0.22), radius: 28, y: 16)
         )
+    }
+
+    private var quickCardHeight: CGFloat {
+        showRecordTimePicker ? 670 : 500
     }
 
     private var header: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 10) {
+            HStack(spacing: 9) {
                 quickPhaseIcon(kind: selectedKind)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(selectedKind.title)
-                        .font(BBBFont.font(size: 20, weight: .heavy))
+                    Text(
+                        editTarget == nil
+                            ? selectedKind.title.localized
+                            : AppLocalization.format("修改%@", selectedKind.title.localized)
+                    )
+                        .font(BBBFont.font(size: 17, weight: .bold))
                         .foregroundStyle(DesignToken.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
                 }
+                .frame(height: 34, alignment: .center)
 
                 Spacer(minLength: 6)
 
@@ -1441,15 +1554,15 @@ private struct QuickRecordCardOverlay: View {
         ZStack {
             Circle()
                 .fill(kind.softColor.opacity(0.46))
-                .frame(width: 42, height: 42)
-                .overlay(Circle().stroke(kind.color.opacity(0.88), lineWidth: 1.8))
-                .shadow(color: kind.color.opacity(0.12), radius: 8, y: 4)
+                .frame(width: 34, height: 34)
+                .overlay(Circle().stroke(kind.color.opacity(0.88), lineWidth: 1.5))
+                .shadow(color: kind.color.opacity(0.12), radius: 6, y: 3)
 
             Text(kind.phaseLetter)
-                .font(BBBFont.font(size: 18, weight: .heavy))
+                .font(BBBFont.font(size: 15, weight: .heavy))
                 .foregroundStyle(kind.color)
         }
-        .frame(width: 46, height: 46)
+        .frame(width: 34, height: 34)
     }
 
     private var quickRecordTimePicker: some View {
@@ -1462,26 +1575,25 @@ private struct QuickRecordCardOverlay: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "clock")
-                    .font(.system(size: 13, weight: .bold))
-                Text(recordedAtDayText)
-                    .font(BBBFont.font(size: 11, weight: .heavy))
-                    .lineLimit(1)
-                Text(Self.timeFormatter.string(from: recordedAt))
-                    .font(BBBFont.font(size: 13, weight: .heavy))
+                    .font(.system(size: 12, weight: .bold))
+                Text(AppDateTimeFormat.time(recordedAt))
+                    .font(BBBFont.font(size: 12, weight: .heavy))
                     .monospacedDigit()
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 9, weight: .black))
             }
             .foregroundStyle(selectedKind.color)
-            .padding(.horizontal, 10)
-            .frame(height: 36)
-            .frame(width: 150)
-            .background(Capsule().fill(Color.white.opacity(0.76)))
+            .padding(.horizontal, 9)
+            .frame(height: 34)
+            .frame(width: 136)
+            .background(Capsule().fill(DesignToken.glassFill.opacity(0.76)))
             .overlay(Capsule().stroke(selectedKind.color.opacity(0.22), lineWidth: 1))
         }
         .buttonStyle(ScaleButtonStyle())
+        .frame(minHeight: DesignToken.minimumTapSize)
         .accessibilityLabel("记录时间")
+        .accessibilityValue(AppDateTimeFormat.dateTime(recordedAt))
     }
 
     private var recordTimeEditor: some View {
@@ -1532,9 +1644,9 @@ private struct QuickRecordCardOverlay: View {
                     }
                 }
                 .font(BBBFont.font(size: 12, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignToken.onPrimary)
                 .padding(.horizontal, 12)
-                .frame(height: 30)
+                .frame(minWidth: 64, minHeight: DesignToken.minimumTapSize)
                 .background(Capsule().fill(selectedKind.color))
             }
         }
@@ -1551,7 +1663,7 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private var recordTimeEditorText: String {
-        "\(recordedAtDayText) \(Self.timeFormatter.string(from: recordedAt))"
+        AppDateTimeFormat.dateTime(recordedAt)
     }
 
     private func syncRecordTimePickerState() {
@@ -1567,7 +1679,13 @@ private struct QuickRecordCardOverlay: View {
         components.minute = recordTimeMinute
         components.second = 0
         guard let candidate = Calendar.current.date(from: components) else { return }
-        recordedAt = min(candidate, Date())
+        let updatedRecordedAt = min(candidate, Date())
+        if editTarget != nil, selectedKind == .sleep {
+            let duration = max(sleepEndAt.timeIntervalSince(sleepStartAt), 60)
+            sleepStartAt = updatedRecordedAt
+            sleepEndAt = min(updatedRecordedAt.addingTimeInterval(duration), Date())
+        }
+        recordedAt = updatedRecordedAt
     }
 
     private var availableRecordHours: [Int] {
@@ -1604,36 +1722,26 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private var recordedAtDayText: String {
-        if Calendar.current.isDateInToday(recordedAt) {
-            return "今天"
-        }
-        if Calendar.current.isDateInYesterday(recordedAt) {
-            return "昨天"
-        }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_Hans_CN")
-        formatter.dateFormat = "M月d日"
-        return formatter.string(from: recordedAt)
+        AppDateTimeFormat.date(recordedAt)
     }
 
     private var hero: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(
-                    RadialGradient(
+                    LinearGradient(
                         colors: [
-                            selectedKind.softColor.opacity(0.48),
-                            Color.white.opacity(0.58),
-                            Color.white.opacity(0.18)
+                            DesignToken.surfaceRaised,
+                            selectedKind.softColor.opacity(0.30),
+                            DesignToken.surfaceSoft
                         ],
-                        center: .center,
-                        startRadius: 12,
-                        endRadius: 190
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(.white.opacity(0.72), lineWidth: 1)
+                        .stroke(selectedKind.color.opacity(0.10), lineWidth: 1)
                 )
 
             if selectedKind == .sleep {
@@ -1650,7 +1758,7 @@ private struct QuickRecordCardOverlay: View {
                 InteractiveBottleView(
                     amount: bottleAmountBinding,
                     range: Double(selectedKind.valueRange.lowerBound)...Double(selectedKind.valueRange.upperBound),
-                    step: Double(selectedKind.step),
+                    step: quickBottleStep,
                     tint: selectedKind.color
                 )
                 .frame(width: 210, height: 250)
@@ -1660,7 +1768,7 @@ private struct QuickRecordCardOverlay: View {
                 VStack(spacing: 13) {
                     ZStack {
                         Circle()
-                            .fill(.white.opacity(0.68))
+                            .fill(DesignToken.glassFill.opacity(0.68))
                             .frame(width: 118, height: 118)
                             .shadow(color: selectedKind.color.opacity(0.12), radius: 16, y: 9)
 
@@ -1671,15 +1779,15 @@ private struct QuickRecordCardOverlay: View {
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("\(value)")
+                        Text(displayedQuickValue)
                             .font(BBBFont.font(size: 38, weight: .heavy))
                             .foregroundStyle(selectedKind.color)
-                        Text(selectedKind.unit)
+                        Text(displayedQuickUnit)
                             .font(BBBFont.font(size: 19, weight: .heavy))
                             .foregroundStyle(DesignToken.textSecondary)
                     }
 
-                    Text(selectedKind.placeholderText)
+                    Text(selectedKind.placeholderText.localized)
                         .font(BBBFont.font(size: 12, weight: .semibold))
                         .foregroundStyle(DesignToken.textSecondary.opacity(0.72))
                         .lineLimit(1)
@@ -1743,8 +1851,8 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private var solidsHero: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "checklist")
                         .font(.system(size: 14, weight: .black))
@@ -1763,10 +1871,11 @@ private struct QuickRecordCardOverlay: View {
                     }
                 }
             }
-            .padding(.vertical, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 28)
             .padding(.horizontal, 14)
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.visible)
     }
 
     private func solidFoodChip(_ food: SolidFood) -> some View {
@@ -1782,23 +1891,26 @@ private struct QuickRecordCardOverlay: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
             VStack(spacing: 6) {
-                Text(food.emoji)
-                    .font(.system(size: 22))
-                Text(food.displayName)
+                Text(food.shortLabel.localized)
+                    .font(BBBFont.font(size: 13, weight: .bold))
+                    .foregroundStyle(selectedKind.color)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(selectedKind.softColor.opacity(0.86)))
+                Text(food.localizedDisplayName.localized)
                     .font(BBBFont.font(size: 12, weight: .heavy))
                     .lineLimit(1)
                     .minimumScaleFactor(0.76)
             }
             .foregroundStyle(isSelected ? DesignToken.textPrimary : DesignToken.textSecondary)
             .frame(maxWidth: .infinity)
-            .frame(height: 66)
+            .frame(height: 62)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? selectedKind.softColor.opacity(0.86) : Color.white.opacity(0.60))
+                    .fill(isSelected ? selectedKind.softColor.opacity(0.86) : DesignToken.glassFill.opacity(0.60))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isSelected ? selectedKind.color.opacity(0.44) : .white.opacity(0.46), lineWidth: 1.1)
+                    .stroke(isSelected ? selectedKind.color.opacity(0.44) : DesignToken.glassStroke.opacity(0.46), lineWidth: 1.1)
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -1807,21 +1919,21 @@ private struct QuickRecordCardOverlay: View {
     private var solidsSelectionSummary: String {
         let names = selectedSolidFoods
             .sorted { $0.displayName < $1.displayName }
-            .map(\.displayName)
-            .joined(separator: "、")
-        return "已选 \(names)"
+            .map(\.localizedDisplayName)
+
+        return AppLocalization.list(names)
     }
 
     private var sleepSegmentHero: some View {
-        VStack(spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
+        VStack(spacing: 18) {
+            HStack(alignment: .top, spacing: 10) {
                 sleepEndpointColumn(
                     title: "入睡",
                     timeText: sleepClockText(sleepStartAt),
                     binding: sleepMode == .justAsleep && sleepDraftStore.isRecording ? nil : sleepStartTimeBinding
                 )
 
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     Rectangle()
                         .fill(selectedKind.color.opacity(0.20))
                         .frame(height: 1)
@@ -1830,9 +1942,9 @@ private struct QuickRecordCardOverlay: View {
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(selectedKind.color)
                                 .padding(.horizontal, 8)
-                                .background(Capsule().fill(Color.white.opacity(0.72)))
+                                .background(Capsule().fill(DesignToken.surfaceRaised))
                         )
-                        .padding(.top, 33)
+                        .padding(.top, 29)
 
                     Text(sleepCenterText)
                         .font(BBBFont.font(size: 12, weight: .heavy))
@@ -1853,13 +1965,14 @@ private struct QuickRecordCardOverlay: View {
 
             sleepModeBody
         }
-        .padding(18)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 20)
     }
 
     private func sleepEndpointColumn(title: String, timeText: String, binding: Binding<Date>?) -> some View {
         VStack(spacing: 8) {
-            Text(title)
-                .font(BBBFont.font(size: 30, weight: .heavy))
+            Text(title.localized)
+                .font(BBBFont.font(size: 24, weight: .heavy))
                 .foregroundStyle(DesignToken.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -1869,22 +1982,21 @@ private struct QuickRecordCardOverlay: View {
                     .labelsHidden()
                     .datePickerStyle(.compact)
                     .tint(selectedKind.color)
-                    .environment(\.locale, Locale(identifier: "zh_Hans_CN"))
-                    .frame(width: 102, height: 36)
+                    .frame(width: 100, height: 38)
                     .padding(.horizontal, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.78)))
+                    .background(Capsule().fill(DesignToken.glassFill.opacity(0.78)))
                     .overlay(Capsule().stroke(selectedKind.color.opacity(0.24), lineWidth: 1))
-                    .accessibilityLabel("\(title)时间")
+                    .accessibilityLabel(AppLocalization.format("%@时间", title.localized))
             } else {
                 Text(timeText)
                     .font(BBBFont.font(size: 15, weight: .heavy))
                     .foregroundStyle(DesignToken.textSecondary)
                     .monospacedDigit()
-                    .frame(width: 102, height: 36)
-                    .background(Capsule().fill(Color.white.opacity(0.48)))
+                    .frame(width: 100, height: 38)
+                    .background(Capsule().fill(DesignToken.glassFill.opacity(0.82)))
             }
         }
-        .frame(width: 108, alignment: .center)
+        .frame(width: 104, alignment: .center)
     }
 
     @ViewBuilder
@@ -1892,7 +2004,11 @@ private struct QuickRecordCardOverlay: View {
         switch sleepMode {
         case .justAsleep:
             VStack(spacing: 8) {
-                Text(sleepDraftStore.isRecording ? "宝宝正在睡，醒来后点保存。" : "记录从现在入睡开始，醒来后再保存。")
+                Text(
+                    sleepDraftStore.isRecording
+                        ? "宝宝正在睡，醒来后点保存。".localized
+                        : "记录从现在入睡开始，醒来后再保存。".localized
+                )
                     .font(BBBFont.font(size: 12, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
                     .lineLimit(2)
@@ -1902,7 +2018,7 @@ private struct QuickRecordCardOverlay: View {
             sleepDurationChips
         case .smartFill:
             VStack(spacing: 8) {
-                Text(smartSleepSuggestion?.reason ?? "根据本轮记录推测一段睡眠。")
+                Text(smartSleepSuggestion?.reason ?? "根据本轮记录推测一段睡眠。".localized)
                     .font(BBBFont.font(size: 12, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
                     .lineLimit(2)
@@ -1910,7 +2026,7 @@ private struct QuickRecordCardOverlay: View {
                 sleepDurationChips
             }
         case .manual:
-            Text("直接点上方时间胶囊调整。")
+            Text("直接点上方时间胶囊调整。".localized)
                 .font(BBBFont.font(size: 12, weight: .semibold))
                 .foregroundStyle(DesignToken.textSecondary)
         }
@@ -1940,7 +2056,7 @@ private struct QuickRecordCardOverlay: View {
                 Button {
                     applySleepMode(mode)
                 } label: {
-                    Text(mode.title)
+                    Text(mode.title.localized)
                         .font(BBBFont.font(size: 11, weight: .heavy))
                         .foregroundStyle(sleepMode == mode ? .white : selectedKind.color)
                         .frame(maxWidth: .infinity)
@@ -1956,24 +2072,27 @@ private struct QuickRecordCardOverlay: View {
 
     private var sleepCenterText: String {
         if sleepMode == .justAsleep, sleepDraftStore.isRecording {
-            return "睡眠中 \(SleepRecordFormatter.durationText(minutes: max(sleepDraftStore.elapsedSeconds / 60, 0)))"
+            return AppLocalization.format(
+                "睡眠中 %@",
+                SleepRecordFormatter.durationText(minutes: max(sleepDraftStore.elapsedSeconds / 60, 0))
+            )
         }
         if sleepMode == .justAsleep {
-            return "准备计时"
+            return "准备计时".localized
         }
         return "\(SleepRecordFormatter.durationText(minutes: sleepDurationMinutes))"
     }
 
     private var sleepDurationMinutes: Int {
-        max(Int(sleepEndAt.timeIntervalSince(sleepStartAt) / 60), 0)
+        guard let window = normalizedSleepWindow() else { return 0 }
+        return max(Int(window.end.timeIntervalSince(window.start) / 60), 0)
     }
 
     private var sleepStartTimeBinding: Binding<Date> {
         Binding(
             get: { sleepStartAt },
             set: { candidate in
-                sleepStartAt = normalizedSleepStart(from: candidate, endingAt: sleepEndAt)
-                value = sleepDurationMinutes
+                applyNormalizedSleepWindow(startTime: candidate, endTime: sleepEndAt)
             }
         )
     }
@@ -1982,8 +2101,7 @@ private struct QuickRecordCardOverlay: View {
         Binding(
             get: { sleepEndAt },
             set: { candidate in
-                sleepEndAt = normalizedSleepEnd(from: candidate, startingAt: sleepStartAt)
-                value = sleepDurationMinutes
+                applyNormalizedSleepWindow(startTime: sleepStartAt, endTime: candidate)
             }
         )
     }
@@ -2034,9 +2152,9 @@ private struct QuickRecordCardOverlay: View {
                 Image(systemName: mode.symbolName)
                     .font(.system(size: 14, weight: .black))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(mode.title)
+                    Text(mode.title.localized)
                         .font(BBBFont.font(size: 15, weight: .heavy))
-                    Text(mode.subtitle)
+                    Text(mode.subtitle.localized)
                         .font(BBBFont.font(size: 10, weight: .bold))
                         .opacity(0.74)
                 }
@@ -2052,7 +2170,7 @@ private struct QuickRecordCardOverlay: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(diaperMode == mode ? .white.opacity(0.32) : mode.accent.opacity(0.16), lineWidth: 1)
+                    .stroke(diaperMode == mode ? DesignToken.onPrimary.opacity(0.32) : mode.accent.opacity(0.16), lineWidth: 1)
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -2091,7 +2209,7 @@ private struct QuickRecordCardOverlay: View {
                             .font(.system(size: 10, weight: .black))
                     }
                 }
-                Text(amount.title)
+                Text(amount.title.localized)
                     .font(BBBFont.font(size: 17, weight: .heavy))
             }
             .foregroundStyle(urineAmount == amount ? .white : DiaperRecordType.pee.accent)
@@ -2103,7 +2221,7 @@ private struct QuickRecordCardOverlay: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(urineAmount == amount ? .white.opacity(0.34) : DiaperRecordType.pee.accent.opacity(0.16), lineWidth: 1)
+                    .stroke(urineAmount == amount ? DesignToken.onPrimary.opacity(0.34) : DiaperRecordType.pee.accent.opacity(0.16), lineWidth: 1)
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -2128,9 +2246,9 @@ private struct QuickRecordCardOverlay: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
             VStack(spacing: 2) {
-                Text(texture.title)
+                Text(texture.title.localized)
                     .font(BBBFont.font(size: 18, weight: .heavy))
-                Text(texture.shortText)
+                Text(texture.shortText.localized)
                     .font(BBBFont.font(size: 9, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -2144,7 +2262,7 @@ private struct QuickRecordCardOverlay: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(poopTexture == texture ? .white.opacity(0.34) : DiaperRecordType.poop.accent.opacity(0.16), lineWidth: 1)
+                    .stroke(poopTexture == texture ? DesignToken.onPrimary.opacity(0.34) : DiaperRecordType.poop.accent.opacity(0.16), lineWidth: 1)
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -2157,24 +2275,24 @@ private struct QuickRecordCardOverlay: View {
     private var diaperSummaryTitle: String {
         switch diaperMode {
         case .pee:
-            return "尿量\(urineAmount.title)"
+            return AppLocalization.format("尿量%@", urineAmount.title.localized)
         case .poop:
-            return "\(poopTexture.title)便"
+            return AppLocalization.format("%@便", poopTexture.title.localized)
         }
     }
 
     private var diaperSummaryDetail: String {
         switch diaperMode {
         case .pee:
-            return "\(urineAmount.dropCount)级尿量，保存为一次尿布记录"
+            return AppLocalization.format("%d级尿量，保存为一次尿布记录", urineAmount.dropCount)
         case .poop:
-            return poopTexture.guidance
+            return poopTexture.guidance.localized
         }
     }
 
     private var activityHero: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "checklist")
                         .font(.system(size: 14, weight: .black))
@@ -2187,14 +2305,29 @@ private struct QuickRecordCardOverlay: View {
                     Spacer(minLength: 0)
                 }
 
+                if !customActivityItems.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("原记录")
+                            .font(BBBFont.font(size: 13, weight: .heavy))
+                            .foregroundStyle(DesignToken.textPrimary)
+
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 74), spacing: 7)], alignment: .leading, spacing: 7) {
+                            ForEach(customActivityItems) { item in
+                                activityChip(item)
+                            }
+                        }
+                    }
+                }
+
                 ForEach(QuickActivityCategory.allCases) { category in
                     activityCategorySection(category)
                 }
             }
-            .padding(.vertical, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 28)
             .padding(.horizontal, 14)
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.visible)
     }
 
     private func activityCategorySection(_ category: QuickActivityCategory) -> some View {
@@ -2205,7 +2338,7 @@ private struct QuickRecordCardOverlay: View {
                     .foregroundStyle(selectedKind.color)
                     .frame(width: 22, height: 22)
                     .background(Circle().fill(selectedKind.softColor.opacity(0.72)))
-                Text(category.title)
+                Text(category.title.localized)
                     .font(BBBFont.font(size: 13, weight: .heavy))
                     .foregroundStyle(DesignToken.textPrimary)
                 Spacer(minLength: 0)
@@ -2232,24 +2365,35 @@ private struct QuickRecordCardOverlay: View {
             }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
-            Text(item.title)
+            Text(item.title.localized)
                 .font(BBBFont.font(size: 12, weight: .heavy))
                 .foregroundStyle(isSelected ? .white : selectedKind.color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
                 .padding(.horizontal, 11)
-                .frame(height: 31)
+                .frame(height: 36)
                 .frame(maxWidth: .infinity)
                 .background(Capsule().fill(isSelected ? selectedKind.color : selectedKind.softColor.opacity(0.62)))
-                .overlay(Capsule().stroke(isSelected ? .white.opacity(0.34) : selectedKind.color.opacity(0.16), lineWidth: 1))
+                .overlay(Capsule().stroke(isSelected ? DesignToken.onPrimary.opacity(0.34) : selectedKind.color.opacity(0.16), lineWidth: 1))
         }
         .buttonStyle(ScaleButtonStyle())
     }
 
     private var activitySelectionSummary: String {
-        guard !selectedActivityItems.isEmpty else { return "选择今天刚做过的活动" }
+        guard !selectedActivityItems.isEmpty else { return "选择今天刚做过的活动".localized }
         let categories = Set(selectedActivityItems.map(\.category)).count
-        return "已选 \(selectedActivityItems.count) 项，将合并为 \(categories) 条记录"
+        return AppLocalization.format(
+            "已选 %d 项，将合并为 %d 条记录",
+            selectedActivityItems.count,
+            categories
+        )
+    }
+
+    private var customActivityItems: [QuickActivityItem] {
+        let availableIDs = Set(QuickActivityCategory.allCases.flatMap(\.items).map(\.id))
+        return selectedActivityItems
+            .filter { !availableIDs.contains($0.id) }
+            .sorted { $0.title < $1.title }
     }
 
     private var controlBar: some View {
@@ -2262,11 +2406,11 @@ private struct QuickRecordCardOverlay: View {
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
 
-                Text("\(value)")
+                Text(displayedQuickValue)
                     .font(BBBFont.font(size: 38, weight: .heavy))
                     .foregroundStyle(DesignToken.textPrimary)
                     .monospacedDigit()
-                Text(selectedKind.unit)
+                Text(displayedQuickUnit)
                     .font(BBBFont.font(size: 19, weight: .heavy))
                     .foregroundStyle(DesignToken.textSecondary)
 
@@ -2275,8 +2419,8 @@ private struct QuickRecordCardOverlay: View {
             .padding(.horizontal, 18)
             .frame(height: 58)
             .frame(maxWidth: .infinity)
-            .background(Capsule().fill(Color(hex: "#F1EFF8").opacity(0.88)))
-            .overlay(Capsule().stroke(.white.opacity(0.86), lineWidth: 1))
+            .background(Capsule().fill(DesignToken.surfaceSoft.opacity(0.88)))
+            .overlay(Capsule().stroke(DesignToken.glassStroke.opacity(0.86), lineWidth: 1))
 
             stepButton(systemName: "plus") {
                 adjustValue(selectedKind.step)
@@ -2300,20 +2444,31 @@ private struct QuickRecordCardOverlay: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 58)
-            .background(Capsule().fill(Color(hex: "#F1EFF8").opacity(0.88)))
-            .overlay(Capsule().stroke(.white.opacity(0.86), lineWidth: 1))
+            .background(Capsule().fill(DesignToken.surfaceSoft.opacity(0.88)))
+            .overlay(Capsule().stroke(DesignToken.glassStroke.opacity(0.86), lineWidth: 1))
 
             nursingTimerButton(side: .right)
         }
     }
 
     private func nursingTimerButton(side: BreastSide) -> some View {
-        let isActive = activeNursingSide == side
-        let seconds = side == .left ? nursingLeftSeconds : nursingRightSeconds
+        let isActive = currentActiveNursingSide == side
+        let seconds = nursingSeconds(for: side)
 
         return Button {
             withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
-                activeNursingSide = isActive ? nil : side
+                if editTarget == nil {
+                    if feedingDraftStore.breastTimingStartedAt == nil {
+                        feedingDraftStore.setBreastTiming(
+                            leftSeconds: nursingLeftSeconds,
+                            rightSeconds: nursingRightSeconds,
+                            startedAt: Date()
+                        )
+                    }
+                    feedingDraftStore.toggleBreastTimer(side)
+                } else {
+                    activeNursingSide = isActive ? nil : side
+                }
             }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
@@ -2328,15 +2483,15 @@ private struct QuickRecordCardOverlay: View {
                     .font(BBBFont.font(size: 10, weight: .heavy))
                     .monospacedDigit()
             }
-            .foregroundStyle(isActive ? .white : selectedKind.color)
+            .foregroundStyle(isActive ? DesignToken.onPrimary : selectedKind.color)
             .frame(width: 84, height: 58)
             .background(
                 Capsule(style: .continuous)
-                    .fill(isActive ? selectedKind.color : Color.white.opacity(0.86))
+                    .fill(isActive ? selectedKind.color : DesignToken.glassFill.opacity(0.86))
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(isActive ? .white.opacity(0.34) : selectedKind.color.opacity(0.18), lineWidth: 1)
+                    .stroke(isActive ? DesignToken.onPrimary.opacity(0.34) : selectedKind.color.opacity(0.18), lineWidth: 1)
             )
             .shadow(color: selectedKind.color.opacity(isActive ? 0.18 : 0.08), radius: 10, y: 5)
         }
@@ -2344,16 +2499,39 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private var nursingTotalSeconds: Int {
-        nursingLeftSeconds + nursingRightSeconds
+        nursingSeconds(for: .left) + nursingSeconds(for: .right)
+    }
+
+    private var currentActiveNursingSide: BreastSide? {
+        editTarget == nil && feedingDraftStore.breastTimingStartedAt != nil
+            ? feedingDraftStore.activeBreastSide
+            : activeNursingSide
+    }
+
+    private func nursingSeconds(for side: BreastSide) -> Int {
+        if editTarget == nil, feedingDraftStore.breastTimingStartedAt != nil {
+            return feedingDraftStore.breastSeconds(for: side)
+        }
+        return side == .left ? nursingLeftSeconds : nursingRightSeconds
     }
 
     private func setNursingMinutes(_ side: BreastSide, minutes: Int) {
         let seconds = max(minutes, 0) * 60
-        activeNursingSide = nil
-        if side == .left {
-            nursingLeftSeconds = seconds
+        if editTarget == nil, feedingDraftStore.breastTimingStartedAt != nil {
+            let left = side == .left ? seconds : nursingSeconds(for: .left)
+            let right = side == .right ? seconds : nursingSeconds(for: .right)
+            feedingDraftStore.setBreastTiming(
+                leftSeconds: left,
+                rightSeconds: right,
+                startedAt: feedingDraftStore.breastTimingStartedAt
+            )
         } else {
-            nursingRightSeconds = seconds
+            activeNursingSide = nil
+            if side == .left {
+                nursingLeftSeconds = seconds
+            } else {
+                nursingRightSeconds = seconds
+            }
         }
         value = max(nursingTotalSeconds / 60, 0)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2366,30 +2544,51 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private var saveButton: some View {
-        Button {
+        let actionColor = primaryActionColor
+
+        return Button {
             save()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 22, weight: .bold))
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(selectedKind.color, .white)
+                    .foregroundStyle(
+                        canSave ? actionColor : actionColor.opacity(0.72),
+                        canSave ? DesignToken.onPrimary : actionColor.opacity(0.12)
+                    )
                 Text(saveButtonTitle)
                     .font(BBBFont.font(size: 19, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(canSave ? DesignToken.onPrimary : actionColor.opacity(0.78))
             }
             .frame(maxWidth: .infinity)
             .frame(height: 58)
             .background(
                 Capsule()
-                    .fill(LinearGradient(colors: [selectedKind.color.opacity(0.78), selectedKind.color], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(
+                        canSave
+                            ? AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [actionColor.opacity(0.82), actionColor],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            : AnyShapeStyle(actionColor.opacity(0.12))
+                    )
             )
-            .overlay(Capsule().stroke(.white.opacity(0.36), lineWidth: 1))
-            .shadow(color: selectedKind.color.opacity(0.20), radius: 14, y: 8)
+            .overlay(
+                Capsule()
+                    .stroke(canSave ? DesignToken.onPrimary.opacity(0.36) : actionColor.opacity(0.16), lineWidth: 1)
+            )
+            .shadow(color: actionColor.opacity(canSave ? 0.20 : 0), radius: 14, y: 8)
         }
         .buttonStyle(ScaleButtonStyle())
         .disabled(!canSave)
-        .opacity(canSave ? 1 : 0.52)
+    }
+
+    private var primaryActionColor: Color {
+        selectedKind == .diaper ? diaperAccent : selectedKind.color
     }
 
     private func stepButton(systemName: String, action: @escaping () -> Void) -> some View {
@@ -2398,9 +2597,9 @@ private struct QuickRecordCardOverlay: View {
                 .font(.system(size: 20, weight: .black))
                 .foregroundStyle(selectedKind.color)
                 .frame(width: 56, height: 56)
-                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white.opacity(0.86)))
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(.white.opacity(0.86), lineWidth: 1))
-                .shadow(color: Color(hex: "#4D4B70").opacity(0.06), radius: 8, y: 4)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(DesignToken.glassFill.opacity(0.86)))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(DesignToken.glassStroke.opacity(0.86), lineWidth: 1))
+                .shadow(color: DesignToken.shadowColor.opacity(0.10), radius: 8, y: 4)
         }
         .buttonStyle(ScaleButtonStyle())
     }
@@ -2420,7 +2619,7 @@ private struct QuickRecordCardOverlay: View {
                             HStack(spacing: 5) {
                                 Text(kind.phaseLetter)
                                     .font(BBBFont.font(size: 10, weight: .heavy))
-                                Text(kind.shortTitle)
+                                Text(kind.shortTitle.localized)
                                     .font(BBBFont.font(size: 12, weight: .heavy))
                             }
                             .foregroundStyle(selectedKind == kind ? .white : kind.color)
@@ -2432,15 +2631,28 @@ private struct QuickRecordCardOverlay: View {
                             )
                             .overlay(
                                 Capsule()
-                                    .stroke(selectedKind == kind ? .white.opacity(0.38) : kind.color.opacity(0.14), lineWidth: 1)
+                                    .stroke(selectedKind == kind ? DesignToken.onPrimary.opacity(0.38) : kind.color.opacity(0.14), lineWidth: 1)
                             )
                         }
                         .id(item.id)
                         .buttonStyle(ScaleButtonStyle())
                     }
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, 18)
             }
+            .frame(height: 36)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: DesignToken.onPrimary, location: 0.035),
+                        .init(color: DesignToken.onPrimary, location: 0.965),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
             .onAppear {
                 centerKindSwitcher(proxy, on: selectedKind, animated: false)
             }
@@ -2480,8 +2692,45 @@ private struct QuickRecordCardOverlay: View {
 
     private func adjustValue(_ delta: Int) {
         let range = selectedKind.valueRange
-        value = min(max(value + delta, range.lowerBound), range.upperBound)
+        let direction = delta < 0 ? -1 : 1
+        let canonicalStep: Int
+        if AppMeasurementFormat.currentSystem == .imperial, selectedKind.usesBottleHero {
+            canonicalStep = max(Int(AppMeasurementFormat.milliliters(fromVolumeValue: 0.5).rounded()), 1)
+        } else if AppMeasurementFormat.currentSystem == .imperial, selectedKind == .solids {
+            canonicalStep = max(Int(AppMeasurementFormat.grams(fromMassValue: 0.5).rounded()), 1)
+        } else {
+            canonicalStep = abs(delta)
+        }
+        value = min(max(value + direction * canonicalStep, range.lowerBound), range.upperBound)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private var quickBottleStep: Double {
+        AppMeasurementFormat.currentSystem == .metric
+            ? Double(selectedKind.step)
+            : AppMeasurementFormat.milliliters(fromVolumeValue: 0.5)
+    }
+
+    private var displayedQuickValue: String {
+        if selectedKind.usesBottleHero {
+            return AppMeasurementFormat.inputNumber(
+                AppMeasurementFormat.volumeValue(fromMilliliters: Double(value)),
+                maximumFractionDigits: AppMeasurementFormat.currentSystem == .metric ? 0 : 1
+            )
+        }
+        if selectedKind == .solids {
+            return AppMeasurementFormat.inputNumber(
+                AppMeasurementFormat.massValue(fromGrams: Double(value)),
+                maximumFractionDigits: AppMeasurementFormat.currentSystem == .metric ? 0 : 1
+            )
+        }
+        return String(value)
+    }
+
+    private var displayedQuickUnit: String {
+        if selectedKind.usesBottleHero { return AppMeasurementFormat.volumeUnit }
+        if selectedKind == .solids { return AppMeasurementFormat.massUnit }
+        return selectedKind.unit.localized
     }
 
     private var bottleAmountBinding: Binding<Double> {
@@ -2495,14 +2744,17 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private var saveButtonTitle: String {
+        if editTarget != nil {
+            return "保存修改".localized
+        }
         if selectedKind == .activity {
-            return "保存活动"
+            return canSave ? "保存活动".localized : "选择活动".localized
         }
-        guard selectedKind == .sleep else { return "保存" }
+        guard selectedKind == .sleep else { return "保存".localized }
         if sleepMode == .justAsleep {
-            return sleepDraftStore.isRecording ? "保存睡眠" : "开始计时"
+            return sleepDraftStore.isRecording ? "保存睡眠".localized : "开始计时".localized
         }
-        return "保存睡眠"
+        return "保存睡眠".localized
     }
 
     private var canSave: Bool {
@@ -2612,45 +2864,36 @@ private struct QuickRecordCardOverlay: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
-    private func normalizedSleepStart(from candidate: Date, endingAt endDate: Date) -> Date {
-        let end = min(endDate, Date())
-        var start = date(onSameDayAs: end, usingTimeFrom: candidate)
-        if start >= end {
-            start = Calendar.current.date(byAdding: .day, value: -1, to: start) ?? start.addingTimeInterval(-24 * 60 * 60)
-        }
-        return min(start, end.addingTimeInterval(-60))
-    }
-
-    private func normalizedSleepEnd(from candidate: Date, startingAt startDate: Date) -> Date {
-        var end = date(onSameDayAs: startDate, usingTimeFrom: candidate)
-        if end <= startDate {
-            end = Calendar.current.date(byAdding: .day, value: 1, to: end) ?? end.addingTimeInterval(24 * 60 * 60)
-        }
-        end = min(end, Date())
-        if end <= startDate {
-            end = min(Date(), startDate.addingTimeInterval(60))
-        }
-        return end
-    }
-
     private func normalizedSleepWindow() -> (start: Date, end: Date)? {
-        let end = min(sleepEndAt, Date())
-        var start = sleepStartAt
-        if start >= end {
-            start = normalizedSleepStart(from: start, endingAt: end)
-        }
-        guard end > start else { return nil }
-        return (start, end)
+        SleepRecordFormatter.normalizedWindow(
+            startTime: sleepStartAt,
+            endTime: sleepEndAt,
+            anchorDate: sleepAnchorDate
+        )
     }
 
-    private func date(onSameDayAs anchor: Date, usingTimeFrom timeSource: Date) -> Date {
-        let calendar = Calendar.current
-        var components = calendar.dateComponents([.year, .month, .day], from: anchor)
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: timeSource)
-        components.hour = timeComponents.hour
-        components.minute = timeComponents.minute
-        components.second = 0
-        return calendar.date(from: components) ?? anchor
+    private var sleepAnchorDate: Date {
+        recordDate ?? recordedAt
+    }
+
+    private func applyNormalizedSleepWindow(startTime: Date, endTime: Date) {
+        guard let window = SleepRecordFormatter.normalizedWindow(
+            startTime: startTime,
+            endTime: endTime,
+            anchorDate: sleepAnchorDate
+        ) else {
+            sleepStartAt = startTime
+            sleepEndAt = min(endTime, Date())
+            value = 0
+            return
+        }
+
+        sleepStartAt = window.start
+        sleepEndAt = window.end
+        if editTarget != nil {
+            recordedAt = window.start
+        }
+        value = sleepDurationMinutes
     }
 
     private var smartSleepSuggestion: QuickSleepSuggestion? {
@@ -2676,7 +2919,11 @@ private struct QuickRecordCardOverlay: View {
         return QuickSleepSuggestion(
             startAt: start,
             endAt: end,
-            reason: "根据本轮 \(sleepClockText(lastEvent.date)) \(lastEvent.title) 推测"
+            reason: AppLocalization.format(
+                "根据本轮 %@ %@ 推测",
+                sleepClockText(lastEvent.date),
+                lastEvent.title.localized
+            )
         )
     }
 
@@ -2703,7 +2950,11 @@ private struct QuickRecordCardOverlay: View {
         return QuickSleepSuggestion(
             startAt: start,
             endAt: now,
-            reason: "根据当前轮 \(sleepClockText(lastEvent.date)) \(lastEvent.title) 推测"
+            reason: AppLocalization.format(
+                "根据当前轮 %@ %@ 推测",
+                sleepClockText(lastEvent.date),
+                lastEvent.title.localized
+            )
         )
     }
 
@@ -2733,10 +2984,7 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private func sleepClockText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_Hans_CN")
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
+        AppDateTimeFormat.time(date)
     }
 
     private func sleepQuickDurationText(_ minutes: Int) -> String {
@@ -2744,6 +2992,11 @@ private struct QuickRecordCardOverlay: View {
     }
 
     private func save() {
+        if let editTarget {
+            update(editTarget)
+            return
+        }
+
         if selectedKind == .sleep {
             saveSleep()
             return
@@ -2752,53 +3005,124 @@ private struct QuickRecordCardOverlay: View {
         let submittedAt = effectiveRecordedAt
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
+        let context: SubjectiveStatePromptContext?
         switch selectedKind {
         case .formulaBottle:
-            saveBottle(milkType: .formula, recordedAt: submittedAt)
+            context = saveBottle(milkType: .formula, recordedAt: submittedAt)
         case .expressedBottle:
-            saveBottle(milkType: .expressed, recordedAt: submittedAt)
+            context = saveBottle(milkType: .expressed, recordedAt: submittedAt)
         case .nursing:
-            saveNursing(recordedAt: submittedAt)
+            context = saveNursing(recordedAt: submittedAt)
         case .solids:
-            saveSolids(recordedAt: submittedAt)
+            context = saveSolids(recordedAt: submittedAt)
         case .diaper:
-            saveDiaper(recordedAt: submittedAt)
+            context = saveDiaper(recordedAt: submittedAt)
         case .activity:
-            saveActivities(recordedAt: submittedAt)
+            context = saveActivities(recordedAt: submittedAt)
         case .sleep:
-            break
+            context = nil
         case .bath, .tummyTime, .massage, .story, .outdoor, .play, .toothbrushing:
-            activityStore.recordActivity(title: selectedKind.title, durationMinutes: value, recordedAt: submittedAt)
+            context = activityStore.recordActivity(title: selectedKind.title, recordedAt: submittedAt).map {
+                SubjectiveStatePromptContext(sourceType: .care, sourceRecordID: $0.id, recordedAt: $0.recordedAt)
+            }
         }
 
         rebuildEasyCyclesAfterRecordChange()
-        onDismiss()
+        finish(with: context)
+    }
+
+    private func update(_ target: QuickRecordEditTarget) {
+        guard canSave else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        switch target {
+        case .feeding(let session):
+            guard let entries = currentFeedingEntries(), !entries.isEmpty else { return }
+            let updated = FeedingSession(
+                id: session.id,
+                entries: entries,
+                notes: session.notes,
+                imageData: session.imageData,
+                babyMood: session.babyMood,
+                createdAt: effectiveRecordedAt,
+                startAt: nil,
+                endAt: nil,
+                timeSpanSource: .point
+            )
+            feedingStore.updateSession(updated)
+
+        case .care(let record):
+            switch record.kind {
+            case .diaper:
+                activityStore.updateDiaperRecord(
+                    record,
+                    type: diaperMode.recordType.rawValue,
+                    detail: diaperRecordDetail,
+                    note: record.note,
+                    recordedAt: effectiveRecordedAt
+                )
+
+            case .activity:
+                guard let title = activityRecordTitle else { return }
+                activityStore.updateActivityRecord(
+                    record,
+                    title: title,
+                    recordedAt: effectiveRecordedAt,
+                    note: record.note
+                )
+
+            case .sleep:
+                guard let window = normalizedSleepWindow() else { return }
+                activityStore.updateSleepRecord(
+                    record,
+                    startTime: window.start,
+                    endTime: window.end,
+                    note: record.note
+                )
+            }
+        }
+
+        rebuildEasyCyclesAfterRecordChange()
+        let context: SubjectiveStatePromptContext
+        switch target {
+        case .feeding(let session):
+            context = SubjectiveStatePromptContext(
+                sourceType: .feeding,
+                sourceRecordID: session.id,
+                recordedAt: effectiveRecordedAt
+            )
+        case .care(let record):
+            let date = record.kind == .sleep ? (normalizedSleepWindow()?.start ?? effectiveRecordedAt) : effectiveRecordedAt
+            context = SubjectiveStatePromptContext(sourceType: .care, sourceRecordID: record.id, recordedAt: date)
+        }
+        finish(with: context)
     }
 
     private var effectiveRecordedAt: Date {
         min(recordedAt, Date())
     }
 
-    private func saveActivities(recordedAt: Date) {
-        let itemTitles = selectedActivityItems
-            .map(\.title)
-            .sorted()
-            .joined(separator: "、")
-        guard !itemTitles.isEmpty else { return }
-        activityStore.recordActivity(
-            title: "宝宝完成了\(itemTitles)活动",
-            durationMinutes: value,
+    private func saveActivities(recordedAt: Date) -> SubjectiveStatePromptContext? {
+        guard let title = activityRecordTitle else { return nil }
+        return activityStore.recordActivity(
+            title: title,
             recordedAt: recordedAt
-        )
+        ).map { SubjectiveStatePromptContext(sourceType: .care, sourceRecordID: $0.id, recordedAt: $0.recordedAt) }
     }
 
-    private func saveDiaper(recordedAt: Date) {
+    private var activityRecordTitle: String? {
+        let titles = selectedActivityItems.map(\.title).sorted()
+        guard !titles.isEmpty else { return nil }
+        return titles.joined(separator: " ")
+    }
+
+    private func saveDiaper(recordedAt: Date) -> SubjectiveStatePromptContext? {
         activityStore.recordDiaper(
             type: diaperMode.recordType.rawValue,
             detail: diaperRecordDetail,
             note: "",
             recordedAt: recordedAt
-        )
+        ).map { SubjectiveStatePromptContext(sourceType: .care, sourceRecordID: $0.id, recordedAt: $0.recordedAt) }
     }
 
     private var diaperRecordDetail: String {
@@ -2812,31 +3136,36 @@ private struct QuickRecordCardOverlay: View {
 
     private func saveSleep() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        var didWriteRecord = false
+        var writtenRecord: CareRecord?
 
         switch sleepMode {
         case .justAsleep:
             if let activeStart = sleepDraftStore.activeSleepStartAt {
                 let end = Date()
                 guard end > activeStart else { return }
-                activityStore.recordSleep(startTime: activeStart, endTime: end, note: "")
-                sleepDraftStore.resetDraft()
-                didWriteRecord = true
+                if let record = activityStore.recordSleep(startTime: activeStart, endTime: end, note: "") {
+                    sleepDraftStore.resetDraft()
+                    writtenRecord = record
+                }
             } else {
                 sleepDraftStore.start(at: Date())
             }
         case .justWoke, .smartFill, .manual:
             guard let window = normalizedSleepWindow() else { return }
             guard Int(window.end.timeIntervalSince(window.start) / 60) >= QuickRecordKind.sleep.valueRange.lowerBound else { return }
-            activityStore.recordSleep(startTime: window.start, endTime: window.end, note: "")
-            didWriteRecord = true
+            writtenRecord = activityStore.recordSleep(startTime: window.start, endTime: window.end, note: "")
         }
 
-        if didWriteRecord {
+        if let writtenRecord {
             rebuildEasyCyclesAfterRecordChange()
+            finish(with: SubjectiveStatePromptContext(
+                sourceType: .care,
+                sourceRecordID: writtenRecord.id,
+                recordedAt: writtenRecord.recordedAt
+            ))
+        } else {
+            onDismiss()
         }
-
-        onDismiss()
     }
 
     private func rebuildEasyCyclesAfterRecordChange() {
@@ -2846,24 +3175,88 @@ private struct QuickRecordCardOverlay: View {
         )
     }
 
-    private func saveBottle(milkType: MilkType, recordedAt: Date) {
-        let entry = FeedingEntry(
-            type: .bottle,
-            milkType: milkType,
-            bottleAmount: value
-        )
+    private func saveBottle(milkType: MilkType, recordedAt: Date) -> SubjectiveStatePromptContext {
         let session = FeedingSession(
-            entries: [entry],
+            entries: bottleEntries(milkType: milkType),
             notes: "",
             babyMood: .happy,
             createdAt: recordedAt
         )
         feedingStore.saveSession(session)
+        return SubjectiveStatePromptContext(sourceType: .feeding, sourceRecordID: session.id, recordedAt: recordedAt)
     }
 
-    private func saveNursing(recordedAt: Date) {
-        let leftMinutes = nursingMinutes(from: nursingLeftSeconds)
-        let rightMinutes = nursingMinutes(from: nursingRightSeconds)
+    private func saveNursing(recordedAt: Date) -> SubjectiveStatePromptContext? {
+        let entries = nursingEntries()
+        guard !entries.isEmpty else { return nil }
+        let timingStart = editTarget == nil ? feedingDraftStore.breastTimingStartedAt : nil
+        let session = FeedingSession(
+            entries: entries,
+            notes: "",
+            babyMood: .happy,
+            createdAt: recordedAt,
+            startAt: timingStart,
+            endAt: timingStart == nil ? nil : recordedAt,
+            timeSpanSource: timingStart == nil ? .point : .confirmed
+        )
+        feedingStore.saveSession(session)
+        if editTarget == nil, timingStart != nil {
+            feedingDraftStore.resetDraft()
+        }
+        return SubjectiveStatePromptContext(
+            sourceType: .feeding,
+            sourceRecordID: session.id,
+            recordedAt: session.startAt ?? session.createdAt
+        )
+    }
+
+    private func saveSolids(recordedAt: Date) -> SubjectiveStatePromptContext? {
+        let entries = solidEntries()
+        guard !entries.isEmpty else { return nil }
+        let session = FeedingSession(
+            entries: entries,
+            notes: "",
+            babyMood: .happy,
+            createdAt: recordedAt
+        )
+        feedingStore.saveSession(session)
+        return SubjectiveStatePromptContext(sourceType: .feeding, sourceRecordID: session.id, recordedAt: recordedAt)
+    }
+
+    private func finish(with context: SubjectiveStatePromptContext?) {
+        onDismiss()
+        guard let context else { return }
+        DispatchQueue.main.async {
+            onCompletedRecord(context)
+        }
+    }
+
+    private func currentFeedingEntries() -> [FeedingEntry]? {
+        switch selectedKind {
+        case .formulaBottle:
+            return bottleEntries(milkType: .formula)
+        case .expressedBottle:
+            return bottleEntries(milkType: .expressed)
+        case .nursing:
+            return nursingEntries()
+        case .solids:
+            return solidEntries()
+        default:
+            return nil
+        }
+    }
+
+    private func bottleEntries(milkType: MilkType) -> [FeedingEntry] {
+        [FeedingEntry(
+            type: .bottle,
+            milkType: milkType,
+            bottleAmount: value
+        )]
+    }
+
+    private func nursingEntries() -> [FeedingEntry] {
+        let leftMinutes = nursingMinutes(from: nursingSeconds(for: .left))
+        let rightMinutes = nursingMinutes(from: nursingSeconds(for: .right))
         var entries: [FeedingEntry] = []
         if leftMinutes > 0 {
             entries.append(FeedingEntry(
@@ -2881,21 +3274,14 @@ private struct QuickRecordCardOverlay: View {
                 breastDuration: rightMinutes
             ))
         }
-        guard !entries.isEmpty else { return }
-        let session = FeedingSession(
-            entries: entries,
-            notes: "",
-            babyMood: .happy,
-            createdAt: recordedAt
-        )
-        feedingStore.saveSession(session)
+        return entries
     }
 
-    private func saveSolids(recordedAt: Date) {
+    private func solidEntries() -> [FeedingEntry] {
         let foods = selectedSolidFoods.sorted { $0.displayName < $1.displayName }
-        guard !foods.isEmpty else { return }
+        guard !foods.isEmpty else { return [] }
         let amountPerFood = Double(value) / Double(max(foods.count, 1))
-        let entries = foods.map { food in
+        return foods.map { food in
             FeedingEntry(
                 type: .solid,
                 solidFood: food,
@@ -2903,13 +3289,6 @@ private struct QuickRecordCardOverlay: View {
                 solidUnit: .g
             )
         }
-        let session = FeedingSession(
-            entries: entries,
-            notes: "",
-            babyMood: .happy,
-            createdAt: recordedAt
-        )
-        feedingStore.saveSession(session)
     }
 
     private func nursingMinutes(from seconds: Int) -> Int {
@@ -2917,6 +3296,16 @@ private struct QuickRecordCardOverlay: View {
         return max(Int((Double(seconds) / 60.0).rounded()), 1)
     }
 }
+
+#if DEBUG
+struct QuickRecordDarkModeDemo: View {
+    var body: some View {
+        QuickRecordCardOverlay(initialKind: .formulaBottle, onDismiss: {})
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+#endif
 
 private struct QuickBreastMinuteArcScale: View {
     let side: BreastSide
@@ -2947,9 +3336,9 @@ private struct QuickBreastMinuteArcScale: View {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.22),
+                                DesignToken.onPrimary.opacity(0.22),
                                 accent.opacity(0.16),
-                                Color.white.opacity(0.14)
+                                DesignToken.onPrimary.opacity(0.14)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -2962,7 +3351,7 @@ private struct QuickBreastMinuteArcScale: View {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.34),
+                                DesignToken.onPrimary.opacity(0.34),
                                 accent.opacity(0.92),
                                 accent.opacity(0.62)
                             ],
@@ -2992,7 +3381,7 @@ private struct QuickBreastMinuteArcScale: View {
                         Circle()
                             .fill(accent.opacity(0.95))
                             .frame(width: 8, height: 8)
-                            .overlay(Circle().stroke(Color.white.opacity(0.78), lineWidth: 1))
+                            .overlay(Circle().stroke(DesignToken.onPrimary.opacity(0.78), lineWidth: 1))
                             .shadow(color: accent.opacity(0.34), radius: 5)
                             .position(x: point.x, y: point.y)
                             .transition(.scale(scale: 0.55).combined(with: .opacity))
@@ -3006,7 +3395,7 @@ private struct QuickBreastMinuteArcScale: View {
                             .frame(width: 24, height: 18)
                             .background(
                                 Capsule(style: .continuous)
-                                    .fill(Color.white.opacity(highlighted ? 0.44 : 0.20))
+                                    .fill(DesignToken.onPrimary.opacity(highlighted ? 0.44 : 0.20))
                                     .overlay(Capsule(style: .continuous).stroke(accent.opacity(highlighted ? 0.34 : 0.14), lineWidth: 1))
                             )
                             .position(x: labelX, y: point.y)
@@ -3067,12 +3456,12 @@ private extension View {
     func dockGlass<S: Shape>(shape: S) -> some View {
         if #available(iOS 26.0, *) {
             self
-                .glassEffect(.regular.tint(Color.white.opacity(0.18)).interactive(), in: shape)
+                .glassEffect(.regular.tint(DesignToken.glassFill.opacity(0.44)).interactive(), in: shape)
         } else {
             self
                 .background(.ultraThinMaterial, in: shape)
-                .overlay(shape.stroke(.white.opacity(0.72), lineWidth: 1))
-                .shadow(color: Color(hex: "#4D4B70").opacity(0.14), radius: 18, y: 8)
+                .overlay(shape.stroke(DesignToken.glassStroke.opacity(0.72), lineWidth: 1))
+                .shadow(color: DesignToken.shadowColor.opacity(0.22), radius: 18, y: 8)
         }
     }
 }
@@ -3126,7 +3515,6 @@ private extension UIView {
 }
 
 private enum RecordSheet: Identifiable {
-    case feeding
     case diaper
     case sleep
     case weight
@@ -3134,7 +3522,6 @@ private enum RecordSheet: Identifiable {
 
     var id: String {
         switch self {
-        case .feeding: return "feeding"
         case .diaper: return "diaper"
         case .sleep: return "sleep"
         case .weight: return "weight"

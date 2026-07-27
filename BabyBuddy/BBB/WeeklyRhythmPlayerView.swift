@@ -43,10 +43,10 @@ struct WeeklyRhythmPlayerView: View {
                 descriptionSection
                 safetyTipSection
             }
-            .padding(16)
+            .padding(DesignToken.compactHorizontalPadding)
         }
         .background(DesignToken.background.ignoresSafeArea())
-        .navigationTitle("🎵 Playlist")
+        .navigationTitle("节奏音乐")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if !hasCheckedOnboarding {
@@ -72,22 +72,22 @@ struct WeeklyRhythmPlayerView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(snapshot.title)
-                .font(BBBFont.font(size: 22, weight: .heavy))
+            Text(snapshot.title.localized)
+                .font(BBBFont.font(size: 21, weight: .bold))
                 .foregroundStyle(DesignToken.textPrimary)
             HStack(spacing: 8) {
                 Text(rhythmParams.ageLabel)
                     .font(BBBFont.font(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignToken.onPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(Color(hex: "#BDA6F2")))
+                    .background(Capsule().fill(DesignToken.primary))
                 Text(rhythmParams.scenarioLabel)
                     .font(BBBFont.font(size: 12, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#BDA6F2"))
+                    .foregroundStyle(DesignToken.primary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(Color(hex: "#BDA6F2").opacity(0.12)))
+                    .background(Capsule().fill(DesignToken.primarySoft.opacity(0.72)))
             }
         }
     }
@@ -100,14 +100,19 @@ struct WeeklyRhythmPlayerView: View {
                 engine.toggle(with: rhythmParams)
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: engine.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 18, weight: .bold))
+                    if engine.isPreparing {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: engine.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 18, weight: .bold))
+                    }
                     Text(playButtonLabel)
                         .font(BBBFont.font(size: 16, weight: .bold))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignToken.onPrimary)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .frame(minHeight: 50)
                 .background(Capsule().fill(DesignToken.primaryGradient))
             }
             .buttonStyle(ScaleButtonStyle())
@@ -119,6 +124,7 @@ struct WeeklyRhythmPlayerView: View {
     }
 
     private var playButtonLabel: String {
+        if engine.isPreparing { return "取消音频准备" }
         if engine.isPlaying { return "暂停 · \(rhythmParams.presetName)" }
         return "播放 · \(rhythmParams.presetName)"
     }
@@ -126,12 +132,14 @@ struct WeeklyRhythmPlayerView: View {
     // MARK: - Safety Status Bar
 
     private var safetyStatusSection: some View {
-        SafetyStatusBar(
-            elapsedSec: engine.elapsedSec,
-            maxSec: rhythmParams.maxContinuousPlaySec,
-            presetName: rhythmParams.presetName,
-            noiseRatios: (rhythmParams.whiteRatio, rhythmParams.pinkRatio, rhythmParams.brownRatio)
-        )
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            SafetyStatusBar(
+                elapsedSec: engine.elapsed(at: context.date),
+                maxSec: rhythmParams.maxContinuousPlaySec,
+                presetName: rhythmParams.presetName,
+                noiseRatios: (rhythmParams.whiteRatio, rhythmParams.pinkRatio, rhythmParams.brownRatio)
+            )
+        }
         .transition(.move(edge: .top).combined(with: .opacity))
         .animation(.easeInOut(duration: 0.3), value: engine.isPlaying)
     }
@@ -147,31 +155,31 @@ struct WeeklyRhythmPlayerView: View {
             VStack(spacing: 8) {
                 noiseBar(
                     label: "白噪", ratio: rhythmParams.whiteRatio,
-                    color: Color(hex: "#D5D5E5"),
+                    color: DesignToken.grayNeutral,
                     desc: "均匀掩蔽，适合出牙/哭闹"
                 )
                 noiseBar(
                     label: "粉噪", ratio: rhythmParams.pinkRatio,
-                    color: Color(hex: "#E8C8C8"),
+                    color: DesignToken.easyActivitySoft,
                     desc: "类似风雨声，自然安抚"
                 )
                 noiseBar(
                     label: "棕噪", ratio: rhythmParams.brownRatio,
-                    color: Color(hex: "#C8B8A0"),
+                    color: DesignToken.rewardSoft,
                     desc: "低沉浑厚，模拟宫内环境"
                 )
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.white.opacity(0.9))
+                    .fill(DesignToken.surfaceRaised.opacity(0.9))
             )
         }
     }
 
     private func noiseBar(label: String, ratio: Double, color: Color, desc: String) -> some View {
         HStack(spacing: 8) {
-            Text(label)
+            Text(label.localized)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(color)
                 .frame(width: 26, alignment: .leading)
@@ -202,18 +210,18 @@ struct WeeklyRhythmPlayerView: View {
 
     private var statsSection: some View {
         HStack(spacing: 10) {
-            statPill(title: "本周喂养", value: "\(snapshot.feedingCount)次", color: Color(hex: "#BDA6F2"))
-            statPill(title: "本周尿布", value: "\(snapshot.diaperCount)次", color: Color(hex: "#D6A95C"))
-            statPill(title: "本周睡眠", value: String(format: "%.1f小时", Double(snapshot.totalSleepMinutes) / 60.0), color: Color(hex: "#A5C8FF"))
+            statPill(title: "本周喂养", value: "\(snapshot.feedingCount)次", color: DesignToken.easyEat)
+            statPill(title: "本周尿布", value: "\(snapshot.diaperCount)次", color: DesignToken.activityDiaper)
+            statPill(title: "本周睡眠", value: String(format: "%.1f小时", Double(snapshot.totalSleepMinutes) / 60.0), color: DesignToken.easySleep)
         }
     }
 
     private func statPill(title: String, value: String, color: Color) -> some View {
         VStack(spacing: 6) {
-            Text(title)
+            Text(title.localized)
                 .font(BBBFont.font(size: 12, weight: .semibold))
                 .foregroundStyle(DesignToken.textSecondary)
-            Text(value)
+            Text(value.localized)
                 .font(BBBFont.font(size: 14, weight: .bold))
                 .foregroundStyle(color)
         }
@@ -221,7 +229,7 @@ struct WeeklyRhythmPlayerView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.white)
+                .fill(DesignToken.surface)
         )
     }
 
@@ -232,7 +240,7 @@ struct WeeklyRhythmPlayerView: View {
             Text("当前节奏解读")
                 .font(BBBFont.font(size: 16, weight: .bold))
                 .foregroundStyle(DesignToken.textPrimary)
-            Text(snapshot.description)
+            Text(snapshot.description.localized)
                 .font(BBBFont.font(size: 14, weight: .medium))
                 .foregroundStyle(DesignToken.textSecondary)
                 .lineSpacing(4)
@@ -245,7 +253,7 @@ struct WeeklyRhythmPlayerView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.white.opacity(0.94))
+                .fill(DesignToken.surfaceRaised.opacity(0.94))
         )
     }
 
@@ -264,4 +272,3 @@ struct WeeklyRhythmPlayerView: View {
     }
 
 }
-

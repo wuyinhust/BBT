@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key></key>
-	<string></string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>
@@ -27,11 +25,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>用于录制宝宝的动态头像。</string>
+	<string>用于拍摄宝宝成长照片、Live Photo 和成长贴纸。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>用于录制动态头像时同步保存声音。</string>
+	<string>用于为宝宝的 Live Photo 记录拍摄前后的声音。</string>
+	<key>NSMotionUsageDescription</key>
+	<string>用于让 Buddy 卡片和记录动效轻微响应设备姿态；运动数据仅在当前界面本地使用，不会保存或上传。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>用于从相册中选择宝宝照片，生成头像、成长成就贴纸和月龄里程碑。</string>
+	<string>用于从相册中选择宝宝照片，裁切生成成长照片和贴纸。</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

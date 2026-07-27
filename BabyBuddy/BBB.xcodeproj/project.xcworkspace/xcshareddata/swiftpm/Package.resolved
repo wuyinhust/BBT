@@ -1,0 +1,15 @@
+{
+  "originHash" : "a610467fd57bf6b506cac88cc627af8efe2af5ca84317d1ff0a672a6805fccfa",
+  "pins" : [
+    {
+      "identity" : "harbeth",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/yangKJ/Harbeth.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "88270fca0d98132d24282341eff2e129e7abb8a0"
+      }
+    }
+  ],
+  "version" : 3
+}

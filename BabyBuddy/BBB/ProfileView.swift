@@ -2,21 +2,19 @@ import SwiftUI
 import UIKit
 
 struct ProfileSoftBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [
-                    Color(hex: "#FBF9FF"),
-                    Color(hex: "#F7F3FF"),
-                    Color(hex: "#FFF7FB")
-                ],
+                colors: backgroundColors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
             RadialGradient(
                 colors: [
-                    DesignToken.primary.opacity(0.16),
+                    DesignToken.primary.opacity(colorScheme == .dark ? 0.055 : 0.16),
                     .clear
                 ],
                 center: .topTrailing,
@@ -26,7 +24,7 @@ struct ProfileSoftBackground: View {
 
             RadialGradient(
                 colors: [
-                    Color(hex: "#FFD9A8").opacity(0.14),
+                    DesignToken.rewardSoft.opacity(colorScheme == .dark ? 0.07 : 0.32),
                     .clear
                 ],
                 center: .bottomLeading,
@@ -34,6 +32,22 @@ struct ProfileSoftBackground: View {
                 endRadius: 380
             )
         }
+    }
+
+    private var backgroundColors: [Color] {
+        if colorScheme == .dark {
+            return [
+                DesignToken.canvas,
+                DesignToken.surface,
+                DesignToken.surfaceSoft.opacity(0.90)
+            ]
+        }
+
+        return [
+            DesignToken.canvas,
+            DesignToken.surfaceSoft,
+            DesignToken.easyActivitySoft.opacity(0.46)
+        ]
     }
 }
 
@@ -43,14 +57,11 @@ private struct SoftProfileCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.white.opacity(0.94))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .stroke(.white.opacity(0.86), lineWidth: 1.1)
-                    )
-                    .shadow(color: Color(hex: "#7E5DE8").opacity(shadowOpacity), radius: 14, y: 6)
+            .appGlassSurface(
+                cornerRadius: cornerRadius,
+                fillOpacity: 0.90,
+                strokeOpacity: 0.78,
+                shadowOpacity: shadowOpacity
             )
     }
 }
@@ -62,7 +73,7 @@ extension View {
 }
 
 struct ProfileView: View {
-    @Binding var showBabyInfo: Bool
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var feedingStore: FeedingStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var growthMetricStore: GrowthMetricStore
@@ -72,11 +83,28 @@ struct ProfileView: View {
     @State private var showLocalBabyInfo = false
     @State private var showDailyVisitors = false
     @State private var showOnboarding = false
-    @State private var showSettings = false
+    @State private var showDarkModeDemo = false
+    @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRaw = AppAppearanceMode.system.rawValue
+    @AppStorage("buddy_card_reduced_effects_enabled") private var reducedBuddyCardEffects = false
+    @AppStorage(
+        MeasurementSystemPreference.storageKey,
+        store: MeasurementSystemPreference.defaults
+    ) private var measurementPreferenceRaw = MeasurementSystemPreference.followRegion.rawValue
+    @AppStorage(
+        GrowthStandardPreference.storageKey,
+        store: GrowthStandardPreference.defaults
+    ) private var growthStandardPreferenceRaw = GrowthStandardPreference.automatic.rawValue
+    @State private var shareFile: ExportedCSVFile?
+    @State private var exportError: String?
+    private let showsDarkModeDemoEntry: Bool
+
+    init(showsDarkModeDemoEntry: Bool = true) {
+        self.showsDarkModeDemoEntry = showsDarkModeDemoEntry
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
+            VStack(spacing: 18) {
                 Button {
                     showLocalBabyInfo = true
                 } label: {
@@ -84,16 +112,26 @@ struct ProfileView: View {
                 }
                 .buttonStyle(ScaleButtonStyle())
 
-                profileSummaryCard
-                menuCard
-                appVersionFooter
+                familySection
+                preferenceSection
+                buddySection
+                dataSection
+                #if DEBUG
+                if showsDarkModeDemoEntry {
+                    developmentSection
+                }
+                #endif
+                aboutCard
                 Spacer(minLength: 72)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 14)
+            .padding(.top, 12)
             .padding(.bottom, 88)
         }
+        .accessibilityIdentifier("settings.screen")
         .background(ProfileSoftBackground().ignoresSafeArea())
+        .navigationTitle("设置")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showFamilySharing) {
             FamilySharingView()
         }
@@ -111,11 +149,362 @@ struct ProfileView: View {
                 showOnboarding = false
             }
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
-                .environmentObject(feedingStore)
-                .environmentObject(activityStore)
-                .environmentObject(growthMetricStore)
+        #if DEBUG
+        .fullScreenCover(isPresented: $showDarkModeDemo) {
+            DarkModeDesignDemoView()
+        }
+        #endif
+        .sheet(item: $shareFile) { file in
+            SystemShareSheet(activityItems: [file.url])
+        }
+        .alert("导出失败", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
+        }
+    }
+
+    private var familySection: some View {
+        settingsSection("家庭与会员") {
+            Button {
+                if membershipStore.isPlusActive {
+                    showFamilySharing = true
+                } else {
+                    showPlusMembership = true
+                }
+            } label: {
+                settingsActionRow(
+                    icon: "person.2.fill",
+                    color: DesignToken.success,
+                    title: "家庭共享",
+                    subtitle: familySharingSubtitle
+                )
+            }
+            .buttonStyle(.plain)
+
+            settingsDivider
+
+            Button {
+                showPlusMembership = true
+            } label: {
+                settingsActionRow(
+                    icon: "sparkles",
+                    color: DesignToken.primary,
+                    title: "BabyBuddy Plus",
+                    subtitle: membershipStore.profileSubtitle
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var preferenceSection: some View {
+        settingsSection("使用偏好") {
+            Button {
+                guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                openURL(url)
+            } label: {
+                settingsActionRow(
+                    icon: AppSemanticIcon.language,
+                    color: DesignToken.accentBlue,
+                    title: "当前语言",
+                    subtitle: AppLanguage.current.displayName
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("当前语言".localized)
+            .accessibilityValue(AppLanguage.current.displayName)
+            .accessibilityHint("在 iOS 设置中更改 BBBUDDY 使用的语言".localized)
+            .accessibilityIdentifier("settings.currentLanguage")
+
+            settingsDivider
+
+            Menu {
+                Picker("单位", selection: $measurementPreferenceRaw) {
+                    ForEach(MeasurementSystemPreference.allCases) { preference in
+                        Text(preference.title).tag(preference.rawValue)
+                    }
+                }
+            } label: {
+                settingsActionRow(
+                    icon: AppSemanticIcon.measurement,
+                    color: DesignToken.easyActivity,
+                    title: "单位",
+                    subtitle: AppMeasurementFormat.preferenceSummary,
+                    trailingSystemName: "chevron.up.chevron.down"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("单位".localized)
+            .accessibilityValue(AppMeasurementFormat.preferenceSummary)
+            .accessibilityHint("选择跟随地区、公制或英制".localized)
+            .accessibilityIdentifier("settings.measurementSystem")
+
+            settingsDivider
+
+            Menu {
+                Picker("生长标准", selection: $growthStandardPreferenceRaw) {
+                    ForEach(GrowthStandardPreference.allCases) { preference in
+                        Text(preference.title).tag(preference.rawValue)
+                    }
+                }
+            } label: {
+                settingsActionRow(
+                    icon: "chart.xyaxis.line",
+                    color: DesignToken.easyActivity,
+                    title: "生长标准",
+                    subtitle: growthStandardPreferenceSummary,
+                    trailingSystemName: "chevron.up.chevron.down"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("生长标准")
+            .accessibilityValue(growthStandardPreferenceSummary)
+            .accessibilityHint("选择 WHO 2006 或国家卫健委 7 岁以下儿童生长标准")
+            .accessibilityIdentifier("settings.growthStandard")
+
+            settingsDivider
+
+            Menu {
+                Picker("外观", selection: $appearanceModeRaw) {
+                    ForEach(AppAppearanceMode.allCases) { mode in
+                        Text(mode.title).tag(mode.rawValue)
+                    }
+                }
+            } label: {
+                settingsActionRow(
+                    icon: "circle.lefthalf.filled",
+                    color: DesignToken.primary,
+                    title: "外观",
+                    subtitle: currentAppearanceMode.title,
+                    trailingSystemName: "chevron.up.chevron.down"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("外观")
+            .accessibilityValue(currentAppearanceMode.title)
+            .accessibilityHint("选择跟随系统、浅色或深色")
+            .accessibilityIdentifier("settings.appearance")
+
+            settingsDivider
+
+            Toggle(isOn: $reducedBuddyCardEffects) {
+                settingsControlHeader(
+                    icon: "bolt.lefthalf.filled",
+                    color: DesignToken.textFaint,
+                    title: "减少 Buddy 动效",
+                    subtitle: "关闭倾斜与稀有卡光泽，降低动画和耗电。"
+                )
+            }
+            .toggleStyle(.switch)
+            .tint(DesignToken.primary)
+            .padding(14)
+        }
+    }
+
+    private var buddySection: some View {
+        settingsSection("Buddy 与来访") {
+            Button {
+                showDailyVisitors = true
+            } label: {
+                settingsActionRow(
+                    icon: "sunrise.fill",
+                    color: DesignToken.reward,
+                    title: "每日来访",
+                    subtitle: "查看照护节奏与伙伴来访记录"
+                )
+            }
+            .buttonStyle(.plain)
+
+            settingsDivider
+
+            Button {
+                showOnboarding = true
+            } label: {
+                settingsActionRow(
+                    icon: "wand.and.stars",
+                    color: DesignToken.primary,
+                    title: "气质测试与 Buddy",
+                    subtitle: "重新测试或选择陪伴伙伴"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var dataSection: some View {
+        settingsSection("数据") {
+            Button {
+                exportCSV()
+            } label: {
+                settingsActionRow(
+                    icon: "square.and.arrow.up.fill",
+                    color: DesignToken.accentBlue,
+                    title: "导出照护记录",
+                    subtitle: exportSubtitle,
+                    trailingSystemName: "square.and.arrow.up"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    #if DEBUG
+    private var developmentSection: some View {
+        settingsSection("设计验证") {
+            Button {
+                showDarkModeDemo = true
+            } label: {
+                settingsActionRow(
+                    icon: "circle.lefthalf.filled",
+                    color: DesignToken.primary,
+                    title: "深色模式样板",
+                    subtitle: "首页 · 快捷记录 · 设置，仅读取不保存"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    #endif
+
+    private var aboutCard: some View {
+        HStack(spacing: 12) {
+            settingsIcon("heart.fill", color: DesignToken.primary)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("BabyBuddy")
+                    .font(BBBFont.font(size: 14, weight: .bold))
+                    .foregroundStyle(DesignToken.textPrimary)
+                Text("宝宝照护与成长记录 · \(AppVariant.versionText)")
+                    .font(BBBFont.font(size: 11, weight: .medium))
+                    .foregroundStyle(DesignToken.textSecondary)
+            }
+
+            Spacer(minLength: 8)
+
+            if !AppVariant.isAppStoreReview {
+                Text("测试版")
+                    .font(BBBFont.font(size: 9, weight: .bold))
+                    .foregroundStyle(DesignToken.primary)
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
+                    .background(Capsule().fill(DesignToken.primary.opacity(0.10)))
+            }
+        }
+        .padding(14)
+        .softProfileCard(cornerRadius: 20, shadowOpacity: 0.035)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(AppVariant.profileVersionText)
+    }
+
+    private func settingsSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.localized)
+                .font(BBBFont.font(size: 12, weight: .bold))
+                .foregroundStyle(DesignToken.textSecondary)
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .softProfileCard(cornerRadius: 20, shadowOpacity: 0.045)
+        }
+    }
+
+    private func settingsActionRow(
+        icon: String,
+        color: Color,
+        title: String,
+        subtitle: String,
+        trailingSystemName: String = "chevron.right"
+    ) -> some View {
+        HStack(spacing: 12) {
+            settingsIcon(icon, color: color)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.localized)
+                    .font(BBBFont.scaledFont(size: 14, weight: .bold, relativeTo: .headline, maximumPointSize: 22))
+                    .foregroundStyle(DesignToken.textPrimary)
+                Text(subtitle.localized)
+                    .font(BBBFont.scaledFont(size: 11, weight: .medium, relativeTo: .subheadline, maximumPointSize: 18))
+                    .foregroundStyle(DesignToken.textSecondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: trailingSystemName)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(DesignToken.textSecondary.opacity(0.55))
+                .frame(width: 24, height: 44)
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 64)
+        .contentShape(Rectangle())
+    }
+
+    private func settingsControlHeader(
+        icon: String,
+        color: Color,
+        title: String,
+        subtitle: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            settingsIcon(icon, color: color)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.localized)
+                    .font(BBBFont.scaledFont(size: 14, weight: .bold, relativeTo: .headline, maximumPointSize: 22))
+                    .foregroundStyle(DesignToken.textPrimary)
+                Text(subtitle.localized)
+                    .font(BBBFont.scaledFont(size: 11, weight: .medium, relativeTo: .subheadline, maximumPointSize: 18))
+                    .foregroundStyle(DesignToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func settingsIcon(_ systemName: String, color: Color) -> some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(color.opacity(0.11))
+            .frame(width: 36, height: 36)
+            .overlay(
+                Image(systemName: systemName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(color)
+            )
+    }
+
+    private var settingsDivider: some View {
+        Rectangle()
+            .fill(DesignToken.line.opacity(0.40))
+            .frame(height: 1)
+            .padding(.leading, 62)
+    }
+
+    private var exportSubtitle: String {
+        let feedingCount = feedingStore.exportSessions().count
+        let careCount = activityStore.exportCareRecords().count
+        let growthCount = growthMetricStore.exportRecords().count
+        return AppLocalization.format("profile.export.summary", feedingCount, careCount, growthCount)
+    }
+
+    private func exportCSV() {
+        do {
+            shareFile = try BabyDataCSVExporter.export(
+                feedingSessions: feedingStore.exportSessions(),
+                careRecords: activityStore.exportCareRecords(),
+                growthRecords: growthMetricStore.exportRecords()
+            )
+        } catch {
+            exportError = "请稍后重试，或检查设备存储空间。"
         }
     }
 
@@ -136,10 +525,10 @@ struct ProfileView: View {
                 .frame(width: 30, height: 30)
                 .background(Circle().fill(DesignToken.primary.opacity(0.13)))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.localized)
                     .font(BBBFont.font(size: 11, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
-                Text(value)
+                Text(value.localized)
                     .font(BBBFont.font(size: 13, weight: .bold))
                     .foregroundStyle(DesignToken.textPrimary)
             }
@@ -152,19 +541,19 @@ struct ProfileView: View {
         VStack(spacing: 0) {
             menu(icon: "heart.text.square.fill", color: DesignToken.primary, title: "健康记录", subtitle: "喂养 · 尿布 · 睡眠")
             line
-            menu(icon: "chart.bar.fill", color: Color(hex: "#9ABAF2"), title: "统计报告", subtitle: "查看成长趋势")
+            menu(icon: "chart.bar.fill", color: DesignToken.accentBlue, title: "统计报告", subtitle: "查看成长趋势")
             line
             Button {
                 showDailyVisitors = true
             } label: {
-                menu(icon: "sunrise.fill", color: Color(hex: "#F0A35E"), title: "每日来访", subtitle: "照护节奏 · 伙伴来访记录")
+                menu(icon: "sunrise.fill", color: DesignToken.reward, title: "每日来访", subtitle: "照护节奏 · 伙伴来访记录")
             }
             .buttonStyle(.plain)
             line
             Button {
                 showPlusMembership = true
             } label: {
-                menu(icon: "sparkles", color: Color(hex: "#9F7AEA"), title: "BabyBuddy Plus", subtitle: membershipStore.profileSubtitle)
+                menu(icon: "sparkles", color: DesignToken.primary, title: "BabyBuddy Plus", subtitle: membershipStore.profileSubtitle)
             }
             .buttonStyle(.plain)
             line
@@ -175,7 +564,7 @@ struct ProfileView: View {
                     showPlusMembership = true
                 }
             } label: {
-                menu(icon: "person.2.fill", color: Color(hex: "#67C587"), title: "家庭共享", subtitle: familySharingSubtitle)
+                menu(icon: "person.2.fill", color: DesignToken.success, title: "家庭共享", subtitle: familySharingSubtitle)
             }
             .buttonStyle(.plain)
             line
@@ -186,14 +575,7 @@ struct ProfileView: View {
             }
             .buttonStyle(.plain)
             line
-            Button {
-                showSettings = true
-            } label: {
-                menu(icon: "gearshape.fill", color: Color(hex: "#7F8098"), title: "设置", subtitle: "通知 · 数据 · 偏好")
-            }
-            .buttonStyle(.plain)
-            line
-            menu(icon: "info.circle.fill", color: Color(hex: "#7F8098"), title: "关于 BabyBuddy", subtitle: "版本与帮助")
+            menu(icon: "info.circle.fill", color: DesignToken.grayNeutral, title: "关于 BabyBuddy", subtitle: "版本与帮助")
         }
         .padding(.vertical, 5)
         .softProfileCard(cornerRadius: 20)
@@ -204,7 +586,7 @@ struct ProfileView: View {
             if !AppVariant.isAppStoreReview {
                 Text("测试版")
                     .font(BBBFont.font(size: 10, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DesignToken.onPrimary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Capsule().fill(DesignToken.primary.opacity(0.78)))
@@ -220,7 +602,26 @@ struct ProfileView: View {
     }
 
     private var familySharingSubtitle: String {
-        membershipStore.isPlusActive ? "邀请另一位家长共同记录" : "Plus 权益 · 家庭共同记录"
+        (membershipStore.isPlusActive ? "邀请另一位家长共同记录" : "Plus 权益 · 家庭共同记录").localized
+    }
+
+    private var currentAppearanceMode: AppAppearanceMode {
+        AppAppearanceMode(rawValue: appearanceModeRaw) ?? .system
+    }
+
+    private var selectedGrowthStandard: GrowthReferenceStandard {
+        GrowthStandardPreference(rawValue: growthStandardPreferenceRaw)?.resolvedStandard
+            ?? GrowthStandardPreference.defaultStandard
+    }
+
+    private var growthStandardPreferenceSummary: String {
+        let preference = GrowthStandardPreference(rawValue: growthStandardPreferenceRaw) ?? .automatic
+        switch preference {
+        case .automatic:
+            return "跟随地区 · \(selectedGrowthStandard.shortTitle)"
+        case .who2006, .chinaNHC2022:
+            return selectedGrowthStandard.title
+        }
     }
 
     private var line: some View {
@@ -234,11 +635,11 @@ struct ProfileView: View {
                 .frame(width: 38, height: 38)
                 .overlay(Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(color))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.localized)
                     .font(BBBFont.font(size: 15, weight: .bold))
                     .foregroundStyle(DesignToken.textPrimary)
                 if !subtitle.isEmpty {
-                    Text(subtitle)
+                    Text(subtitle.localized)
                         .font(BBBFont.font(size: 12, weight: .medium))
                         .foregroundStyle(DesignToken.textSecondary)
                 }
@@ -246,12 +647,152 @@ struct ProfileView: View {
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color(hex: "#E1DFEA"))
+                .foregroundStyle(DesignToken.textFaint)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
 }
+
+#if DEBUG
+private enum DarkModeDemoPage: String, CaseIterable, Identifiable {
+    case home
+    case quickRecord
+    case settings
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .home: return "首页"
+        case .quickRecord: return "快捷记录"
+        case .settings: return "设置"
+        }
+    }
+
+    static var launchDefault: DarkModeDemoPage {
+        guard let value = ProcessInfo.processInfo.launchArgumentValue(after: "-BBDarkModeDemoPage") else {
+            return .home
+        }
+        return DarkModeDemoPage(rawValue: value) ?? .home
+    }
+}
+
+struct DarkModeDesignDemoView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedPage = DarkModeDemoPage.launchDefault
+    @State private var appearance = AppAppearanceMode.darkModeDemoLaunchDefault
+
+    private var showsControls: Bool {
+        !ProcessInfo.processInfo.arguments.contains("-BBDarkModeDemoHideControls")
+    }
+
+    private var demoColorScheme: ColorScheme {
+        appearance == .dark ? .dark : .light
+    }
+
+    var body: some View {
+        demoPage
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DesignToken.canvas.ignoresSafeArea())
+            .environment(\.colorScheme, demoColorScheme)
+            .preferredColorScheme(demoColorScheme)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if showsControls {
+                    demoControls
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if showsControls {
+                    AppPageCloseButton { dismiss() }
+                        .background(Circle().fill(DesignToken.surfaceRaised.opacity(0.92)))
+                        .overlay(Circle().stroke(DesignToken.borderSubtle.opacity(0.82), lineWidth: 1))
+                        .padding(.top, 8)
+                        .padding(.trailing, 12)
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var demoPage: some View {
+        switch selectedPage {
+        case .home:
+            RecordHomeView(
+                homeMode: .constant(.easy),
+                showYearningDetailRequest: .constant(false),
+                isReadOnlyDemo: true
+            )
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+
+        case .quickRecord:
+            QuickRecordDarkModeDemo()
+
+        case .settings:
+            NavigationStack {
+                ProfileView(showsDarkModeDemoEntry: false)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+
+    private var demoControls: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Text("深色模式样板")
+                    .font(BBBFont.font(size: 13, weight: .bold))
+                    .foregroundStyle(DesignToken.textPrimary)
+                Spacer()
+                Label("只读", systemImage: "lock.fill")
+                    .font(BBBFont.font(size: 10, weight: .bold))
+                    .foregroundStyle(DesignToken.successText)
+                    .padding(.horizontal, 9)
+                    .frame(height: 26)
+                    .background(Capsule().fill(DesignToken.successSoft))
+            }
+
+            Picker("样板页面", selection: $selectedPage) {
+                ForEach(DarkModeDemoPage.allCases) { page in
+                    Text(page.title).tag(page)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Picker("样板外观", selection: $appearance) {
+                Text("浅色").tag(AppAppearanceMode.light)
+                Text("深色").tag(AppAppearanceMode.dark)
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(DesignToken.borderSubtle.opacity(0.72))
+                .frame(height: 1)
+        }
+    }
+}
+
+private extension AppAppearanceMode {
+    static var darkModeDemoLaunchDefault: AppAppearanceMode {
+        let value = ProcessInfo.processInfo.launchArgumentValue(after: "-BBDarkModeDemoScheme")
+        return value == AppAppearanceMode.light.rawValue ? .light : .dark
+    }
+}
+
+private extension ProcessInfo {
+    func launchArgumentValue(after flag: String) -> String? {
+        guard let index = arguments.firstIndex(of: flag) else { return nil }
+        let valueIndex = arguments.index(after: index)
+        guard valueIndex < arguments.endIndex else { return nil }
+        return arguments[valueIndex]
+    }
+}
+#endif
 
 private struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -259,7 +800,6 @@ private struct SettingsView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var growthMetricStore: GrowthMetricStore
     @AppStorage("buddy_card_reduced_effects_enabled") private var reducedBuddyCardEffects = false
-    @AppStorage(RecordHomeMode.storageKey) private var recordHomeModeRaw = RecordHomeMode.basic.rawValue
     @State private var selectedAppIconName: String?
     @State private var shareFile: ExportedCSVFile?
     @State private var exportError: String?
@@ -269,7 +809,6 @@ private struct SettingsView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
-                    homeModeCard
                     appIconCard
                     preferenceCard
                     dataExportCard
@@ -307,41 +846,6 @@ private struct SettingsView: View {
                 Text(appIconError ?? "")
             }
         }
-    }
-
-    private var homeModeCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                Image(systemName: "rectangle.grid.1x2.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(DesignToken.primary)
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(DesignToken.primary.opacity(0.14)))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("首页模式")
-                        .font(BBBFont.font(size: 16, weight: .heavy))
-                        .foregroundStyle(DesignToken.textPrimary)
-                    Text(currentHomeMode.subtitle)
-                        .font(BBBFont.font(size: 12, weight: .semibold))
-                        .foregroundStyle(DesignToken.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Picker("首页模式", selection: $recordHomeModeRaw) {
-                ForEach(RecordHomeMode.allCases) { mode in
-                    Text(mode.title).tag(mode.rawValue)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-        .padding(16)
-        .softProfileCard(cornerRadius: 22)
-    }
-
-    private var currentHomeMode: RecordHomeMode {
-        RecordHomeMode(rawValue: recordHomeModeRaw) ?? .basic
     }
 
     private var appIconCard: some View {
@@ -391,11 +895,11 @@ private struct SettingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(isSelected ? DesignToken.primary : Color.white.opacity(0.78), lineWidth: isSelected ? 2 : 1)
+                            .stroke(isSelected ? DesignToken.primary : DesignToken.glassStroke.opacity(0.78), lineWidth: isSelected ? 2 : 1)
                     )
-                    .shadow(color: Color(hex: "#4D4B70").opacity(0.10), radius: 8, y: 4)
+                    .shadow(color: DesignToken.shadowColor.opacity(0.10), radius: 8, y: 4)
 
-                Text(option.title)
+                Text(option.title.localized)
                     .font(BBBFont.font(size: 11, weight: .heavy))
                     .foregroundStyle(isSelected ? DesignToken.primary : DesignToken.textSecondary)
                     .lineLimit(1)
@@ -405,7 +909,7 @@ private struct SettingsView: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? DesignToken.primary.opacity(0.12) : Color.white.opacity(0.54))
+                    .fill(isSelected ? DesignToken.primary.opacity(0.12) : DesignToken.surfaceRaised.opacity(0.78))
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -437,9 +941,9 @@ private struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "bolt.lefthalf.filled")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Color(hex: "#7F8098"))
+                        .foregroundStyle(DesignToken.grayNeutral)
                         .frame(width: 42, height: 42)
-                        .background(Circle().fill(Color(hex: "#7F8098").opacity(0.13)))
+                        .background(Circle().fill(DesignToken.grayNeutral.opacity(0.13)))
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Buddy 卡片低功耗")
@@ -490,7 +994,7 @@ private struct SettingsView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignToken.onPrimary)
                 .background(Capsule(style: .continuous).fill(DesignToken.primaryGradient))
             }
             .buttonStyle(ScaleButtonStyle())
@@ -503,7 +1007,7 @@ private struct SettingsView: View {
         let feedingCount = feedingStore.exportSessions().count
         let careCount = activityStore.exportCareRecords().count
         let growthCount = growthMetricStore.exportRecords().count
-        return "导出全部历史记录：喂养 \(feedingCount) 条、护理 \(careCount) 条、成长 \(growthCount) 条。"
+        return AppLocalization.format("profile.export.summary", feedingCount, careCount, growthCount)
     }
 
     private func exportCSV() {
@@ -534,14 +1038,14 @@ private enum AppIconOption: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .primary: return "默认"
-        case .alt1: return "占位 1"
-        case .alt2: return "占位 2"
-        case .alt3: return "占位 3"
-        case .alt4: return "占位 4"
-        case .alt5: return "占位 5"
-        case .alt6: return "占位 6"
-        case .alt7: return "占位 7"
+        case .primary: return "默认".localized
+        case .alt1: return AppLocalization.format("placeholder.number", 1)
+        case .alt2: return AppLocalization.format("placeholder.number", 2)
+        case .alt3: return AppLocalization.format("placeholder.number", 3)
+        case .alt4: return AppLocalization.format("placeholder.number", 4)
+        case .alt5: return AppLocalization.format("placeholder.number", 5)
+        case .alt6: return AppLocalization.format("placeholder.number", 6)
+        case .alt7: return AppLocalization.format("placeholder.number", 7)
         }
     }
 
@@ -754,6 +1258,7 @@ private enum BabyDataCSVExporter {
     }
 
     private static func formatNumber(_ value: Double) -> String {
+        guard value.isFinite else { return "" }
         if value.rounded() == value {
             return String(Int(value))
         }
@@ -829,10 +1334,10 @@ struct FamilySharingView: View {
                     .background(Circle().fill(statusColor.opacity(0.14)))
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(familyCloudStore.state.title)
+                    Text(familyCloudStore.state.title.localized)
                         .font(BBBFont.font(size: 15, weight: .bold))
                         .foregroundStyle(DesignToken.textPrimary)
-                    Text(familyCloudStore.state.detail)
+                    Text(familyCloudStore.state.detail.localized)
                         .font(BBBFont.font(size: 12, weight: .medium))
                         .foregroundStyle(DesignToken.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -840,7 +1345,7 @@ struct FamilySharingView: View {
             }
 
             if let lastSyncAt = familyCloudStore.lastSyncAt {
-                Label("上次同步 \(lastSyncAt.formatted(date: .omitted, time: .shortened))", systemImage: "clock.arrow.circlepath")
+                Label("上次同步 \(AppDateTimeFormat.dateTime(lastSyncAt))", systemImage: "clock.arrow.circlepath")
                     .font(BBBFont.font(size: 12, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
             }
@@ -873,7 +1378,7 @@ struct FamilySharingView: View {
                     Text(isPreparingInvite ? "正在准备邀请" : "邀请另一位家长")
                 }
                 .font(BBBFont.font(size: 15, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(DesignToken.onPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 46)
                 .background(Capsule().fill(DesignToken.primaryGradient))
@@ -896,7 +1401,7 @@ struct FamilySharingView: View {
             syncRow(icon: "drop.fill", text: "尿布记录")
             syncRow(icon: "moon.fill", text: "睡眠记录")
             syncRow(icon: "trophy.fill", text: "成长成就和贴纸")
-            syncRow(icon: "pawprint.fill", text: "当前陪伴动物和未来动物状态")
+            syncRow(icon: "pawprint.fill", text: "当前 Buddy 与友情进度")
         }
         .padding(15)
         .softProfileCard(cornerRadius: 20)
@@ -921,8 +1426,8 @@ struct FamilySharingView: View {
     private var statusColor: Color {
         switch familyCloudStore.state {
         case .iCloudUnavailable, .failed: return DesignToken.errorRed
-        case .syncing, .checkingAccount: return Color(hex: "#6DA5F2")
-        case .ownerShared, .joinedShared: return Color(hex: "#67C587")
+        case .syncing, .checkingAccount: return DesignToken.accentBlue
+        case .ownerShared, .joinedShared: return DesignToken.success
         case .localOnly: return DesignToken.primary
         }
     }
@@ -951,7 +1456,9 @@ struct DailyVisitorArchiveView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var feedingStore: FeedingStore
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var companionStore: CompanionStore
     @EnvironmentObject private var recruitmentStore: CompanionRecruitmentStore
+    @EnvironmentObject private var temperamentStore: TemperamentProfileStore
     @State private var selectedReport: YesterdayReport?
 
     var body: some View {
@@ -987,7 +1494,12 @@ struct DailyVisitorArchiveView: View {
                 _ = DailyVisitorReportFactory.availableReport(
                     feedingStore: feedingStore,
                     activityStore: activityStore,
-                    recruitmentStore: recruitmentStore
+                    recruitmentStore: recruitmentStore,
+                    ownedCompanionIDs: BabyCompanion.unlockedIDs(
+                        selectedID: companionStore.selectedID,
+                        temperamentAnimalID: temperamentStore.result?.animalID
+                    ).union(recruitmentStore.recruitedIDs),
+                    excludedVisitorIDs: [companionStore.selectedID]
                 )
             }
         }
@@ -1030,17 +1542,17 @@ struct DailyVisitorArchiveView: View {
                     if companions.count > 1 {
                         Text("+\(companions.count - 1)")
                             .font(BBBFont.font(size: 9, weight: .heavy))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(DesignToken.onPrimary)
                             .frame(width: 20, height: 20)
                             .background(Circle().fill(DesignToken.primary))
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(report.dateText)
+                    Text(report.dateText.localized)
                         .font(BBBFont.font(size: 15, weight: .heavy))
                         .foregroundStyle(DesignToken.textPrimary)
-                    Text("\(companions.map(\.chineseName).joined(separator: "、")) 来访 · \(CompanionRecruitmentStore.currencyText(latestReport.earnedBBBucks))")
+                    Text("\(companions.map(\.localizedName).joined(separator: "、")) 来访 · \(CompanionRecruitmentStore.currencyText(latestReport.earnedBBBucks))")
                         .font(BBBFont.font(size: 12, weight: .semibold))
                         .foregroundStyle(DesignToken.textSecondary)
                         .lineLimit(1)
@@ -1049,12 +1561,12 @@ struct DailyVisitorArchiveView: View {
 
                 Spacer()
 
-                Text(hasFed ? "已喂" : "未喂")
+                Text(hasFed ? "已招待" : "未招待")
                     .font(BBBFont.font(size: 10, weight: .heavy))
-                    .foregroundStyle(hasFed ? Color(hex: "#67C587") : DesignToken.primary)
+                    .foregroundStyle(hasFed ? DesignToken.success : DesignToken.primary)
                     .padding(.horizontal, 9)
                     .frame(height: 24)
-                    .background(Capsule().fill((hasFed ? Color(hex: "#67C587") : DesignToken.primary).opacity(0.12)))
+                    .background(Capsule().fill((hasFed ? DesignToken.success : DesignToken.primary).opacity(0.12)))
             }
             .padding(14)
             .softProfileCard(cornerRadius: 20)
@@ -1069,69 +1581,44 @@ struct BabyInfoHeaderView: View {
     var body: some View {
         let profile = profileStore.currentProfile
 
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                profileAvatar(profile, size: 58, emojiSize: 30)
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(profile.name)
-                            .font(BBBFont.font(size: 22, weight: .heavy))
-                            .foregroundStyle(DesignToken.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.78)
-                        Image(systemName: "triangle.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(DesignToken.primary)
-                    }
-                    HStack(spacing: 8) {
-                        label(icon: "clock.badge.checkmark", text: profile.ageDisplayText)
-                        label(icon: "figure.stand", text: profile.gender.rawValue)
-                    }
-                }
-                Spacer()
+        HStack(spacing: 14) {
+            profileAvatar(profile, size: 56, emojiSize: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("宝宝资料")
+                    .font(BBBFont.font(size: 10, weight: .bold))
+                    .foregroundStyle(DesignToken.primary)
+
+                Text(profile.name)
+                    .font(BBBFont.font(size: 20, weight: .bold))
+                    .foregroundStyle(DesignToken.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+
+                Text("\(profile.ageDisplayText) · \(genderTitle(profile.gender))")
+                    .font(BBBFont.font(size: 12, weight: .medium))
+                    .foregroundStyle(DesignToken.textSecondary)
+                    .lineLimit(1)
             }
 
-            HStack(spacing: 10) {
-                infoChip(title: "年龄", value: profile.ageDisplayText)
-                infoChip(title: "性别", value: genderTitle(profile.gender))
-                Spacer()
-            }
-        }
-        .padding(15)
-        .softProfileCard(cornerRadius: 22)
-    }
+            Spacer(minLength: 10)
 
-    private func label(icon: String, text: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-            Text(text)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(DesignToken.primary)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(DesignToken.primary.opacity(0.10)))
         }
-        .font(BBBFont.font(size: 11, weight: .semibold))
-        .foregroundStyle(DesignToken.textSecondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Capsule().fill(Color(hex: "#F6F4FA").opacity(0.82)))
-    }
-
-    private func infoChip(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(BBBFont.font(size: 10, weight: .semibold))
-                .foregroundStyle(DesignToken.textSecondary)
-            Text(value)
-                .font(BBBFont.font(size: 13, weight: .bold))
-                .foregroundStyle(DesignToken.textPrimary)
-        }
-        .frame(minWidth: 78, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(hex: "#F6F4FA").opacity(0.82)))
+        .padding(16)
+        .frame(minHeight: 88)
+        .contentShape(Rectangle())
+        .softProfileCard(cornerRadius: 24, shadowOpacity: 0.05)
     }
 
     private func genderTitle(_ gender: BabyGender) -> String {
         switch gender {
-        case .boy: return "男宝"
-        case .girl: return "女宝"
+        case .boy: return "男宝".localized
+        case .girl: return "女宝".localized
         }
     }
 

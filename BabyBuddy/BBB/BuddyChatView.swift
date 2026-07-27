@@ -24,7 +24,7 @@ struct BuddyChatView: View {
                 Spacer()
             }
         }
-        .background(Color.black)
+        .background(DesignToken.canvas)
         .safeAreaInset(edge: .bottom) {
             bottomBar
                 .padding(.horizontal, 20)
@@ -84,13 +84,13 @@ struct BuddyChatView: View {
         HStack(spacing: 10) {
             HStack(spacing: 12) {
                 Image(systemName: "message.fill")
-                TextField("和 buddy 聊聊天吧...", text: $messageText)
+                TextField("和 Buddy 聊聊天吧…", text: $messageText)
             }
             .font(BBBFont.font(size: 13, weight: .semibold))
-            .foregroundStyle(Color(hex: "#A9A6B9"))
+            .foregroundStyle(DesignToken.textFaint)
             .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-            .background(Capsule().fill(Color(hex: "#ECEBF3")))
+            .frame(maxWidth: .infinity, minHeight: DesignToken.minimumTapSize, alignment: .leading)
+            .background(Capsule().fill(DesignToken.surfaceSoft))
 
             Button {
                 trigger(.listen)
@@ -98,29 +98,29 @@ struct BuddyChatView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color(hex: "#BDA6F2"), Color(hex: "#E9B2D1")],
+                            colors: [DesignToken.primary, DesignToken.easyActivity],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 40, height: 40)
-                    .overlay(Image(systemName: "mic.fill").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white))
+                    .frame(width: DesignToken.minimumTapSize, height: DesignToken.minimumTapSize)
+                    .overlay(Image(systemName: "mic.fill").font(.system(size: 16, weight: .semibold)).foregroundStyle(DesignToken.onPrimary))
             }
             .buttonStyle(ScaleButtonStyle())
         }
         .padding(7)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.white.opacity(0.95))
-                .shadow(color: Color(hex: "#4D4B70").opacity(0.08), radius: 16, y: 8)
+                .fill(DesignToken.surfaceRaised.opacity(0.95))
+                .shadow(color: DesignToken.shadowColor.opacity(0.16), radius: 16, y: 8)
         )
     }
 
     private func circleShortcut(icon: String) -> some View {
         Circle()
-            .fill(.white.opacity(0.92))
+            .fill(DesignToken.surfaceRaised.opacity(0.92))
             .frame(width: 48, height: 48)
-            .shadow(color: Color(hex: "#4D4B70").opacity(0.08), radius: 12, y: 5)
+            .shadow(color: DesignToken.shadowColor.opacity(0.16), radius: 12, y: 5)
             .overlay(
                 Image(systemName: icon)
                     .font(.system(size: 19, weight: .bold))

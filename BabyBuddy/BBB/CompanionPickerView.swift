@@ -2,6 +2,14 @@ import SwiftUI
 import UIKit
 import CoreMotion
 
+/// Fixed pigments used only to render the Buddy card's illustrative fallback.
+/// They are intentionally independent of the interface appearance palette.
+private enum CompanionRenderPalette {
+    static func pigment(_ hex: String) -> Color {
+        Color(hex: hex) // color-audit: allow-fixed companion illustration pigment
+    }
+}
+
 struct BuddyCardTilt: Equatable {
     var x: CGFloat
     var y: CGFloat
@@ -61,9 +69,9 @@ struct BuddyCardSurface: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.88),
+                                DesignToken.glassFill.opacity(0.88),
                                 tint.opacity(0.12),
-                                Color.white.opacity(0.72)
+                                DesignToken.glassFill.opacity(0.72)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -112,9 +120,9 @@ struct BuddyCardSurface: View {
                 LinearGradient(
                     colors: [
                         .clear,
-                        Color(hex: "#9EE7FF").opacity(0.18),
-                        Color(hex: "#FFF0A8").opacity(0.22),
-                        Color(hex: "#E9B7FF").opacity(0.18),
+                        CompanionRenderPalette.pigment("#9EE7FF").opacity(0.18),
+                        CompanionRenderPalette.pigment("#FFF0A8").opacity(0.22),
+                        CompanionRenderPalette.pigment("#E9B7FF").opacity(0.18),
                         .clear
                     ],
                     startPoint: diagonalStart,
@@ -124,7 +132,7 @@ struct BuddyCardSurface: View {
 
                 RadialGradient(
                     colors: [
-                        Color.white.opacity(0.26),
+                        DesignToken.glassFill.opacity(0.26),
                         tint.opacity(0.18),
                         .clear
                     ],
@@ -158,9 +166,11 @@ extension View {
 }
 
 struct CompanionPickerView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var companionStore: CompanionStore
     @EnvironmentObject private var recruitmentStore: CompanionRecruitmentStore
     @EnvironmentObject private var temperamentStore: TemperamentProfileStore
+    @EnvironmentObject private var membershipStore: PlusMembershipStore
     @Binding var isPresented: Bool
     var showsCloseButton = true
     var dismissesOnSelection = true
@@ -168,14 +178,18 @@ struct CompanionPickerView: View {
 
     @State private var selectedCompanion: BabyCompanion?
 
-    private let cardAspectRatio: CGFloat = 0.72
-    private let columns = Array(repeating: GridItem(.flexible(minimum: 0), spacing: 10), count: 3)
+    private var columns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 0), spacing: 10),
+            count: dynamicTypeSize.isAccessibilitySize ? 2 : 3
+        )
+    }
 
     var body: some View {
         ZStack {
             pickerBackground
 
-            VStack(spacing: 16) {
+            VStack(spacing: DesignToken.contentSpacing) {
                 topBar
 
                 ScrollView(showsIndicators: false) {
@@ -184,7 +198,7 @@ struct CompanionPickerView: View {
                             companionGridButton(companion)
                         }
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, DesignToken.screenHorizontalPadding)
                     .padding(.top, 12)
                     .padding(.bottom, bottomContentPadding)
                 }
@@ -197,15 +211,16 @@ struct CompanionPickerView: View {
             }
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.86), value: selectedCompanion?.id)
+        .accessibilityIdentifier("buddy.grid.screen")
     }
 
     private var pickerBackground: some View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(hex: "#F8F7FB"),
-                    Color(hex: "#F5F1FA"),
-                    Color(hex: "#EEF6FB")
+                    DesignToken.canvas,
+                    DesignToken.surfaceSoft,
+                    DesignToken.surface
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -214,8 +229,8 @@ struct CompanionPickerView: View {
 
             RadialGradient(
                 colors: [
-                    Color.white.opacity(0.70),
-                    Color.white.opacity(0.0)
+                    DesignToken.glassFill.opacity(0.70),
+                    DesignToken.glassFill.opacity(0.0)
                 ],
                 center: .topLeading,
                 startRadius: 20,
@@ -234,11 +249,11 @@ struct CompanionPickerView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 13, weight: .heavy))
                         .foregroundStyle(DesignToken.textPrimary)
-                        .frame(width: 40, height: 40)
+                        .frame(width: DesignToken.minimumTapSize, height: DesignToken.minimumTapSize)
                         .background(
                             Circle()
-                                .fill(.white.opacity(0.92))
-                                .shadow(color: Color(hex: "#4D4B70").opacity(0.08), radius: 12, y: 5)
+                                .fill(DesignToken.surfaceRaised.opacity(0.92))
+                                .shadow(color: DesignToken.shadowColor.opacity(0.16), radius: 12, y: 5)
                         )
                 }
                 .buttonStyle(ScaleButtonStyle())
@@ -246,10 +261,10 @@ struct CompanionPickerView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("BBBuddy")
-                    .font(BBBFont.font(size: 21, weight: .heavy))
+                    .font(BBBFont.scaledFont(size: 20, weight: .bold, relativeTo: .title2, maximumPointSize: 30))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [DesignToken.primary, Color(hex: "#343348")],
+                            colors: [DesignToken.primary, DesignToken.textStrong],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -257,16 +272,16 @@ struct CompanionPickerView: View {
                 .accessibilityLabel("BBBuddy")
 
                 Text("选择今天陪伴宝宝的伙伴")
-                    .font(BBBFont.font(size: 11, weight: .semibold))
+                    .font(BBBFont.scaledFont(size: 11, weight: .semibold, relativeTo: .subheadline, maximumPointSize: 18))
                     .foregroundStyle(DesignToken.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 18)
+        .padding(.horizontal, DesignToken.screenHorizontalPadding)
+        .padding(.top, 14)
         .padding(.bottom, 2)
     }
 
@@ -289,7 +304,7 @@ struct CompanionPickerView: View {
                     if isCurrent, isUnlocked {
                         Text("当前")
                             .font(BBBFont.font(size: 8, weight: .heavy))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(DesignToken.onPrimary)
                             .padding(.horizontal, 6)
                             .frame(height: 17)
                             .background(Capsule().fill(DesignToken.primaryGradient))
@@ -300,36 +315,47 @@ struct CompanionPickerView: View {
                 .frame(height: 82)
 
                 VStack(spacing: 3) {
-                    Text(isUnlocked ? companion.chineseName : "未解锁")
-                        .font(BBBFont.font(size: 12, weight: .heavy))
+                    Text(isUnlocked ? companion.localizedName : "未解锁")
+                        .font(BBBFont.scaledFont(size: 12, weight: .bold, relativeTo: .headline, maximumPointSize: 19))
                         .foregroundStyle(isUnlocked ? DesignToken.textPrimary : DesignToken.textSecondary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .minimumScaleFactor(0.85)
 
-                    Text(isUnlocked ? companion.species : friendshipText(for: companion))
-                        .font(BBBFont.font(size: 8, weight: .semibold))
-                        .foregroundStyle(DesignToken.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.55)
+                    if isUnlocked {
+                        Text(companion.localizedSpecies)
+                            .font(BBBFont.scaledFont(size: 8, weight: .semibold, relativeTo: .caption2, maximumPointSize: 14))
+                            .foregroundStyle(DesignToken.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 36 : 22, alignment: .top)
+                    } else {
+                        CompanionFriendshipHearts(
+                            companion: companion,
+                            friendshipValue: recruitmentStore.friendshipValue(for: companion.id),
+                            isUnlocked: false,
+                            size: 8
+                        )
+                    }
                 }
             }
             .padding(.horizontal, 7)
             .padding(.top, 13)
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity)
-            .aspectRatio(cardAspectRatio, contentMode: .fit)
+            .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 190 : 154, alignment: .top)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.white.opacity(0.92))
+                RoundedRectangle(cornerRadius: DesignToken.mediumCardRadius, style: .continuous)
+                    .fill(DesignToken.surfaceRaised.opacity(0.92))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(.white.opacity(0.92), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: DesignToken.mediumCardRadius, style: .continuous)
+                            .stroke(DesignToken.glassStroke.opacity(0.92), lineWidth: 1)
                     )
-                    .shadow(color: Color(hex: "#4D4B70").opacity(0.04), radius: 10, y: 5)
+                    .shadow(color: DesignToken.softShadow.opacity(0.75), radius: 10, y: 5)
             )
         }
         .buttonStyle(ScaleButtonStyle())
-        .accessibilityLabel(isUnlocked ? "\(companion.chineseName), \(companion.species)" : "未获取伙伴")
+        .accessibilityLabel(isUnlocked ? "\(companion.localizedName), \(companion.localizedSpecies)" : "未获取伙伴")
     }
 
     private func companionDetailOverlay(_ companion: BabyCompanion) -> some View {
@@ -351,11 +377,6 @@ struct CompanionPickerView: View {
         )
     }
 
-    private func friendshipText(for companion: BabyCompanion) -> String {
-        let percent = Int((recruitmentStore.friendshipPercent(for: companion.id) * 100).rounded())
-        return percent > 0 ? "友情值 \(percent)%" : "等待来访"
-    }
-
 }
 
 struct CompanionDetailOverlay: View {
@@ -363,6 +384,7 @@ struct CompanionDetailOverlay: View {
     @EnvironmentObject private var companionStore: CompanionStore
     @EnvironmentObject private var recruitmentStore: CompanionRecruitmentStore
     @EnvironmentObject private var temperamentStore: TemperamentProfileStore
+    @EnvironmentObject private var membershipStore: PlusMembershipStore
     @AppStorage("buddy_card_reduced_effects_enabled") private var reducedBuddyCardEffects = false
     @StateObject private var buddyCardMotion = BuddyCardMotionModel()
     let companion: BabyCompanion
@@ -384,7 +406,7 @@ struct CompanionDetailOverlay: View {
                 }
 
             GeometryReader { proxy in
-                let bottomPadding = max(proxy.safeAreaInsets.bottom + 90, 108)
+                let bottomPadding = max(proxy.safeAreaInsets.bottom + 128, 150)
 
                 VStack(spacing: 10) {
                     Spacer(minLength: 0)
@@ -402,7 +424,7 @@ struct CompanionDetailOverlay: View {
                         currentCompanionControl(displayCompanion, tint: backdrop.accent)
                             .onTapGesture {}
                     } else {
-                        lockedHint
+                        lockedRelationshipControl(displayCompanion)
                             .onTapGesture {}
                     }
                 }
@@ -432,7 +454,7 @@ struct CompanionDetailOverlay: View {
                     colors: [
                         body.opacity(0.24),
                         accent.opacity(0.16),
-                        Color.white.opacity(0.20)
+                        DesignToken.glassFill.opacity(0.20)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -441,9 +463,9 @@ struct CompanionDetailOverlay: View {
             .overlay(
                 LinearGradient(
                     colors: [
-                        Color.black.opacity(0.10),
-                        Color.black.opacity(0.03),
-                        Color.black.opacity(0.08)
+                        DesignToken.scrim.opacity(0.10),
+                        DesignToken.scrim.opacity(0.03),
+                        DesignToken.scrim.opacity(0.08)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -453,7 +475,7 @@ struct CompanionDetailOverlay: View {
                 LinearGradient(
                     colors: [
                         .clear,
-                        Color.white.opacity(0.24),
+                        DesignToken.glassFill.opacity(0.24),
                         .clear
                     ],
                     startPoint: .leading,
@@ -483,24 +505,31 @@ struct CompanionDetailOverlay: View {
                         .fill(DesignToken.textSecondary.opacity(0.22))
                         .frame(width: 1, height: 13)
 
-                    Text(companion.rarity.title)
+                    Text(companion.rarity.title.localized)
                         .font(BBBFont.font(size: 9, weight: .heavy))
                         .foregroundStyle(style.text)
                         .padding(.horizontal, 8)
                         .frame(height: 22)
                         .background(Capsule().fill(style.tint.opacity(0.18)))
 
-                    temperamentChip(companion.temperamentLabel, tint: temperamentStyle.tint, text: temperamentStyle.text)
+                    temperamentChip(companion.localizedTemperamentLabel, tint: temperamentStyle.tint, text: temperamentStyle.text)
                 }
 
                 Spacer()
 
-                heartRow(count: affectionHeartCount(for: companion, isUnlocked: isUnlocked), size: 14)
+                CompanionFriendshipHearts(
+                    companion: companion,
+                    friendshipValue: recruitmentStore.friendshipValue(for: companion.id),
+                    isUnlocked: isUnlocked,
+                    size: 14,
+                    filledColor: DesignToken.easyActivity,
+                    emptyColor: DesignToken.borderSubtle.opacity(0.62)
+                )
             }
 
             ZStack(alignment: .leading) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(isUnlocked ? companion.chineseName : "未解锁")
+                    Text(isUnlocked ? companion.localizedName : "未解锁")
                         .font(BBBFont.font(size: 34, weight: .heavy))
                         .foregroundStyle(DesignToken.textPrimary)
                         .lineLimit(1)
@@ -511,7 +540,7 @@ struct CompanionDetailOverlay: View {
                         .foregroundStyle(DesignToken.textSecondary)
                         .tracking(0.4)
 
-                    Text(isUnlocked ? companion.species : "等待相遇")
+                    Text(isUnlocked ? companion.localizedSpecies : "等待相遇")
                         .font(BBBFont.font(size: 9, weight: .heavy))
                         .foregroundStyle(DesignToken.textSecondary.opacity(0.86))
                         .tracking(0.6)
@@ -536,19 +565,19 @@ struct CompanionDetailOverlay: View {
             .frame(height: 286)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text(isUnlocked ? companion.intro : "友情值 \(friendshipPercent(for: companion))%，继续准备小点心，等它慢慢靠近。")
+                Text(isUnlocked ? companion.localizedIntro : "友情值 \(recruitmentStore.friendshipValue(for: companion.id))/\(companion.friendshipTarget)，继续准备小点心，等它慢慢靠近。")
                     .font(BBBFont.font(size: 10, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
 
-                distributionRow(isUnlocked ? companion.worldDistribution : "在每日来访中培养友情，满值后解锁伙伴卡。")
+                distributionRow(isUnlocked ? companion.localizedWorldDistribution : "在每日来访中培养友情，满值后解锁伙伴卡。")
             }
             .padding(.top, 13)
             .padding(.bottom, 2)
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(Color.white.opacity(0.55))
+                    .fill(DesignToken.glassStroke.opacity(0.55))
                     .frame(height: 1)
             }
         }
@@ -605,10 +634,10 @@ struct CompanionDetailOverlay: View {
                 let x = CGFloat(progress) * max(trackWidth - thumbWidth, 0)
 
                 Capsule()
-                    .fill(Color.white.opacity(0.48))
+                    .fill(DesignToken.surfaceRaised.opacity(0.48))
                     .overlay(
                         Capsule()
-                            .stroke(Color.white.opacity(0.70), lineWidth: 1)
+                            .stroke(DesignToken.glassStroke.opacity(0.70), lineWidth: 1)
                     )
                     .overlay(alignment: .leading) {
                         Capsule()
@@ -636,11 +665,11 @@ struct CompanionDetailOverlay: View {
                     .font(BBBFont.font(size: 12, weight: .heavy))
                     .foregroundStyle(DesignToken.textSecondary)
                     .padding(.horizontal, 18)
-                    .frame(height: 38)
+                    .frame(minHeight: DesignToken.minimumTapSize)
                     .background(
                         Capsule()
-                            .fill(.white.opacity(0.52))
-                            .overlay(Capsule().stroke(.white.opacity(0.74), lineWidth: 1))
+                            .fill(DesignToken.surfaceRaised.opacity(0.52))
+                            .overlay(Capsule().stroke(DesignToken.glassStroke.opacity(0.74), lineWidth: 1))
                     )
             } else {
                 Button {
@@ -652,10 +681,10 @@ struct CompanionDetailOverlay: View {
                         .font(BBBFont.font(size: 12, weight: .heavy))
                         .foregroundStyle(tint.opacity(0.86))
                         .padding(.horizontal, 18)
-                        .frame(height: 38)
+                        .frame(minHeight: DesignToken.minimumTapSize)
                         .background(
                             Capsule()
-                                .fill(.white.opacity(0.50))
+                                .fill(DesignToken.surfaceRaised.opacity(0.50))
                                 .overlay(Capsule().stroke(tint.opacity(0.24), lineWidth: 1))
                         )
                 }
@@ -665,18 +694,72 @@ struct CompanionDetailOverlay: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    private var lockedHint: some View {
-        Capsule()
-            .fill(Color.white.opacity(0.90))
-            .overlay(
-                Text("在陪伴页的每日来访中用 BB Bucks 准备小点心，友情值满后解锁。")
-                    .font(BBBFont.font(size: 13, weight: .bold))
+    private func lockedRelationshipControl(_ companion: BabyCompanion) -> some View {
+        let queue = recruitmentStore.relationshipState.wishQueueIDs
+        let queueIndex = queue.firstIndex(of: companion.id)
+        let isActive = recruitmentStore.relationshipState.activeCompanionID == companion.id
+
+        return HStack(spacing: 8) {
+            if isActive {
+                Label("正在认识 · 明天还会来", systemImage: "calendar.badge.checkmark")
+                    .font(BBBFont.font(size: 10.5, weight: .heavy))
+                    .foregroundStyle(DesignToken.primary)
+            } else if let queueIndex {
+                Text("愿望队列第 \(queueIndex + 1) 位")
+                    .font(BBBFont.font(size: 10.5, weight: .heavy))
+                    .foregroundStyle(DesignToken.primary)
+                Spacer()
+                Button {
+                    moveQueueItem(companion.id, offset: -1)
+                } label: {
+                    Image(systemName: "arrow.up")
+                }
+                .disabled(queueIndex == 0)
+                Button {
+                    moveQueueItem(companion.id, offset: 1)
+                } label: {
+                    Image(systemName: "arrow.down")
+                }
+                .disabled(queueIndex == queue.count - 1)
+                Button("移除") {
+                    recruitmentStore.setWishQueue(
+                        queue.filter { $0 != companion.id },
+                        isPlusActive: membershipStore.isPlusActive
+                    )
+                }
+            } else if membershipStore.isPlusActive {
+                Text(queue.count < 3 ? "加入愿望队列，当前 \(queue.count)/3" : "愿望队列已满 3/3")
+                    .font(BBBFont.font(size: 10.5, weight: .semibold))
                     .foregroundStyle(DesignToken.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 18)
-            )
-            .frame(height: 52)
-            .padding(.horizontal, 12)
+                Spacer()
+                Button("加入") {
+                    recruitmentStore.setWishQueue(
+                        queue + [companion.id],
+                        isPlusActive: membershipStore.isPlusActive
+                    )
+                }
+                .font(BBBFont.font(size: 10.5, weight: .heavy))
+                .disabled(queue.count >= 3)
+            } else {
+                Text("每日来访中招待后，可邀请这位 Buddy 明天再来。")
+                    .font(BBBFont.font(size: 10, weight: .semibold))
+                    .foregroundStyle(DesignToken.textSecondary.opacity(0.78))
+            }
+        }
+        .foregroundStyle(DesignToken.primary)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .background(Capsule().fill(DesignToken.surfaceRaised.opacity(0.76)))
+        .padding(.horizontal, 28)
+    }
+
+    private func moveQueueItem(_ companionID: String, offset: Int) {
+        var queue = recruitmentStore.relationshipState.wishQueueIDs
+        guard let index = queue.firstIndex(of: companionID) else { return }
+        let destination = min(max(index + offset, 0), queue.count - 1)
+        guard destination != index else { return }
+        queue.swapAt(index, destination)
+        recruitmentStore.setWishQueue(queue, isPlusActive: membershipStore.isPlusActive)
     }
 
     private func isCompanionUnlocked(_ companion: BabyCompanion) -> Bool {
@@ -687,25 +770,8 @@ struct CompanionDetailOverlay: View {
         )
     }
 
-    private func affectionHeartCount(for companion: BabyCompanion, isUnlocked: Bool) -> Int {
-        if companionStore.selectedID == companion.id { return 3 }
-        let progress = recruitmentStore.friendshipPercent(for: companion.id)
-        let count = Int(ceil(progress * 3))
-        return isUnlocked ? max(1, count) : count
-    }
-
-    private func heartRow(count: Int, size: CGFloat) -> some View {
-        HStack(spacing: max(size * 0.18, 1)) {
-            ForEach(0..<3, id: \.self) { index in
-                Image(systemName: index < count ? "heart.fill" : "heart")
-                    .font(.system(size: size, weight: .heavy))
-                    .foregroundStyle(index < count ? Color(hex: "#DFA2AE") : Color(hex: "#C9C7D2").opacity(0.62))
-            }
-        }
-    }
-
     private func temperamentChip(_ title: String, tint: Color, text: Color) -> some View {
-        Text(title)
+        Text(title.localized)
             .font(BBBFont.font(size: 9, weight: .heavy))
             .foregroundStyle(text)
             .lineLimit(1)
@@ -716,9 +782,10 @@ struct CompanionDetailOverlay: View {
 
     private func distributionRow(_ text: String) -> some View {
         HStack(alignment: .center, spacing: 7) {
-            Text("🌍")
-                .font(.system(size: 13))
-            Text(text)
+            Image(systemName: "globe.asia.australia.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(DesignToken.textSecondary.opacity(0.72))
+            Text(text.localized)
                 .font(BBBFont.font(size: 10, weight: .bold))
                 .foregroundStyle(DesignToken.textPrimary.opacity(0.82))
                 .lineLimit(1)
@@ -731,7 +798,7 @@ struct CompanionDetailOverlay: View {
                 .fill(DesignToken.accentBlue.opacity(0.10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
+                        .stroke(DesignToken.glassStroke.opacity(0.55), lineWidth: 1)
                 )
         )
     }
@@ -739,23 +806,19 @@ struct CompanionDetailOverlay: View {
     private func rarityStyle(for rarity: CompanionRarity) -> (tint: Color, text: Color) {
         switch rarity {
         case .common:
-            return (Color(hex: "#C9D7E8"), Color(hex: "#6A7280"))
+            return (DesignToken.accentBlue, DesignToken.textMuted)
         case .uncommon:
-            return (Color(hex: "#B9DCC8"), Color(hex: "#567C64"))
+            return (DesignToken.success, DesignToken.successText)
         case .rare:
-            return (Color(hex: "#C8B7F0"), Color(hex: "#6B5BA5"))
+            return (DesignToken.primary, DesignToken.primary)
         case .precious:
-            return (Color(hex: "#E9C08A"), Color(hex: "#9A6B31"))
+            return (DesignToken.reward, DesignToken.rewardText)
         }
     }
 
     private func backdropStyle(for companion: BabyCompanion) -> (body: Color, accent: Color) {
         let visual = CompanionVisual.style(for: companion.id)
         return (visual.body, visual.accent)
-    }
-
-    private func friendshipPercent(for companion: BabyCompanion) -> Int {
-        Int((recruitmentStore.friendshipPercent(for: companion.id) * 100).rounded())
     }
 
     private var isBuddyCardMotionEnabled: Bool {
@@ -832,7 +895,7 @@ struct CompanionAnimalFigure: View {
     private var placeholderFigure: some View {
         ZStack {
             Ellipse()
-                .fill(Color.black.opacity(isUnlocked ? 0.08 : 0.04))
+                .fill(DesignToken.shadowColor.opacity(isUnlocked ? 0.08 : 0.04))
                 .frame(width: size * 0.62, height: size * 0.12)
                 .offset(y: size * 0.35)
 
@@ -862,15 +925,15 @@ struct CompanionAnimalFigure: View {
     }
 
     private var fillColor: Color {
-        isUnlocked ? visual.body : Color(hex: "#EEE7DC").opacity(0.62)
+        isUnlocked ? visual.body : DesignToken.surfaceSoft.opacity(0.62)
     }
 
     private var accentColor: Color {
-        isUnlocked ? visual.accent : Color(hex: "#8A8176").opacity(0.24)
+        isUnlocked ? visual.accent : DesignToken.borderSubtle.opacity(0.52)
     }
 
     private var outlineColor: Color {
-        isUnlocked ? Color(hex: "#5B534B").opacity(0.42) : Color(hex: "#8A8176").opacity(0.68)
+        isUnlocked ? CompanionRenderPalette.pigment("#5B534B").opacity(0.42) : DesignToken.textFaint.opacity(0.68)
     }
 
     private var strokeStyle: StrokeStyle {
@@ -972,28 +1035,28 @@ struct CompanionAnimalFigure: View {
         ZStack {
             HStack(spacing: size * 0.13) {
                 Circle()
-                    .fill(Color(hex: "#3C3834"))
+                    .fill(CompanionRenderPalette.pigment("#3C3834"))
                     .frame(width: size * 0.052, height: size * 0.052)
                 Circle()
-                    .fill(Color(hex: "#3C3834"))
+                    .fill(CompanionRenderPalette.pigment("#3C3834"))
                     .frame(width: size * 0.052, height: size * 0.052)
             }
 
             Group {
                 if visual.mouth == .beak {
                     Triangle()
-                        .fill(Color(hex: "#F6B34A"))
+                        .fill(CompanionRenderPalette.pigment("#F6B34A"))
                         .frame(width: size * 0.13, height: size * 0.10)
                         .offset(y: size * 0.06)
                         .rotationEffect(.degrees(180))
                 } else if visual.mouth == .snout {
                     Capsule()
-                        .fill(Color(hex: "#F3A3A5"))
+                        .fill(CompanionRenderPalette.pigment("#F3A3A5"))
                         .frame(width: size * 0.20, height: size * 0.12)
                         .offset(y: size * 0.06)
                 } else {
                     Circle()
-                        .fill(Color(hex: "#4D4641"))
+                        .fill(CompanionRenderPalette.pigment("#4D4641"))
                         .frame(width: size * 0.07, height: size * 0.05)
                         .offset(y: size * 0.045)
                 }
@@ -1001,10 +1064,10 @@ struct CompanionAnimalFigure: View {
 
             HStack(spacing: size * 0.22) {
                 Circle()
-                    .fill(Color(hex: "#EF8FA8").opacity(0.52))
+                    .fill(CompanionRenderPalette.pigment("#EF8FA8").opacity(0.52))
                     .frame(width: size * 0.08, height: size * 0.06)
                 Circle()
-                    .fill(Color(hex: "#EF8FA8").opacity(0.52))
+                    .fill(CompanionRenderPalette.pigment("#EF8FA8").opacity(0.52))
                     .frame(width: size * 0.08, height: size * 0.06)
             }
             .offset(y: size * 0.095)
@@ -1043,19 +1106,19 @@ struct CompanionAnimalFigure: View {
         switch visual.accessory {
         case .leaf:
             Capsule()
-                .fill(Color(hex: "#77B86F"))
+                .fill(CompanionRenderPalette.pigment("#77B86F"))
                 .frame(width: size * 0.20, height: size * 0.07)
                 .rotationEffect(.degrees(-28))
                 .offset(x: size * 0.19, y: -size * 0.22)
         case .sailboat:
             Triangle()
-                .fill(Color(hex: "#8BBDEB"))
+                .fill(CompanionRenderPalette.pigment("#8BBDEB"))
                 .frame(width: size * 0.10, height: size * 0.13)
                 .offset(x: size * 0.12, y: size * 0.02)
         case .spark:
             Image(systemName: "sparkle")
                 .font(.system(size: size * 0.18, weight: .black))
-                .foregroundStyle(Color(hex: "#FFB151"))
+                .foregroundStyle(CompanionRenderPalette.pigment("#FFB151"))
                 .offset(x: size * 0.22, y: -size * 0.24)
         case .none:
             EmptyView()
@@ -1088,31 +1151,31 @@ private struct CompanionVisual {
     static func style(for id: String) -> CompanionVisual {
         switch id {
         case "piggy":
-            return .init(body: Color(hex: "#F3A8B9"), accent: Color(hex: "#DD7B8E"), belly: Color(hex: "#FFD7DF"), ears: .small, tail: .curl, marking: .none, mouth: .snout, accessory: .none, bodyWidth: 0.56, bodyHeight: 0.52, headWidth: 0.46, headHeight: 0.38)
+            return .init(body: CompanionRenderPalette.pigment("#F3A8B9"), accent: CompanionRenderPalette.pigment("#DD7B8E"), belly: CompanionRenderPalette.pigment("#FFD7DF"), ears: .small, tail: .curl, marking: .none, mouth: .snout, accessory: .none, bodyWidth: 0.56, bodyHeight: 0.52, headWidth: 0.46, headHeight: 0.38)
         case "fenny":
-            return .init(body: Color(hex: "#F0A35E"), accent: Color(hex: "#F8D5A9"), belly: Color(hex: "#FFE3C6"), ears: .pointy, tail: .fluffy, marking: .mask, mouth: .nose, accessory: .none, bodyWidth: 0.52, bodyHeight: 0.50, headWidth: 0.46, headHeight: 0.38)
+            return .init(body: CompanionRenderPalette.pigment("#F0A35E"), accent: CompanionRenderPalette.pigment("#F8D5A9"), belly: CompanionRenderPalette.pigment("#FFE3C6"), ears: .pointy, tail: .fluffy, marking: .mask, mouth: .nose, accessory: .none, bodyWidth: 0.52, bodyHeight: 0.50, headWidth: 0.46, headHeight: 0.38)
         case "ferry":
-            return .init(body: Color(hex: "#D9C8B4"), accent: Color(hex: "#8E7564"), belly: Color(hex: "#F2E8DA"), ears: .round, tail: .long, marking: .stripes, mouth: .nose, accessory: .none, bodyWidth: 0.58, bodyHeight: 0.46, headWidth: 0.44, headHeight: 0.34)
+            return .init(body: CompanionRenderPalette.pigment("#D9C8B4"), accent: CompanionRenderPalette.pigment("#8E7564"), belly: CompanionRenderPalette.pigment("#F2E8DA"), ears: .round, tail: .long, marking: .stripes, mouth: .nose, accessory: .none, bodyWidth: 0.58, bodyHeight: 0.46, headWidth: 0.44, headHeight: 0.34)
         case "cal":
-            return .init(body: Color(hex: "#FFF1A8"), accent: Color(hex: "#F4C85F"), belly: Color(hex: "#FFF8D7"), ears: .small, tail: .short, marking: .none, mouth: .beak, accessory: .none, bodyWidth: 0.54, bodyHeight: 0.50, headWidth: 0.44, headHeight: 0.38)
+            return .init(body: CompanionRenderPalette.pigment("#FFF1A8"), accent: CompanionRenderPalette.pigment("#F4C85F"), belly: CompanionRenderPalette.pigment("#FFF8D7"), ears: .small, tail: .short, marking: .none, mouth: .beak, accessory: .none, bodyWidth: 0.54, bodyHeight: 0.50, headWidth: 0.44, headHeight: 0.38)
         case "bunny_lulu":
-            return .init(body: Color(hex: "#F6DEC9"), accent: Color(hex: "#DFA6BE"), belly: Color(hex: "#FFF2E8"), ears: .long, tail: .fluffy, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.48, bodyHeight: 0.50, headWidth: 0.42, headHeight: 0.36)
+            return .init(body: CompanionRenderPalette.pigment("#F6DEC9"), accent: CompanionRenderPalette.pigment("#DFA6BE"), belly: CompanionRenderPalette.pigment("#FFF2E8"), ears: .long, tail: .fluffy, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.48, bodyHeight: 0.50, headWidth: 0.42, headHeight: 0.36)
         case "fawn_mimi":
-            return .init(body: Color(hex: "#D8A06F"), accent: Color(hex: "#FFF1D2"), belly: Color(hex: "#F8D8B4"), ears: .pointy, tail: .short, marking: .spots, mouth: .nose, accessory: .none, bodyWidth: 0.48, bodyHeight: 0.55, headWidth: 0.40, headHeight: 0.36)
+            return .init(body: CompanionRenderPalette.pigment("#D8A06F"), accent: CompanionRenderPalette.pigment("#FFF1D2"), belly: CompanionRenderPalette.pigment("#F8D8B4"), ears: .pointy, tail: .short, marking: .spots, mouth: .nose, accessory: .none, bodyWidth: 0.48, bodyHeight: 0.55, headWidth: 0.40, headHeight: 0.36)
         case "samoyed_momo":
-            return .init(body: Color(hex: "#F6F2EA"), accent: Color(hex: "#D9D1C5"), belly: Color(hex: "#FFFFFF"), ears: .pointy, tail: .curl, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.58, bodyHeight: 0.52, headWidth: 0.48, headHeight: 0.40)
+            return .init(body: CompanionRenderPalette.pigment("#F6F2EA"), accent: CompanionRenderPalette.pigment("#D9D1C5"), belly: CompanionRenderPalette.pigment("#FFFFFF"), ears: .pointy, tail: .curl, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.58, bodyHeight: 0.52, headWidth: 0.48, headHeight: 0.40)
         case "otter_tangtang":
-            return .init(body: Color(hex: "#9D735D"), accent: Color(hex: "#6F4C3C"), belly: Color(hex: "#D8B496"), ears: .round, tail: .long, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.48, bodyHeight: 0.54, headWidth: 0.42, headHeight: 0.36)
+            return .init(body: CompanionRenderPalette.pigment("#9D735D"), accent: CompanionRenderPalette.pigment("#6F4C3C"), belly: CompanionRenderPalette.pigment("#D8B496"), ears: .round, tail: .long, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.48, bodyHeight: 0.54, headWidth: 0.42, headHeight: 0.36)
         case "redpanda_youyou":
-            return .init(body: Color(hex: "#C86E43"), accent: Color(hex: "#5E3C32"), belly: Color(hex: "#F3D0B1"), ears: .pointy, tail: .fluffy, marking: .mask, mouth: .nose, accessory: .none, bodyWidth: 0.52, bodyHeight: 0.52, headWidth: 0.46, headHeight: 0.38)
+            return .init(body: CompanionRenderPalette.pigment("#C86E43"), accent: CompanionRenderPalette.pigment("#5E3C32"), belly: CompanionRenderPalette.pigment("#F3D0B1"), ears: .pointy, tail: .fluffy, marking: .mask, mouth: .nose, accessory: .none, bodyWidth: 0.52, bodyHeight: 0.52, headWidth: 0.46, headHeight: 0.38)
         case "koala_anan":
-            return .init(body: Color(hex: "#C8D0D4"), accent: Color(hex: "#8B969C"), belly: Color(hex: "#EEF1F2"), ears: .round, tail: .none, marking: .none, mouth: .nose, accessory: .leaf, bodyWidth: 0.52, bodyHeight: 0.54, headWidth: 0.50, headHeight: 0.40)
+            return .init(body: CompanionRenderPalette.pigment("#C8D0D4"), accent: CompanionRenderPalette.pigment("#8B969C"), belly: CompanionRenderPalette.pigment("#EEF1F2"), ears: .round, tail: .none, marking: .none, mouth: .nose, accessory: .leaf, bodyWidth: 0.52, bodyHeight: 0.54, headWidth: 0.50, headHeight: 0.40)
         case "sloth_nono":
-            return .init(body: Color(hex: "#D8CBB8"), accent: Color(hex: "#8F806E"), belly: Color(hex: "#EFE4D4"), ears: .round, tail: .none, marking: .mask, mouth: .nose, accessory: .leaf, bodyWidth: 0.52, bodyHeight: 0.54, headWidth: 0.46, headHeight: 0.38)
+            return .init(body: CompanionRenderPalette.pigment("#D8CBB8"), accent: CompanionRenderPalette.pigment("#8F806E"), belly: CompanionRenderPalette.pigment("#EFE4D4"), ears: .round, tail: .none, marking: .mask, mouth: .nose, accessory: .leaf, bodyWidth: 0.52, bodyHeight: 0.54, headWidth: 0.46, headHeight: 0.38)
         case "chipmunk_huohuo":
-            return .init(body: Color(hex: "#D99A59"), accent: Color(hex: "#7B4A31"), belly: Color(hex: "#F6D1A6"), ears: .pointy, tail: .fluffy, marking: .stripes, mouth: .nose, accessory: .spark, bodyWidth: 0.48, bodyHeight: 0.52, headWidth: 0.42, headHeight: 0.36)
+            return .init(body: CompanionRenderPalette.pigment("#D99A59"), accent: CompanionRenderPalette.pigment("#7B4A31"), belly: CompanionRenderPalette.pigment("#F6D1A6"), ears: .pointy, tail: .fluffy, marking: .stripes, mouth: .nose, accessory: .spark, bodyWidth: 0.48, bodyHeight: 0.52, headWidth: 0.42, headHeight: 0.36)
         default:
-            return .init(body: DesignToken.primarySoft, accent: DesignToken.primary, belly: .white, ears: .round, tail: .short, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.52, bodyHeight: 0.52, headWidth: 0.44, headHeight: 0.38)
+            return .init(body: DesignToken.primarySoft, accent: DesignToken.primary, belly: DesignToken.surfaceRaised, ears: .round, tail: .short, marking: .none, mouth: .nose, accessory: .none, bodyWidth: 0.52, bodyHeight: 0.52, headWidth: 0.44, headHeight: 0.38)
         }
     }
 

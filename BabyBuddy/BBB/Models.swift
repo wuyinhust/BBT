@@ -3,9 +3,6 @@ import SwiftUI
 import Foundation
 import Observation
 import UIKit
-#if canImport(ActivityKit)
-import ActivityKit
-#endif
 #if canImport(WidgetKit)
 import WidgetKit
 #endif
@@ -13,53 +10,78 @@ import WidgetKit
 // MARK: - Design
 
 enum DesignToken {
-    static let canvas = Color(hex: "#FAFAFC")
-    static let surface = Color.white
-    static let surfaceSoft = Color(hex: "#F6F2FF")
-    static let borderSubtle = Color(hex: "#E5E3EC")
-    static let textStrong = Color(hex: "#282738")
-    static let textMuted = Color(hex: "#737286")
+    // Base roles. Every UI surface should resolve through these named colors.
+    static let canvas = Color("BB_Canvas")
+    static let surface = Color("BB_Surface")
+    static let surfaceRaised = Color("BB_SurfaceRaised")
+    static let surfaceSoft = Color("BB_SurfaceSoft")
+    static let borderSubtle = Color("BB_Border")
+    static let textStrong = Color("BB_TextStrong")
+    static let textMuted = Color("BB_TextMuted")
+    static let textFaint = Color("BB_TextFaint")
+    static let onPrimary = Color("BB_OnPrimary")
+    static let glassFill = Color("BB_GlassFill")
+    static let glassStroke = Color("BB_GlassStroke")
+    static let shadowColor = Color("BB_Shadow")
+    static let scrim = Color("BB_Scrim")
 
-    static let primary = Color(hex: "#BDA6F2")
-    static let primarySoft = Color(hex: "#F4C7D9")
-    static let accentBlue = Color(hex: "#A5C8FF")
-    static let grayNeutral = Color(hex: "#EAEAF2")
+    static let primary = Color("BB_PrimaryAction")
+    static let primarySoft = Color("BB_BrandSoft")
+    static let accentBlue = Color("BB_AccentBlue")
+    static let grayNeutral = Color("BB_GrayNeutral")
     static let background = canvas
     static let textTitle = textStrong
     static let textBody = textMuted
     static let cardBackground = surface
-    static let errorRed = Color(hex: "#FF6B6B")
+    static let success = Color("BB_Success")
+    static let successSoft = Color("BB_SuccessSoft")
+    static let successText = Color("BB_SuccessText")
+    static let warning = Color("BB_Warning")
+    static let warningSoft = Color("BB_WarningSoft")
+    static let warningText = Color("BB_WarningText")
+    static let error = Color("BB_Error")
+    static let errorSoft = Color("BB_ErrorSoft")
+    static let errorText = Color("BB_ErrorText")
+    static let reward = Color("BB_Reward")
+    static let rewardSoft = Color("BB_RewardSoft")
+    static let rewardText = Color("BB_RewardText")
+    static let errorRed = error
 
     static let bg = background
     static let card = cardBackground
     static let textPrimary = textTitle
     static let textSecondary = textBody
     static let line = borderSubtle
-    static let iconSoftBG = Color(hex: "#F0EEF8")
+    static let iconSoftBG = Color("BB_IconSoft")
 
     // E/A/S/Y flower colors: Iris, Camellia, Delphinium, Viburnum.
-    static let easyEat = Color(hex: "#7C5CFF")
-    static let easyEatSoft = Color(hex: "#EDE7FF")
-    static let easyActivity = Color(hex: "#FF7A90")
-    static let easyActivitySoft = Color(hex: "#FFE8EE")
-    static let easySleep = Color(hex: "#2F80ED")
-    static let easySleepSoft = Color(hex: "#E7F1FF")
-    static let easyYearning = Color(hex: "#29B87A")
-    static let easyYearningSoft = Color(hex: "#E4F8EE")
+    static let easyEat = Color("BB_EasyEat")
+    static let easyEatSoft = Color("BB_EasyEatSoft")
+    static let easyEatText = Color("BB_EasyEatText")
+    static let easyActivity = Color("BB_EasyActivity")
+    static let easyActivitySoft = Color("BB_EasyActivitySoft")
+    static let easyActivityText = Color("BB_EasyActivityText")
+    static let easySleep = Color("BB_EasySleep")
+    static let easySleepSoft = Color("BB_EasySleepSoft")
+    static let easySleepText = Color("BB_EasySleepText")
+    static let easyYearning = Color("BB_EasyYearning")
+    static let easyYearningSoft = Color("BB_EasyYearningSoft")
+    static let easyYearningText = Color("BB_EasyYearningText")
 
-    static let feedingBottle = Color(hex: "#7C5CFF")
-    static let feedingBottleSoft = Color(hex: "#EDE7FF")
-    static let feedingBreast = Color(hex: "#B56CFF")
-    static let feedingBreastSoft = Color(hex: "#F3E8FF")
-    static let feedingSolid = Color(hex: "#8E4DFF")
-    static let feedingSolidSoft = Color(hex: "#EFE7FF")
+    static let feedingBottle = easyEat
+    static let feedingBottleSoft = easyEatSoft
+    static let feedingBreast = Color("BB_FeedingBreast")
+    static let feedingBreastSoft = Color("BB_FeedingBreastSoft")
+    static let feedingSolid = Color("BB_FeedingSolid")
+    static let feedingSolidSoft = Color("BB_FeedingSolidSoft")
 
-    static let activityDiaper = Color(hex: "#F59A6B")
-    static let activityDiaperSoft = Color(hex: "#FFF0E8")
-    static let activityBath = Color(hex: "#FF9AAE")
-    static let activityBathSoft = Color(hex: "#FFEAF0")
-    static let activityTummyTime = Color(hex: "#FF7A90")
-    static let activityComfort = Color(hex: "#FF7A90")
+    static let activityDiaper = Color("BB_Diaper")
+    static let activityDiaperSoft = Color("BB_DiaperSoft")
+    static let activityDiaperText = Color("BB_DiaperText")
+    static let activityBath = Color("BB_Bath")
+    static let activityBathSoft = Color("BB_BathSoft")
+    static let activityTummyTime = easyActivity
+    static let activityComfort = easyActivity
 
     static let primaryGradient = LinearGradient(
         colors: [primary, primarySoft],
@@ -82,6 +104,171 @@ enum DesignToken {
     static let cardRadius: CGFloat = cardCornerRadius
     static let pillRadius: CGFloat = buttonCornerRadius
     static let tabRadius: CGFloat = 34
+
+    // App-wide layout system. Feature screens may keep their own accent art,
+    // but spacing, surfaces and interaction sizes should come from these roles.
+    static let screenHorizontalPadding: CGFloat = 20
+    static let compactHorizontalPadding: CGFloat = 16
+    static let sectionSpacing: CGFloat = 18
+    static let contentSpacing: CGFloat = 12
+    static let largeCardRadius: CGFloat = 24
+    static let mediumCardRadius: CGFloat = 20
+    static let controlRadius: CGFloat = 14
+    static let minimumTapSize: CGFloat = 44
+    static let settingsRowMinHeight: CGFloat = 64
+    static let iconContainerSize: CGFloat = 36
+    static let softShadow = shadowColor.opacity(0.10)
+}
+
+enum AppAppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    static let storageKey = "app_appearance_mode_v1"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .light: return "浅色"
+        case .dark: return "深色"
+        }
+    }
+
+    var preferredColorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
+private struct AppGlassSurfaceModifier: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    let cornerRadius: CGFloat
+    let fillOpacity: Double
+    let strokeOpacity: Double
+    let shadowOpacity: Double
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content.background {
+            shape
+                .fill(
+                    reduceTransparency
+                        ? AnyShapeStyle(DesignToken.surfaceRaised)
+                        : AnyShapeStyle(.ultraThinMaterial)
+                )
+                .overlay(shape.fill(DesignToken.glassFill.opacity(reduceTransparency ? 1 : fillOpacity)))
+                .overlay(shape.stroke(DesignToken.glassStroke.opacity(strokeOpacity), lineWidth: 1))
+                .shadow(color: DesignToken.shadowColor.opacity(shadowOpacity), radius: 18, y: 8)
+        }
+    }
+}
+
+extension View {
+    func appGlassSurface(
+        cornerRadius: CGFloat,
+        fillOpacity: Double = 0.72,
+        strokeOpacity: Double = 0.72,
+        shadowOpacity: Double = 0.10
+    ) -> some View {
+        modifier(AppGlassSurfaceModifier(
+            cornerRadius: cornerRadius,
+            fillOpacity: fillOpacity,
+            strokeOpacity: strokeOpacity,
+            shadowOpacity: shadowOpacity
+        ))
+    }
+}
+
+/// App-wide user-facing date and clock formats.
+/// Keep persistence keys, exported timestamps, and elapsed durations separate.
+enum AppDateTimeFormat {
+    static func date(_ date: Date) -> String {
+        date.formatted(
+            .dateTime
+                .month(.abbreviated)
+                .day()
+                .locale(AppLocalization.locale)
+        )
+    }
+
+    static func time(_ date: Date) -> String {
+        date.formatted(
+            .dateTime
+                .hour()
+                .minute()
+                .locale(AppLocalization.locale)
+        )
+    }
+
+    static func dateTime(_ date: Date) -> String {
+        date.formatted(
+            .dateTime
+                .month(.abbreviated)
+                .day()
+                .hour()
+                .minute()
+                .locale(AppLocalization.locale)
+        )
+    }
+}
+
+struct AppPageCloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(DesignToken.textPrimary)
+                .frame(width: DesignToken.minimumTapSize, height: DesignToken.minimumTapSize)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("关闭")
+    }
+}
+
+enum BabyAgeFormatter {
+    static func components(
+        birthDate: Date,
+        on date: Date,
+        calendar: Calendar = .current
+    ) -> (months: Int, days: Int) {
+        let start = calendar.startOfDay(for: birthDate)
+        let end = calendar.startOfDay(for: date)
+        guard end >= start else { return (0, 0) }
+
+        let components = calendar.dateComponents([.month, .day], from: start, to: end)
+        return (
+            months: max(components.month ?? 0, 0),
+            days: max(components.day ?? 0, 0)
+        )
+    }
+
+    static func displayText(
+        birthDate: Date,
+        on date: Date,
+        calendar: Calendar = .current
+    ) -> String {
+        let age = components(birthDate: birthDate, on: date, calendar: calendar)
+        if age.months == 0 {
+            return AppQuantityFormat.days(age.days)
+        }
+        if age.days == 0 {
+            return AppLocalization.format(
+                age.months == 1 ? "quantity.age_month.one" : "quantity.age_month.other",
+                age.months
+            )
+        }
+        return AppLocalization.format("quantity.age.months_days", age.months, age.days)
+    }
 }
 
 enum RecordHomeMode: String, CaseIterable, Identifiable {
@@ -94,21 +281,21 @@ enum RecordHomeMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .basic: return "基础记录"
-        case .easy: return "EASY 循环"
+        case .basic: return "基础记录".localized
+        case .easy: return "EASY 循环".localized
         }
     }
 
     var subtitle: String {
         switch self {
-        case .basic: return "适合快速记录单项喂养、尿布、睡眠。"
-        case .easy: return "适合按吃、玩、睡维护完整照护节奏。"
+        case .basic: return "适合快速记录单项喂养、尿布、睡眠。".localized
+        case .easy: return "适合按吃、玩、睡维护完整照护节奏。".localized
         }
     }
 
     var shortTitle: String {
         switch self {
-        case .basic: return "基础"
+        case .basic: return "基础".localized
         case .easy: return "EASY"
         }
     }
@@ -124,10 +311,10 @@ enum EasyCyclePhase: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .eat: return "喂养"
-        case .activity: return "活动"
-        case .sleep: return "睡眠"
-        case .yearning: return "状态"
+        case .eat: return "喂养".localized
+        case .activity: return "活动".localized
+        case .sleep: return "睡眠".localized
+        case .yearning: return "状态".localized
         }
     }
 
@@ -233,26 +420,44 @@ final class EasyCycleStore: ObservableObject {
 
     private let key = "easy_cycles_v1"
     private let feedingCycleTimeout: TimeInterval = 2 * 60 * 60
-    private let minimumSleepMinutesForCycle = 5
+    private let minimumSleepMinutesForCycle = 1
+    // Cycles cross calendar boundaries, so source facts must be rebuilt as one
+    // ordered stream instead of seven independent day buckets.
+    private var sourceFingerprint: [String] = []
 
     init() {
         loadCycles()
     }
 
     func rebuild(from feedingSessions: [FeedingSession], careRecords: [CareRecord]) {
+        let now = Date()
+        let validSessions = feedingSessions.filter {
+            $0.hasData && ($0.startAt ?? $0.createdAt) <= now
+        }
+        let validCareRecords = careRecords.filter { $0.recordedAt <= now }
+        let nextFingerprint = cycleSourceFingerprint(
+            feedingSessions: validSessions,
+            careRecords: validCareRecords
+        )
+        guard sourceFingerprint != nextFingerprint else { return }
+        sourceFingerprint = nextFingerprint
+
         var existingByID: [UUID: EasyCycle] = [:]
         for cycle in cycles {
             existingByID[cycle.id] = cycle
         }
-        var rebuiltCycles = buildCycles(from: feedingSessions, careRecords: careRecords)
+
+        let rebuiltCycles = buildCycles(from: validSessions, careRecords: validCareRecords)
             .map { rebuilt in
                 guard let existing = existingByID[rebuilt.id] else { return rebuilt }
                 return rebuilt.preservingUserState(from: existing)
-            }
-        rebuiltCycles.append(contentsOf: manualCyclesToKeep(afterRebuilding: rebuiltCycles))
-        rebuiltCycles.sort { $0.startedAt > $1.startedAt }
-        guard cycles != rebuiltCycles else { return }
-        cycles = rebuiltCycles
+        }
+        let manualCycles = manualCyclesToKeep(afterRebuilding: rebuiltCycles)
+        let nextCycles = (rebuiltCycles + manualCycles)
+            .sorted { $0.startedAt > $1.startedAt }
+
+        guard cycles != nextCycles else { return }
+        cycles = nextCycles
     }
 
     func cycles(on date: Date) -> [EasyCycle] {
@@ -263,11 +468,21 @@ final class EasyCycleStore: ObservableObject {
     }
 
     func currentCycle(on date: Date = Date()) -> EasyCycle? {
-        cycles
+        let sameDayCycle = cycles
             .filter { Calendar.current.isDate($0.startedAt, inSameDayAs: date) }
             .filter { $0.linkedRecords.isEmpty || hasStarterRecord($0) }
             .sorted { $0.startedAt > $1.startedAt }
             .first
+        if let sameDayCycle { return sameDayCycle }
+
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? date
+        return cycles
+            .filter { $0.startedAt < dayEnd }
+            .filter { $0.endedAt == nil || $0.endedAt! >= dayStart }
+            .filter { $0.linkedRecords.isEmpty || hasStarterRecord($0) }
+            .max { $0.startedAt < $1.startedAt }
     }
 
     func performPrimaryAction(now: Date = Date(), startedAt: Date? = nil) {
@@ -290,7 +505,6 @@ final class EasyCycleStore: ObservableObject {
         cycles[index].linkedRecords = Array(Set(links)).sorted { $0.id < $1.id }
         normalizePhaseProgress(at: index, eventDate: Date())
         cycles[index].updatedAt = Date()
-        awardIfCompleteCycle(at: index)
     }
 
     func ensureCycle(on date: Date, startedAt: Date, links: [EasyCycleRecordLink]) {
@@ -308,7 +522,6 @@ final class EasyCycleStore: ObservableObject {
             cycles[index].startedAt = min(cycles[index].startedAt, startedAt)
             normalizePhaseProgress(at: index, eventDate: startedAt)
             cycles[index].updatedAt = Date()
-            awardIfCompleteCycle(at: index)
             sortCycles()
             return
         }
@@ -317,9 +530,6 @@ final class EasyCycleStore: ObservableObject {
         normalizePhaseProgress(for: &cycle, eventDate: startedAt)
         cycles.insert(cycle, at: 0)
         sortCycles()
-        if let index = cycles.firstIndex(where: { $0.id == cycle.id }) {
-            awardIfCompleteCycle(at: index)
-        }
     }
 
     func trackFeedingSession(_ session: FeedingSession) {
@@ -340,6 +550,7 @@ final class EasyCycleStore: ObservableObject {
         let existingIDs = Set(cycles.map(\.id))
         cycles = (cycles + incomingCycles.filter { !existingIDs.contains($0.id) })
             .sorted { $0.startedAt > $1.startedAt }
+        sourceFingerprint = []
     }
 
     private func advanceCycle(at index: Int, now: Date) {
@@ -446,7 +657,6 @@ final class EasyCycleStore: ObservableObject {
             cycles[index].endedAt = endedAt
         }
         cycles[index].updatedAt = max(updatedAt, cycles[index].updatedAt)
-        awardIfCompleteCycle(at: index)
         sortCycles()
     }
 
@@ -476,13 +686,11 @@ final class EasyCycleStore: ObservableObject {
             case .sleep:
                 guard var draft = currentDraft,
                       draft.hasStarterRecord,
-                      !draft.hasSleep,
                       event.startAt >= draft.startedAt else {
                     continue
                 }
                 draft.append(event)
-                completedDrafts.append(draft)
-                currentDraft = nil
+                currentDraft = draft
 
             case .yearning:
                 continue
@@ -501,12 +709,25 @@ final class EasyCycleStore: ObservableObject {
         return cycles
     }
 
-    private func shouldStartNewCycle(for event: EasyCycleEvent, after draft: EasyCycleDraft) -> Bool {
-        let calendar = Calendar.current
-        if !calendar.isDate(event.startAt, inSameDayAs: draft.startedAt) {
-            return true
-        }
+    private func cycleSourceFingerprint(
+        feedingSessions: [FeedingSession],
+        careRecords: [CareRecord]
+    ) -> [String] {
+            let sessionParts = feedingSessions.map { session in
+                let start = session.startAt ?? session.createdAt
+                let end = session.endAt ?? start
+                return "F|\(session.id.uuidString)|\(start.timeIntervalSince1970)|\(end.timeIntervalSince1970)|\(session.hasData)"
+            }
+            let careParts = careRecords.map { record in
+                let duration = record.kind == .sleep
+                    ? SleepRecordFormatter.durationMinutes(from: record.detail) ?? 0
+                    : 0
+                return "C|\(record.id.uuidString)|\(record.kind.rawValue)|\(record.recordedAt.timeIntervalSince1970)|\(duration)"
+            }
+            return (sessionParts + careParts).sorted()
+    }
 
+    private func shouldStartNewCycle(for event: EasyCycleEvent, after draft: EasyCycleDraft) -> Bool {
         if event.startAt.timeIntervalSince(draft.lastStarterAt) > hardCycleTimeout(asOf: event.startAt) {
             return true
         }
@@ -597,21 +818,6 @@ final class EasyCycleStore: ObservableObject {
         cycle.endedAt = nil
     }
 
-    private func awardIfCompleteCycle(at index: Int) {
-        guard cycles.indices.contains(index) else { return }
-        let phases = Set(cycles[index].linkedRecords.map(\.phase))
-        guard phases.contains(.eat),
-              phases.contains(.activity),
-              phases.contains(.sleep) else {
-            return
-        }
-        let completedAt = cycles[index].endedAt ?? cycles[index].updatedAt
-        CompanionRecruitmentStore.shared.awardBBBucks(
-            forEasyCycle: cycles[index].id,
-            completedAt: completedAt
-        )
-    }
-
     private func cycleHasSleep(at index: Int) -> Bool {
         guard cycles.indices.contains(index) else { return false }
         return cycles[index].linkedRecords.contains { $0.phase == .sleep }
@@ -677,8 +883,7 @@ final class EasyCycleStore: ObservableObject {
 
     private func stableCycleID(for draft: EasyCycleDraft) -> UUID {
         let starterID = draft.links.first(where: { $0.phase == .eat || $0.phase == .activity })?.id ?? draft.links.first?.id ?? "empty"
-        let dayStart = Calendar.current.startOfDay(for: draft.startedAt).timeIntervalSince1970
-        return UUID.stableEasyCycleUUID(seed: "\(dayStart)|\(starterID)")
+        return UUID.stableEasyCycleUUID(seed: starterID)
     }
 
     private func sortCycles() {
@@ -947,23 +1152,23 @@ enum CompanionRarity: String, Codable, CaseIterable, Hashable {
 
     var title: String {
         switch self {
-        case .common: return "普通"
-        case .uncommon: return "少见"
-        case .rare: return "稀有"
-        case .precious: return "珍稀"
+        case .common: return "普通".localized
+        case .uncommon: return "少见".localized
+        case .rare: return "稀有".localized
+        case .precious: return "珍稀".localized
         }
     }
 
     var friendshipTarget: Int {
         switch self {
-        case .common: return 30
-        case .uncommon: return 60
-        case .rare: return 100
-        case .precious: return 160
+        case .common: return 36
+        case .uncommon: return 72
+        case .rare: return 108
+        case .precious: return 180
         }
     }
 
-    var dailyServingLimit: Int { 3 }
+    var dailyServingLimit: Int { friendshipTarget }
 
     var visitWeight: Double {
         switch self {
@@ -972,6 +1177,96 @@ enum CompanionRarity: String, Codable, CaseIterable, Hashable {
         case .rare: return 0.2
         case .precious: return 0.1
         }
+    }
+}
+
+struct CompanionFriendshipHearts: View {
+    static let pointsPerHeart = 36
+
+    let friendshipValue: Int
+    let friendshipTarget: Int
+    let size: CGFloat
+    var filledColor: Color = DesignToken.primary
+    var emptyColor: Color = DesignToken.borderSubtle.opacity(0.72)
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        friendshipValue: Int,
+        friendshipTarget: Int,
+        size: CGFloat,
+        filledColor: Color = DesignToken.primary,
+        emptyColor: Color = DesignToken.borderSubtle.opacity(0.72)
+    ) {
+        self.friendshipValue = friendshipValue
+        self.friendshipTarget = friendshipTarget
+        self.size = size
+        self.filledColor = filledColor
+        self.emptyColor = emptyColor
+    }
+
+    init(
+        companion: BabyCompanion,
+        friendshipValue: Int,
+        isUnlocked: Bool,
+        size: CGFloat,
+        filledColor: Color = DesignToken.primary,
+        emptyColor: Color = DesignToken.borderSubtle.opacity(0.72)
+    ) {
+        self.init(
+            friendshipValue: isUnlocked ? companion.friendshipTarget : friendshipValue,
+            friendshipTarget: companion.friendshipTarget,
+            size: size,
+            filledColor: filledColor,
+            emptyColor: emptyColor
+        )
+    }
+
+    var body: some View {
+        HStack(spacing: max(size * 0.18, 1.5)) {
+            ForEach(0..<heartCount, id: \.self) { index in
+                friendshipHeart(fill: fillAmount(for: index))
+            }
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: displayedValue)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("友情值 \(displayedValue)/\(targetValue)，共 \(heartCount) 颗爱心")
+    }
+
+    private var targetValue: Int {
+        max(friendshipTarget, Self.pointsPerHeart)
+    }
+
+    private var displayedValue: Int {
+        min(max(friendshipValue, 0), targetValue)
+    }
+
+    private var heartCount: Int {
+        max(Int(ceil(Double(targetValue) / Double(Self.pointsPerHeart))), 1)
+    }
+
+    private func fillAmount(for index: Int) -> Double {
+        let pointsInHeart = displayedValue - index * Self.pointsPerHeart
+        return min(max(Double(pointsInHeart) / Double(Self.pointsPerHeart), 0), 1)
+    }
+
+    private func friendshipHeart(fill: Double) -> some View {
+        ZStack {
+            Image(systemName: "heart")
+                .foregroundStyle(emptyColor)
+
+            Image(systemName: "heart.fill")
+                .foregroundStyle(filledColor)
+                .mask {
+                    GeometryReader { proxy in
+                        Rectangle()
+                            .frame(width: proxy.size.width * fill)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+        }
+        .font(.system(size: size, weight: .heavy))
+        .frame(width: size * 1.15, height: size * 1.15)
     }
 }
 
@@ -986,9 +1281,16 @@ struct BabyCompanion: Identifiable, Codable, Hashable {
     var preferenceTags: [String] = []
     var specialConditionTags: [String] = []
 
-    var name: String { englishName }
-    var subtitle: String { "\(chineseName) · \(species)" }
-    var description: String { intro }
+    var name: String { localizedName }
+    var subtitle: String { "\(localizedName) · \(localizedSpecies)" }
+    var description: String { localizedIntro }
+    var localizedName: String {
+        AppLocalization.language == .english ? englishName : chineseName
+    }
+    var localizedSpecies: String { species.localized }
+    var localizedIntro: String { intro.localized }
+    var localizedTemperamentLabel: String { temperamentLabel.localized }
+    var localizedWorldDistribution: String { worldDistribution.localized }
     var portraitAssetName: String { "companion_\(englishName.lowercased())_portrait" }
     var catalogNumber: String {
         guard let index = Self.all.firstIndex(where: { $0.id == id }) else { return "C--" }
@@ -1011,15 +1313,15 @@ struct BabyCompanion: Identifiable, Codable, Hashable {
     var temperamentStyle: (tint: Color, text: Color) {
         switch temperamentLabel {
         case "稳定亲近":
-            return (Color(hex: "#A8DCC5"), Color(hex: "#4E806A"))
+            return (DesignToken.easyYearningSoft, DesignToken.easyYearningText)
         case "节奏多变":
-            return (Color(hex: "#F0C77C"), Color(hex: "#966B22"))
+            return (DesignToken.warningSoft, DesignToken.warningText)
         case "慢热观察":
-            return (Color(hex: "#AFC7F4"), Color(hex: "#536FAD"))
+            return (DesignToken.easySleepSoft, DesignToken.easySleepText)
         case "高敏感":
-            return (Color(hex: "#F2B8C8"), Color(hex: "#A25670"))
+            return (DesignToken.easyActivitySoft, DesignToken.easyActivityText)
         default:
-            return (Color(hex: "#D7D0EA"), Color(hex: "#6D6388"))
+            return (DesignToken.primarySoft, DesignToken.primary)
         }
     }
     var worldDistribution: String {
@@ -1103,39 +1405,39 @@ struct BabyCompanion: Identifiable, Codable, Hashable {
         .init(id: "otter_tangtang", chineseName: "欧缇", englishName: "Ottie", species: "亚洲小爪水獭宝宝", intro: "状态丰富、节奏多变，需要弹性和耐心配合。", emoji: "🦦", rarity: .rare),
         .init(id: "fenny", chineseName: "芬灵", englishName: "Fenny", species: "耳廓狐宝宝", intro: "敏锐聪明、先观察再靠近，对环境里的细节特别有感觉。", emoji: "🦊", rarity: .uncommon),
         .init(id: "redpanda_youyou", chineseName: "瑞迪", englishName: "Reddy", species: "小熊猫宝宝", intro: "柔软但有主见，喜欢按自己的方式慢慢进入状态。", emoji: "🐾", rarity: .precious),
-        .init(id: "koala_anan", chineseName: "阿考", englishName: "Ako", species: "昆士兰考拉宝宝", intro: "慢热谨慎、观察力强，安全感足够后会认真靠近。", emoji: "🐨", rarity: .rare),
-        .init(id: "sloth_nono", chineseName: "霍菲", englishName: "Hoffy", species: "霍氏树懒宝宝", intro: "慢节奏、低刺激偏好，需要更从容的过渡时间。", emoji: "🌿", rarity: .uncommon),
+        .init(id: "koala_anan", chineseName: "阿考", englishName: "Ako", species: "昆士兰考拉宝宝", intro: "慢热谨慎、观察力强，安全感足够后会认真靠近。", emoji: "🐨", rarity: .uncommon),
+        .init(id: "sloth_nono", chineseName: "霍菲", englishName: "Hoffy", species: "霍氏树懒宝宝", intro: "慢节奏、低刺激偏好，需要更从容的过渡时间。", emoji: "🌿", rarity: .common),
         .init(id: "chipmunk_huohuo", chineseName: "奇比", englishName: "Chippy", species: "西伯利亚花栗鼠宝宝", intro: "感受强烈、反应很快，需要更多安抚和提前预告。", emoji: "✨", rarity: .common),
         .init(id: "piggy", chineseName: "尤卡", englishName: "Yuca", species: "尤卡坦迷你猪宝宝", intro: "爱睡觉也爱贴贴，是小木屋里最松弛的暖心伙伴。", emoji: "🐷", rarity: .uncommon),
-        .init(id: "ferry", chineseName: "雪溜", englishName: "Ferry", species: "安格鲁貂宝宝", intro: "软绵灵活、好奇心强，喜欢在日常缝隙里发现小惊喜。", emoji: "🦦", rarity: .common),
+        .init(id: "ferry", chineseName: "雪溜", englishName: "Ferry", species: "安格鲁貂宝宝", intro: "软绵灵活、好奇心强，喜欢在日常缝隙里发现小惊喜。", emoji: "🦦", rarity: .uncommon),
         .init(id: "alpaca_minta", chineseName: "绵塔", englishName: "Minta", species: "羊驼宝宝", intro: "温顺松弛、节奏稳定，是会把紧张气氛慢慢变软的小伙伴。", emoji: "🦙", rarity: .common),
         .init(id: "raccoon_rocky", chineseName: "洛奇", englishName: "Rocky", species: "浣熊宝宝", intro: "聪明好奇、很有小主意，是喜欢在日常角落里发现新鲜事的小侦探。", emoji: "🦝", rarity: .common),
-        .init(id: "seal_poro", chineseName: "泡露", englishName: "Poro", species: "小海豹宝宝", intro: "亲近爱撒娇、状态切换丰富，是今天想贴贴、明天想探索的小浪花。", emoji: "🦭", rarity: .common),
+        .init(id: "seal_poro", chineseName: "泡露", englishName: "Poro", species: "小海豹宝宝", intro: "亲近爱撒娇、状态切换丰富，是今天想贴贴、明天想探索的小浪花。", emoji: "🦭", rarity: .uncommon),
         .init(id: "hedgehog_lili", chineseName: "栗栗", englishName: "Lili", species: "小刺猬宝宝", intro: "谨慎慢热、内心柔软，是熟悉之后才会悄悄靠近的小暖球。", emoji: "🦔", rarity: .uncommon),
         .init(id: "penguin_pino", chineseName: "皮诺", englishName: "Pino", species: "小企鹅宝宝", intro: "慢热认真、需要安全感，是先站稳再一步步靠近世界的小朋友。", emoji: "🐧", rarity: .uncommon),
         .init(id: "lemur_mika", chineseName: "米卡", englishName: "Mika", species: "小狐猴宝宝", intro: "眼神敏锐、反应很快，是很容易感受到环境变化的小观察家。", emoji: "🐾", rarity: .precious),
-        .init(id: "hamster_shushu", chineseName: "咻咻", englishName: "Shushu", species: "小仓鼠宝宝", intro: "感受细腻、动作很快，是紧张时想躲一躲、安心后会主动贴近的小伙伴。", emoji: "🐹", rarity: .rare),
-        .init(id: "sugar_glider_taffy", chineseName: "糖飞", englishName: "Taffy", species: "小蜜袋鼯宝宝", intro: "黏人敏感、很需要陪伴，是分开时会想念、靠近时会放松的小夜星。", emoji: "🐾", rarity: .rare),
-        .init(id: "capybara_cappy", chineseName: "卡皮", englishName: "Cappy", species: "水豚宝宝", intro: "佛系松弛、节奏很慢，是任何时候都不会着急的温柔大个子。", emoji: "🐾", rarity: .uncommon),
-        .init(id: "quokka_quoki", chineseName: "阔奇", englishName: "Quoki", species: "短尾矮袋鼠宝宝", intro: "天然笑脸、慢热谨慎，是笑着观察很久才愿意靠近的小太阳。", emoji: "🐾", rarity: .rare),
-        .init(id: "meerkat_meeko", chineseName: "米寇", englishName: "Meeko", species: "狐獴宝宝", intro: "好奇勇敢、团队意识强，是探头看看世界又会回头确认同伴的小哨兵。", emoji: "🐾", rarity: .uncommon),
+        .init(id: "hamster_shushu", chineseName: "咻咻", englishName: "Shushu", species: "小仓鼠宝宝", intro: "感受细腻、动作很快，是紧张时想躲一躲、安心后会主动贴近的小伙伴。", emoji: "🐹", rarity: .precious),
+        .init(id: "sugar_glider_taffy", chineseName: "糖飞", englishName: "Taffy", species: "小蜜袋鼯宝宝", intro: "黏人敏感、很需要陪伴，是分开时会想念、靠近时会放松的小夜星。", emoji: "🐾", rarity: .common),
+        .init(id: "capybara_cappy", chineseName: "卡皮", englishName: "Cappy", species: "水豚宝宝", intro: "佛系松弛、节奏很慢，是任何时候都不会着急的温柔大个子。", emoji: "🐾", rarity: .common),
+        .init(id: "quokka_quoki", chineseName: "阔奇", englishName: "Quoki", species: "短尾矮袋鼠宝宝", intro: "天然笑脸、慢热谨慎，是笑着观察很久才愿意靠近的小太阳。", emoji: "🐾", rarity: .precious),
+        .init(id: "meerkat_meeko", chineseName: "米寇", englishName: "Meeko", species: "狐獴宝宝", intro: "好奇勇敢、团队意识强，是探头看看世界又会回头确认同伴的小哨兵。", emoji: "🐾", rarity: .common),
         .init(id: "sandcat_sandy", chineseName: "砂迪", englishName: "Sandy", species: "沙丘猫宝宝", intro: "耳朵很大、感受力很强，是安静环境里才能放松的细腻小耳朵。", emoji: "🐾", rarity: .rare),
         .init(id: "arcticfox_arki", chineseName: "阿奇", englishName: "Arki", species: "北极狐宝宝", intro: "会随环境慢慢调整状态，是适应力强又有自己节奏的雪地小精灵。", emoji: "🐾", rarity: .uncommon),
-        .init(id: "seaotter_otta", chineseName: "奥塔", englishName: "Otta", species: "海獭宝宝", intro: "活泼爱互动、动手能力强，是喜欢用小手探索世界的水中开心果。", emoji: "🐾", rarity: .rare),
+        .init(id: "seaotter_otta", chineseName: "奥塔", englishName: "Otta", species: "海獭宝宝", intro: "活泼爱互动、动手能力强，是喜欢用小手探索世界的水中开心果。", emoji: "🐾", rarity: .uncommon),
         .init(id: "flyingsquirrel_glidy", chineseName: "格莱", englishName: "Glidy", species: "大鼯鼠宝宝", intro: "大眼睛、动作快，是容易受惊但滑翔起来特别优雅的夜空小星星。", emoji: "🐾", rarity: .uncommon),
-        .init(id: "chinchilla_chilla", chineseName: "奇拉", englishName: "Chilla", species: "长毛龙猫宝宝", intro: "毛茸茸、胆子小，是需要很安静才能放松下来的蓬松小团子。", emoji: "🐾", rarity: .uncommon),
+        .init(id: "chinchilla_chilla", chineseName: "奇拉", englishName: "Chilla", species: "长毛龙猫宝宝", intro: "毛茸茸、胆子小，是需要很安静才能放松下来的蓬松小团子。", emoji: "🐾", rarity: .precious),
         .init(id: "pallascat_pally", chineseName: "帕利", englishName: "Pally", species: "兔狲宝宝", intro: "天生表情酷酷的，但内心很敏感，是需要慢慢靠近的小方脸。", emoji: "🐾", rarity: .rare),
-        .init(id: "wombat_womby", chineseName: "旺比", englishName: "Womby", species: "袋熊宝宝", intro: "方方正正、慢吞吞，是踏踏实实走每一步的澳洲小土墩。", emoji: "🐾", rarity: .uncommon),
+        .init(id: "wombat_womby", chineseName: "旺比", englishName: "Womby", species: "袋熊宝宝", intro: "方方正正、慢吞吞，是踏踏实实走每一步的澳洲小土墩。", emoji: "🐾", rarity: .common),
         .init(id: "panda_pandy", chineseName: "潘迪", englishName: "Pandy", species: "大熊猫宝宝", intro: "圆滚滚、慢吞吞，是让紧张日常慢慢软下来的黑白小团子。", emoji: "🐾", rarity: .precious),
         .init(id: "crane_crany", chineseName: "克瑞", englishName: "Crany", species: "丹顶鹤宝宝", intro: "优雅安静、节奏很慢，是先远远看着再慢慢走近的白色小伙伴。", emoji: "🐾", rarity: .precious),
-        .init(id: "macaque_maki", chineseName: "玛奇", englishName: "Maki", species: "猕猴宝宝", intro: "红脸蛋、好奇心强，是喜欢观察别人也有自己主意的社交小暖猴。", emoji: "🐾", rarity: .uncommon),
-        .init(id: "beardie_beardy", chineseName: "比迪", englishName: "Beardy", species: "中部鬃狮蜥宝宝", intro: "看起来有点酷但其实很温和，是喜欢安静晒太阳的淡定小伙伴。", emoji: "🐾", rarity: .uncommon),
+        .init(id: "macaque_maki", chineseName: "玛奇", englishName: "Maki", species: "猕猴宝宝", intro: "红脸蛋、好奇心强，是喜欢观察别人也有自己主意的社交小暖猴。", emoji: "🐾", rarity: .common),
+        .init(id: "beardie_beardy", chineseName: "比迪", englishName: "Beardy", species: "中部鬃狮蜥宝宝", intro: "看起来有点酷但其实很温和，是喜欢安静晒太阳的淡定小伙伴。", emoji: "🐾", rarity: .common),
         .init(id: "tibetanfox_tibe", chineseName: "提布", englishName: "Tibe", species: "藏狐宝宝", intro: "表情淡定、慢热观察，是确认安全后才把柔软一面露出来的高原小伙伴。", emoji: "🐾", rarity: .uncommon),
         .init(id: "manedwolf_maney", chineseName: "曼耶", englishName: "Maney", species: "鬃狼宝宝", intro: "步子很轻、距离感强，是确认安全后才慢慢靠近的安静小影子。", emoji: "🐾", rarity: .rare),
-        .init(id: "kinkajou_kinka", chineseName: "金卡", englishName: "Kinka", species: "蜜熊宝宝", intro: "夜晚才活跃、节奏特别，是安静夜色里慢慢探索的甜蜜小伙伴。", emoji: "🐾", rarity: .rare),
-        .init(id: "ringtail_ringo", chineseName: "林果", englishName: "Ringo", species: "环尾猫宝宝", intro: "尾巴一圈一圈、好奇又灵巧，是喜欢在角落里发现秘密的小伙伴。", emoji: "🐾", rarity: .uncommon),
+        .init(id: "kinkajou_kinka", chineseName: "金卡", englishName: "Kinka", species: "蜜熊宝宝", intro: "夜晚才活跃、节奏特别，是安静夜色里慢慢探索的甜蜜小伙伴。", emoji: "🐾", rarity: .common),
+        .init(id: "ringtail_ringo", chineseName: "林果", englishName: "Ringo", species: "环尾猫宝宝", intro: "尾巴一圈一圈、好奇又灵巧，是喜欢在角落里发现秘密的小伙伴。", emoji: "🐾", rarity: .common),
         .init(id: "tapir_tapi", chineseName: "塔皮", englishName: "Tapi", species: "小貘宝宝", intro: "鼻子软软、感受细腻，是先闻闻世界再决定靠近的小森林朋友。", emoji: "🐾", rarity: .rare),
-        .init(id: "moose_moosy", chineseName: "穆西", englishName: "Moosy", species: "小驼鹿宝宝", intro: "大耳朵、慢半拍，是需要宽宽空间和慢慢节奏的温和大朋友。", emoji: "🐾", rarity: .uncommon)
+        .init(id: "moose_moosy", chineseName: "穆西", englishName: "Moosy", species: "小驼鹿宝宝", intro: "大耳朵、慢半拍，是需要宽宽空间和慢慢节奏的温和大朋友。", emoji: "🐾", rarity: .common)
     ]
 
     static let defaultUnlockedIDs: Set<String> = ["piggy", "fenny", "ferry", "cal"]
@@ -1188,8 +1490,8 @@ enum CompanionAnimalRole: String, Codable, Hashable {
 
     var title: String {
         switch self {
-        case .resident: return "常驻"
-        case .visitor: return "来访"
+        case .resident: return "常驻".localized
+        case .visitor: return "来访".localized
         }
     }
 }
@@ -1419,13 +1721,97 @@ struct CompanionVisitContext {
     }
 }
 
+enum BBBuckTransactionSource: String, Codable, Hashable {
+    case easyCycle
+    case historicalImport
+    case migration
+}
+
+struct BBBuckTransaction: Identifiable, Codable, Hashable {
+    let id: String
+    let source: BBBuckTransactionSource
+    let cycleID: UUID?
+    let careDayID: String
+    let baseAmount: Int
+    let plusBonus: Int
+    let createdAt: Date
+
+    var amount: Int { baseAmount + plusBonus }
+}
+
+enum BBBuckAwardStatus: Equatable {
+    case awarded
+    case duplicate
+    case dailyLimitReached
+    case historical
+}
+
+struct BBBuckAwardResult: Equatable {
+    let status: BBBuckAwardStatus
+    let baseAmount: Int
+    let plusBonus: Int
+    let rewardedCycleCount: Int
+
+    var amount: Int { baseAmount + plusBonus }
+}
+
+struct BuddyRelationshipState: Codable, Equatable {
+    var activeCompanionID: String?
+    var continuesTomorrow: Bool
+    var wishQueueIDs: [String]
+    var pendingSwitchCompanionID: String?
+
+    static let empty = BuddyRelationshipState(
+        activeCompanionID: nil,
+        continuesTomorrow: false,
+        wishQueueIDs: [],
+        pendingSwitchCompanionID: nil
+    )
+}
+
+struct HistoricalImportSettlement: Codable, Equatable {
+    var awardedAmount: Int
+    var importFingerprints: Set<String>
+
+    static let empty = HistoricalImportSettlement(awardedAmount: 0, importFingerprints: [])
+}
+
+struct CompanionRecruitmentSnapshot: Codable, Equatable {
+    var bbBucks: Int
+    var balanceAnchor: Int?
+    var friendshipValues: [String: Int]
+    var recruitedIDs: Set<String>
+    var transactions: [BBBuckTransaction]
+    var relationshipState: BuddyRelationshipState
+    var historicalImportSettlement: HistoricalImportSettlement
+}
+
+enum SceneUnlockRule: Codable, Hashable {
+    case free
+    case milestone(String)
+    case achievementCount(Int)
+    case plusVariant(baseSceneID: String)
+    case event(String)
+}
+
+struct SceneEntitlement: Identifiable, Codable, Hashable {
+    let id: String
+    let sceneID: String
+    let awardedAt: Date
+    let sourceAchievementID: UUID?
+}
+
 @MainActor
 final class CompanionRecruitmentStore: ObservableObject {
     static let shared = CompanionRecruitmentStore()
     static let currencyName = "BB Bucks"
-    static let dailyEarnLimit = 5
+    static let dailyEarnLimit = 9
+    static let plusDailyEarnLimit = 12
+    static let dailyRewardedCycleLimit = 3
+    static let baseCycleReward = 3
+    static let plusCycleBonus = 1
+    static let historicalImportLifetimeLimit = 270
     static let dailyBuddyFeedLimit = 1
-    static let bonusFriendshipChance = 0.22
 
     static func currencyText(_ amount: Int) -> String {
         amount == 1 ? "1 BB Buck" : "\(amount) BB Bucks"
@@ -1434,7 +1820,7 @@ final class CompanionRecruitmentStore: ObservableObject {
     @Published private(set) var bbBucks: Int = 0 {
         didSet { persistIfLoaded() }
     }
-    @Published private(set) var friendshipProgress: [String: Double] = [:] {
+    @Published private(set) var friendshipValues: [String: Int] = [:] {
         didSet { persistIfLoaded() }
     }
     @Published private(set) var recruitedIDs: Set<String> = [] {
@@ -1443,19 +1829,30 @@ final class CompanionRecruitmentStore: ObservableObject {
     @Published private(set) var reports: [YesterdayReport] = [] {
         didSet { persistIfLoaded() }
     }
-    @Published private(set) var dailyEarnings: [String: Int] = [:] {
+    @Published private(set) var transactions: [BBBuckTransaction] = [] {
         didSet { persistIfLoaded() }
     }
-    @Published private(set) var awardedEasyCycleIDs: Set<UUID> = [] {
+    @Published private(set) var relationshipState: BuddyRelationshipState = .empty {
+        didSet { persistIfLoaded() }
+    }
+    @Published private(set) var historicalImportSettlement: HistoricalImportSettlement = .empty {
         didSet { persistIfLoaded() }
     }
 
     private let bbBucksKey = "companion_recruitment_bb_bucks_v1"
     private let friendshipKey = "companion_recruitment_friendship_v1"
+    private let friendshipValuesKey = "companion_recruitment_friendship_values_v2"
     private let recruitedKey = "companion_recruitment_recruited_ids_v1"
     private let reportsKey = "companion_recruitment_yesterday_reports_v1"
     private let dailyEarningsKey = "companion_recruitment_daily_earnings_v1"
     private let awardedEasyCycleIDsKey = "companion_recruitment_awarded_easy_cycle_ids_v1"
+    private let transactionsKey = "companion_recruitment_transactions_v2"
+    private let relationshipKey = "companion_recruitment_relationship_v2"
+    private let historicalImportKey = "companion_recruitment_historical_import_v2"
+    private let homeTimeZoneKey = "companion_recruitment_home_timezone_v2"
+    private var legacyDailyEarnings: [String: Int] = [:]
+    private var legacyAwardedEasyCycleIDs: Set<UUID> = []
+    private var homeTimeZoneIdentifier = TimeZone.current.identifier
     private var isLoading = false
 
     init() {
@@ -1465,34 +1862,90 @@ final class CompanionRecruitmentStore: ObservableObject {
     }
 
     @discardableResult
-    func awardBBBucks(forRecord action: BabyAction, recordedAt: Date) -> Bool {
-        guard action == .nursing || action == .diaper || action == .sleep else { return false }
-        let key = Self.dayKey(for: recordedAt)
-        let earnedToday = dailyEarnings[key] ?? 0
-        guard earnedToday < Self.dailyEarnLimit else { return false }
-        dailyEarnings[key] = earnedToday + 1
-        bbBucks += 1
-        return true
-    }
+    func awardBBBucks(
+        forEasyCycle cycleID: UUID,
+        completedAt: Date,
+        isPlusActive: Bool,
+        now: Date = Date()
+    ) -> BBBuckAwardResult {
+        let transactionID = "easy:\(cycleID.uuidString.lowercased())"
+        let dayID = careDayID(for: completedAt)
+        let rewardedCount = rewardedCycleCount(onCareDayID: dayID)
 
-    @discardableResult
-    func awardBBBucks(forEasyCycle cycleID: UUID, completedAt: Date) -> Bool {
-        guard !awardedEasyCycleIDs.contains(cycleID) else { return false }
-        let key = Self.dayKey(for: completedAt)
-        let earnedToday = dailyEarnings[key] ?? 0
-        guard earnedToday < Self.dailyEarnLimit else { return false }
-        dailyEarnings[key] = earnedToday + 1
-        awardedEasyCycleIDs.insert(cycleID)
-        bbBucks += 1
-        return true
+        guard !legacyAwardedEasyCycleIDs.contains(cycleID),
+              !transactions.contains(where: { $0.id == transactionID }) else {
+            return BBBuckAwardResult(
+                status: .duplicate,
+                baseAmount: 0,
+                plusBonus: 0,
+                rewardedCycleCount: rewardedCount
+            )
+        }
+        guard now.timeIntervalSince(completedAt) <= 48 * 60 * 60 else {
+            return BBBuckAwardResult(
+                status: .historical,
+                baseAmount: 0,
+                plusBonus: 0,
+                rewardedCycleCount: rewardedCount
+            )
+        }
+        guard rewardedCount < Self.dailyRewardedCycleLimit else {
+            return BBBuckAwardResult(
+                status: .dailyLimitReached,
+                baseAmount: 0,
+                plusBonus: 0,
+                rewardedCycleCount: rewardedCount
+            )
+        }
+
+        let plusBonus = isPlusActive ? Self.plusCycleBonus : 0
+        let transaction = BBBuckTransaction(
+            id: transactionID,
+            source: .easyCycle,
+            cycleID: cycleID,
+            careDayID: dayID,
+            baseAmount: Self.baseCycleReward,
+            plusBonus: plusBonus,
+            createdAt: now
+        )
+        transactions.append(transaction)
+        bbBucks += transaction.amount
+        return BBBuckAwardResult(
+            status: .awarded,
+            baseAmount: transaction.baseAmount,
+            plusBonus: transaction.plusBonus,
+            rewardedCycleCount: rewardedCount + 1
+        )
     }
 
     func earnedBBBucks(on date: Date) -> Int {
-        dailyEarnings[Self.dayKey(for: date)] ?? 0
+        let dayID = careDayID(for: date)
+        let current = transactions
+            .filter { $0.careDayID == dayID }
+            .reduce(0) { $0 + $1.amount }
+        return max(current, legacyDailyEarnings[dayID] ?? 0)
+    }
+
+    func baseBBBucks(on date: Date) -> Int {
+        let dayID = careDayID(for: date)
+        return transactions
+            .filter { $0.careDayID == dayID }
+            .reduce(0) { $0 + $1.baseAmount }
+    }
+
+    func plusBonusBBBucks(on date: Date) -> Int {
+        let dayID = careDayID(for: date)
+        return transactions
+            .filter { $0.careDayID == dayID }
+            .reduce(0) { $0 + $1.plusBonus }
+    }
+
+    func rewardedCycleCount(on date: Date) -> Int {
+        rewardedCycleCount(onCareDayID: careDayID(for: date))
     }
 
     func remainingEarnableBBBucks(on date: Date) -> Int {
-        max(Self.dailyEarnLimit - earnedBBBucks(on: date), 0)
+        max(Self.dailyRewardedCycleLimit - rewardedCycleCount(on: date), 0) * Self.baseCycleReward
     }
 
     func report(for key: String) -> YesterdayReport? {
@@ -1529,13 +1982,13 @@ final class CompanionRecruitmentStore: ObservableObject {
         guard let index = reports.firstIndex(where: { $0.reportKey == report.reportKey }) else { return }
         var updated = reports[index]
         if let feedingIndex = updated.feedings.firstIndex(where: { $0.companionID == companionID }) {
-            updated.feedings[feedingIndex].servings += 1
+            updated.feedings[feedingIndex].servings += spentBucks
             updated.feedings[feedingIndex].spentBBBucks += spentBucks
             updated.feedings[feedingIndex].bonusServings += bonusServings
         } else {
             updated.feedings.append(YesterdayBuddyFeeding(
                 companionID: companionID,
-                servings: 1,
+                servings: spentBucks,
                 spentBBBucks: spentBucks,
                 bonusServings: bonusServings
             ))
@@ -1545,14 +1998,40 @@ final class CompanionRecruitmentStore: ObservableObject {
         reports[index] = updated
     }
 
-    func visitorCompanion(for reportKey: String) -> BabyCompanion {
-        visitorCompanions(for: reportKey).first ?? BabyCompanion.all[0]
+    func visitorCompanion(
+        for reportKey: String,
+        ownedCompanionIDs: Set<String> = BabyCompanion.defaultUnlockedIDs,
+        excludedCompanionIDs: Set<String> = []
+    ) -> BabyCompanion {
+        visitorCompanions(
+            for: reportKey,
+            ownedCompanionIDs: ownedCompanionIDs,
+            excludedCompanionIDs: excludedCompanionIDs
+        ).first ?? BabyCompanion.all[0]
     }
 
-    func visitorCompanions(for reportKey: String, context: CompanionVisitContext? = nil, limit: Int? = nil) -> [BabyCompanion] {
-        var candidates = lockedRecruitmentCandidates()
-        if candidates.isEmpty {
-            candidates = BabyCompanion.all
+    func visitorCompanions(
+        for reportKey: String,
+        context: CompanionVisitContext? = nil,
+        limit: Int? = nil,
+        ownedCompanionIDs: Set<String> = BabyCompanion.defaultUnlockedIDs,
+        excludedCompanionIDs: Set<String> = []
+    ) -> [BabyCompanion] {
+        let candidates = visitorCandidates(
+            ownedCompanionIDs: ownedCompanionIDs,
+            excludedCompanionIDs: excludedCompanionIDs
+        )
+
+        if relationshipState.continuesTomorrow,
+           let activeID = relationshipState.activeCompanionID,
+           let active = candidates.first(where: { $0.id == activeID }) {
+            return [active]
+        }
+
+        if PlusMembershipStore.shared.isPlusActive,
+           let queuedID = relationshipState.wishQueueIDs.first(where: { id in candidates.contains(where: { $0.id == id }) }),
+           let queued = candidates.first(where: { $0.id == queuedID }) {
+            return [queued]
         }
 
         let targetLimit = limit ?? CompanionRecruitmentStore.dailyBuddyFeedLimit
@@ -1577,13 +2056,41 @@ final class CompanionRecruitmentStore: ObservableObject {
         return selected
     }
 
-    func lockedVisitorCompanion(for reportKey: String) -> BabyCompanion? {
-        lockedVisitorCompanions(for: reportKey).first
+    func lockedVisitorCompanion(
+        for reportKey: String,
+        ownedCompanionIDs: Set<String> = BabyCompanion.defaultUnlockedIDs,
+        excludedCompanionIDs: Set<String> = []
+    ) -> BabyCompanion? {
+        lockedVisitorCompanions(
+            for: reportKey,
+            ownedCompanionIDs: ownedCompanionIDs,
+            excludedCompanionIDs: excludedCompanionIDs
+        ).first
     }
 
-    func lockedVisitorCompanions(for reportKey: String, limit: Int? = nil) -> [BabyCompanion] {
-        let candidates = lockedRecruitmentCandidates()
+    func lockedVisitorCompanions(
+        for reportKey: String,
+        limit: Int? = nil,
+        ownedCompanionIDs: Set<String> = BabyCompanion.defaultUnlockedIDs,
+        excludedCompanionIDs: Set<String> = []
+    ) -> [BabyCompanion] {
+        let candidates = visitorCandidates(
+            ownedCompanionIDs: ownedCompanionIDs,
+            excludedCompanionIDs: excludedCompanionIDs
+        )
         guard !candidates.isEmpty else { return [] }
+
+        if relationshipState.continuesTomorrow,
+           let activeID = relationshipState.activeCompanionID,
+           let active = candidates.first(where: { $0.id == activeID }) {
+            return [active]
+        }
+
+        if PlusMembershipStore.shared.isPlusActive,
+           let queuedID = relationshipState.wishQueueIDs.first(where: { id in candidates.contains(where: { $0.id == id }) }),
+           let queued = candidates.first(where: { $0.id == queuedID }) {
+            return [queued]
+        }
 
         let targetLimit = limit ?? CompanionRecruitmentStore.dailyBuddyFeedLimit
         var selected: [BabyCompanion] = []
@@ -1612,7 +2119,12 @@ final class CompanionRecruitmentStore: ObservableObject {
     }
 
     func friendshipPercent(for companionID: String) -> Double {
-        min(max(friendshipProgress[companionID] ?? 0, 0), 1)
+        let target = max(BabyCompanion.companion(for: companionID).friendshipTarget, 1)
+        return min(max(Double(friendshipValue(for: companionID)) / Double(target), 0), 1)
+    }
+
+    func friendshipValue(for companionID: String) -> Int {
+        max(friendshipValues[companionID] ?? 0, 0)
     }
 
     func feeding(for companionID: String, in report: YesterdayReport) -> YesterdayBuddyFeeding? {
@@ -1626,7 +2138,7 @@ final class CompanionRecruitmentStore: ObservableObject {
 
     func remainingServings(for companionID: String, in report: YesterdayReport) -> Int {
         let companion = BabyCompanion.companion(for: companionID)
-        return max(companion.dailyServingLimit - servingsFed(to: companionID, in: report), 0)
+        return max(companion.friendshipTarget - friendshipValue(for: companionID), 0)
     }
 
     func fedBuddyCount(in report: YesterdayReport) -> Int {
@@ -1638,26 +2150,19 @@ final class CompanionRecruitmentStore: ObservableObject {
         max(Self.dailyBuddyFeedLimit - fedBuddyCount(in: report), 0)
     }
 
-    func canFeed(companionID: String, from report: YesterdayReport) -> Bool {
+    func canFeed(companionID: String, from report: YesterdayReport, amount: Int = 1) -> Bool {
         let currentReport = self.report(for: report.reportKey) ?? report
-        let hasFedCompanion = currentReport.feedings.contains { $0.companionID == companionID && $0.servings > 0 }
         return currentReport.visitorIDs.contains(companionID)
-            && bbBucks > 0
+            && bbBucks >= max(amount, 1)
             && remainingServings(for: companionID, in: currentReport) > 0
-            && (hasFedCompanion || remainingFeedBuddySlots(in: currentReport) > 0)
     }
 
     func feedButtonTitle(for companionID: String, in report: YesterdayReport) -> String {
-        let currentReport = self.report(for: report.reportKey) ?? report
         guard bbBucks > 0 else { return "暂无 BB Bucks" }
-        if remainingServings(for: companionID, in: currentReport) <= 0 {
-            return "\(BabyCompanion.companion(for: companionID).chineseName)吃饱啦"
+        if remainingServings(for: companionID, in: report) <= 0 {
+            return "已经成为伙伴"
         }
-        if !(currentReport.feedings.contains { $0.companionID == companionID && $0.servings > 0 }),
-           remainingFeedBuddySlots(in: currentReport) <= 0 {
-            return "今日照顾满了"
-        }
-        return "喂 1 份"
+        return "招待"
     }
 
     func feedableBBBucks(for report: YesterdayReport) -> Int {
@@ -1668,43 +2173,143 @@ final class CompanionRecruitmentStore: ObservableObject {
     }
 
     @discardableResult
-    func feedVisitor(companionID: String, from report: YesterdayReport) -> CompanionFeedingResult? {
+    func feedVisitor(companionID: String, from report: YesterdayReport, amount requestedAmount: Int = 1) -> CompanionFeedingResult? {
         if self.report(for: report.reportKey) == nil {
             storeReport(report)
         }
 
         let currentReport = self.report(for: report.reportKey) ?? report
-        guard canFeed(companionID: companionID, from: currentReport) else { return nil }
+        let remaining = remainingServings(for: companionID, in: currentReport)
+        let spend = min(max(requestedAmount, 1), bbBucks, remaining)
+        guard spend > 0, canFeed(companionID: companionID, from: currentReport, amount: spend) else { return nil }
 
         let companion = BabyCompanion.companion(for: companionID)
-        let spend = 1
-        bbBucks -= 1
-        let isBonus = bonusTriggered(reportKey: currentReport.reportKey, companionID: companionID, servingIndex: servingsFed(to: companionID, in: currentReport) + 1)
-        let friendshipServings = isBonus ? 3 : 1
-        let current = friendshipPercent(for: companion.id)
-        let increment = Double(friendshipServings) / Double(max(companion.friendshipTarget, 1))
-        let next = min(current + increment, 1)
-        friendshipProgress[companion.id] = next
-        if next >= 1 {
+        bbBucks -= spend
+        let nextValue = min(friendshipValue(for: companion.id) + spend, companion.friendshipTarget)
+        friendshipValues[companion.id] = nextValue
+        let next = Double(nextValue) / Double(max(companion.friendshipTarget, 1))
+        if nextValue >= companion.friendshipTarget {
             recruitedIDs.insert(companion.id)
+            if relationshipState.activeCompanionID == companion.id {
+                relationshipState.activeCompanionID = nil
+                relationshipState.continuesTomorrow = false
+            }
+            relationshipState.wishQueueIDs.removeAll { $0 == companion.id }
         }
-        markReportFeeding(currentReport, companionID: companion.id, spentBucks: spend, bonusServings: isBonus ? 2 : 0)
+        markReportFeeding(currentReport, companionID: companion.id, spentBucks: spend, bonusServings: 0)
         return CompanionFeedingResult(
             companionID: companion.id,
             spentBucks: spend,
-            friendshipServings: friendshipServings,
+            friendshipServings: spend,
             progress: next,
-            didRecruit: next >= 1,
-            isBonus: isBonus
+            didRecruit: nextValue >= companion.friendshipTarget,
+            isBonus: false
         )
+    }
+
+    func inviteTomorrow(_ companionID: String) {
+        guard !isRecruited(companionID) else { return }
+        relationshipState.activeCompanionID = companionID
+        relationshipState.continuesTomorrow = true
+        relationshipState.pendingSwitchCompanionID = nil
+    }
+
+    func meetSomeoneNewTomorrow() {
+        relationshipState.activeCompanionID = nil
+        relationshipState.continuesTomorrow = false
+        relationshipState.pendingSwitchCompanionID = nil
+    }
+
+    func setWishQueue(_ companionIDs: [String], isPlusActive: Bool) {
+        let valid = companionIDs.filter { id in
+            BabyCompanion.all.contains(where: { $0.id == id }) && !isRecruited(id)
+        }
+        relationshipState.wishQueueIDs = Array(NSOrderedSet(array: valid).compactMap { $0 as? String }.prefix(isPlusActive ? 3 : 1))
+    }
+
+    func exportSnapshot() -> CompanionRecruitmentSnapshot {
+        CompanionRecruitmentSnapshot(
+            bbBucks: bbBucks,
+            balanceAnchor: bbBucks
+                + friendshipValues.values.reduce(0, +)
+                - transactions.reduce(0) { $0 + $1.amount },
+            friendshipValues: friendshipValues,
+            recruitedIDs: recruitedIDs,
+            transactions: transactions,
+            relationshipState: relationshipState,
+            historicalImportSettlement: historicalImportSettlement
+        )
+    }
+
+    func importSnapshot(_ snapshot: CompanionRecruitmentSnapshot) {
+        isLoading = true
+        bbBucks = max(snapshot.bbBucks, 0)
+        friendshipValues = snapshot.friendshipValues
+        recruitedIDs = snapshot.recruitedIDs
+        transactions = snapshot.transactions
+        relationshipState = snapshot.relationshipState
+        historicalImportSettlement = snapshot.historicalImportSettlement
+        isLoading = false
+        persist()
+    }
+
+    @discardableResult
+    func settleHistoricalEasyCycles(_ cycles: [EasyCycle], importFingerprint: String, now: Date = Date()) -> Int {
+        guard !historicalImportSettlement.importFingerprints.contains(importFingerprint) else { return 0 }
+        var remainingLifetimeAmount = max(
+            Self.historicalImportLifetimeLimit - historicalImportSettlement.awardedAmount,
+            0
+        )
+        var awarded = 0
+        var awardedPerDay: [String: Int] = [:]
+
+        for cycle in cycles.sorted(by: { ($0.endedAt ?? $0.updatedAt) < ($1.endedAt ?? $1.updatedAt) }) {
+            guard remainingLifetimeAmount >= Self.baseCycleReward else { break }
+            let phases = Set(cycle.linkedRecords.map(\.phase))
+            guard phases.contains(.eat), phases.contains(.activity), phases.contains(.sleep) else { continue }
+
+            let transactionID = "import:\(cycle.id.uuidString.lowercased())"
+            guard !transactions.contains(where: { $0.id == transactionID || $0.cycleID == cycle.id }) else { continue }
+            let completedAt = cycle.endedAt ?? cycle.updatedAt
+            let dayID = careDayID(for: completedAt)
+            let dayCount = awardedPerDay[dayID] ?? transactions.filter {
+                $0.careDayID == dayID && ($0.source == .easyCycle || $0.source == .historicalImport)
+            }.count
+            guard dayCount < Self.dailyRewardedCycleLimit else { continue }
+
+            let transaction = BBBuckTransaction(
+                id: transactionID,
+                source: .historicalImport,
+                cycleID: cycle.id,
+                careDayID: dayID,
+                baseAmount: Self.baseCycleReward,
+                plusBonus: 0,
+                createdAt: now
+            )
+            transactions.append(transaction)
+            awardedPerDay[dayID] = dayCount + 1
+            awarded += transaction.amount
+            remainingLifetimeAmount -= transaction.amount
+        }
+
+        historicalImportSettlement.awardedAmount += awarded
+        historicalImportSettlement.importFingerprints.insert(importFingerprint)
+        bbBucks += awarded
+        return awarded
     }
 
     private func load() {
         let defaults = UserDefaults.standard
         bbBucks = defaults.integer(forKey: bbBucksKey)
-        if let data = defaults.data(forKey: friendshipKey),
-           let decoded = try? JSONDecoder().decode([String: Double].self, from: data) {
-            friendshipProgress = decoded
+        if let data = defaults.data(forKey: friendshipValuesKey),
+           let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
+            friendshipValues = decoded
+        } else if let data = defaults.data(forKey: friendshipKey),
+                  let legacy = try? JSONDecoder().decode([String: Double].self, from: data) {
+            friendshipValues = legacy.reduce(into: [:]) { values, entry in
+                let target = BabyCompanion.companion(for: entry.key).friendshipTarget
+                values[entry.key] = min(max(Int((entry.value * Double(target)).rounded()), 0), target)
+            }
         }
         if let data = defaults.data(forKey: recruitedKey),
            let decoded = try? JSONDecoder().decode(Set<String>.self, from: data) {
@@ -1714,13 +2319,31 @@ final class CompanionRecruitmentStore: ObservableObject {
            let decoded = try? JSONDecoder().decode([YesterdayReport].self, from: data) {
             reports = decoded.sorted { $0.date > $1.date }
         }
+        if let data = defaults.data(forKey: transactionsKey),
+           let decoded = try? JSONDecoder().decode([BBBuckTransaction].self, from: data) {
+            transactions = decoded
+        }
+        if let data = defaults.data(forKey: relationshipKey),
+           let decoded = try? JSONDecoder().decode(BuddyRelationshipState.self, from: data) {
+            relationshipState = decoded
+        }
+        if let data = defaults.data(forKey: historicalImportKey),
+           let decoded = try? JSONDecoder().decode(HistoricalImportSettlement.self, from: data) {
+            historicalImportSettlement = decoded
+        }
+        if let storedTimeZone = defaults.string(forKey: homeTimeZoneKey), TimeZone(identifier: storedTimeZone) != nil {
+            homeTimeZoneIdentifier = storedTimeZone
+        } else {
+            homeTimeZoneIdentifier = TimeZone.current.identifier
+            defaults.set(homeTimeZoneIdentifier, forKey: homeTimeZoneKey)
+        }
         if let data = defaults.data(forKey: dailyEarningsKey),
            let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
-            dailyEarnings = decoded
+            legacyDailyEarnings = decoded
         }
         if let data = defaults.data(forKey: awardedEasyCycleIDsKey),
            let decoded = try? JSONDecoder().decode(Set<UUID>.self, from: data) {
-            awardedEasyCycleIDs = decoded
+            legacyAwardedEasyCycleIDs = decoded
         }
     }
 
@@ -1732,8 +2355,8 @@ final class CompanionRecruitmentStore: ObservableObject {
     private func persist() {
         let defaults = UserDefaults.standard
         defaults.set(bbBucks, forKey: bbBucksKey)
-        if let data = try? JSONEncoder().encode(friendshipProgress) {
-            defaults.set(data, forKey: friendshipKey)
+        if let data = try? JSONEncoder().encode(friendshipValues) {
+            defaults.set(data, forKey: friendshipValuesKey)
         }
         if let data = try? JSONEncoder().encode(recruitedIDs) {
             defaults.set(data, forKey: recruitedKey)
@@ -1741,20 +2364,50 @@ final class CompanionRecruitmentStore: ObservableObject {
         if let data = try? JSONEncoder().encode(reports) {
             defaults.set(data, forKey: reportsKey)
         }
-        if let data = try? JSONEncoder().encode(dailyEarnings) {
-            defaults.set(data, forKey: dailyEarningsKey)
+        if let data = try? JSONEncoder().encode(transactions) {
+            defaults.set(data, forKey: transactionsKey)
         }
-        if let data = try? JSONEncoder().encode(awardedEasyCycleIDs) {
-            defaults.set(data, forKey: awardedEasyCycleIDsKey)
+        if let data = try? JSONEncoder().encode(relationshipState) {
+            defaults.set(data, forKey: relationshipKey)
+        }
+        if let data = try? JSONEncoder().encode(historicalImportSettlement) {
+            defaults.set(data, forKey: historicalImportKey)
         }
     }
 
-    private func lockedRecruitmentCandidates() -> [BabyCompanion] {
-        guard !AppVariant.unlocksAllBuddiesForLocalRun else { return [] }
-
-        return BabyCompanion.all.filter { companion in
-            !isRecruited(companion.id) && !BabyCompanion.defaultUnlockedIDs.contains(companion.id)
+    private func visitorCandidates(
+        ownedCompanionIDs: Set<String>,
+        excludedCompanionIDs: Set<String>
+    ) -> [BabyCompanion] {
+        let canonicalExcludedIDs = Set(excludedCompanionIDs.map(BabyCompanion.canonicalID(_:)))
+        let availableCatalog = BabyCompanion.all.filter {
+            !canonicalExcludedIDs.contains(BabyCompanion.canonicalID($0.id))
         }
+        guard !AppVariant.unlocksAllBuddiesForLocalRun else { return availableCatalog }
+
+        let canonicalOwnedIDs = Set(ownedCompanionIDs.map(BabyCompanion.canonicalID(_:)))
+            .union(recruitedIDs.map(BabyCompanion.canonicalID(_:)))
+        let unowned = availableCatalog.filter {
+            !canonicalOwnedIDs.contains(BabyCompanion.canonicalID($0.id))
+        }
+
+        // Once the collection is complete, every Buddy can join the daily visit rotation.
+        guard !unowned.isEmpty else { return availableCatalog }
+
+        let ageDays = max(
+            Calendar.current.dateComponents(
+                [.day],
+                from: Calendar.current.startOfDay(for: BabyProfileStore.shared.currentProfile.birthDate),
+                to: Calendar.current.startOfDay(for: Date())
+            ).day ?? 0,
+            0
+        )
+        let ageEligible = unowned.filter { companion in
+            isRarityAvailable(companion.rarity, babyAgeDays: ageDays)
+        }
+
+        // Keep daily visits available without falling back to an already owned Buddy.
+        return ageEligible.isEmpty ? unowned : ageEligible
     }
 
     private func recentVisitorIDs(excluding reportKey: String, lookbackCount: Int = 3) -> Set<String> {
@@ -1766,12 +2419,30 @@ final class CompanionRecruitmentStore: ObservableObject {
         return Set(recentReports.flatMap(\.visitorIDs))
     }
 
-    private static func dayKey(for date: Date) -> String {
+    private func careDayID(for date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.calendar = Calendar.current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: homeTimeZoneIdentifier) ?? .current
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
+    }
+
+    private func rewardedCycleCount(onCareDayID careDayID: String) -> Int {
+        transactions.filter { $0.careDayID == careDayID && $0.source == .easyCycle }.count
+    }
+
+    private func isRarityAvailable(_ rarity: CompanionRarity, babyAgeDays: Int) -> Bool {
+        switch rarity {
+        case .common:
+            return true
+        case .uncommon:
+            return babyAgeDays >= 30
+        case .rare, .precious:
+            return babyAgeDays >= 100
+        }
     }
 
     private func deterministicSeed(for key: String) -> Int {
@@ -1846,11 +2517,6 @@ final class CompanionRecruitmentStore: ObservableObject {
         return weight
     }
 
-    private func bonusTriggered(reportKey: String, companionID: String, servingIndex: Int) -> Bool {
-        let seed = deterministicSeed(for: "\(reportKey)-\(companionID)-\(servingIndex)-snack")
-        let roll = Double(seed % 10_000) / 10_000.0
-        return roll < Self.bonusFriendshipChance
-    }
 }
 
 struct CompanionFeedingResult {
@@ -1862,6 +2528,107 @@ struct CompanionFeedingResult {
     let isBonus: Bool
 }
 
+@MainActor
+final class SceneEntitlementStore: ObservableObject {
+    static let shared = SceneEntitlementStore()
+
+    static let freeSceneIDs: Set<String> = ["cozyRoom", "sunnyNursery", "moonlitRoom"]
+    static let rules: [String: SceneUnlockRule] = [
+        "scene_s04": .milestone("one-month"),
+        "scene_s05": .achievementCount(5),
+        "scene_s06": .milestone("hundred-days"),
+        "scene_s07": .achievementCount(10),
+        "scene_s08": .achievementCount(15),
+        "scene_s09": .milestone("first-birthday")
+    ]
+
+    @Published private(set) var entitlements: [SceneEntitlement] = []
+    @Published private(set) var latestAwardedSceneIDs: [String] = []
+
+    private let storageKey = "companion_scene_entitlements_v1"
+
+    init() {
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let decoded = try? JSONDecoder().decode([SceneEntitlement].self, from: data) {
+            entitlements = decoded
+        }
+    }
+
+    func isOwned(_ sceneID: String) -> Bool {
+        Self.freeSceneIDs.contains(sceneID) || entitlements.contains(where: { $0.sceneID == sceneID })
+    }
+
+    @discardableResult
+    func evaluate(achievements: [CustomAchievement], awardedAt: Date = Date()) -> [String] {
+        let validCount = validAchievementCount(achievements)
+        var newlyAwarded: [String] = []
+
+        for (sceneID, rule) in Self.rules.sorted(by: { $0.key < $1.key }) where !isOwned(sceneID) {
+            let sourceAchievement: CustomAchievement?
+            switch rule {
+            case .free, .plusVariant(_), .event(_):
+                sourceAchievement = nil
+            case .milestone(let milestoneID):
+                sourceAchievement = achievements.first { $0.milestoneID == milestoneID || $0.templateID == milestoneID }
+                guard sourceAchievement != nil else { continue }
+            case .achievementCount(let threshold):
+                guard validCount >= threshold else { continue }
+                sourceAchievement = achievements.sorted { $0.completedAt > $1.completedAt }.first
+            }
+
+            entitlements.append(SceneEntitlement(
+                id: "scene-entitlement:\(sceneID)",
+                sceneID: sceneID,
+                awardedAt: awardedAt,
+                sourceAchievementID: sourceAchievement?.id
+            ))
+            newlyAwarded.append(sceneID)
+        }
+
+        if !newlyAwarded.isEmpty {
+            persist()
+            latestAwardedSceneIDs = newlyAwarded
+        }
+        return newlyAwarded
+    }
+
+    func consumeLatestAwards() -> [String] {
+        let awards = latestAwardedSceneIDs
+        latestAwardedSceneIDs = []
+        return awards
+    }
+
+    func exportEntitlements() -> [SceneEntitlement] {
+        entitlements
+    }
+
+    func importEntitlements(_ incoming: [SceneEntitlement]) {
+        var byID = Dictionary(uniqueKeysWithValues: entitlements.map { ($0.id, $0) })
+        for entitlement in incoming where byID[entitlement.id] == nil {
+            byID[entitlement.id] = entitlement
+        }
+        entitlements = byID.values.sorted { $0.awardedAt < $1.awardedAt }
+        persist()
+    }
+
+    private func validAchievementCount(_ achievements: [CustomAchievement]) -> Int {
+        var keys: Set<String> = []
+        for achievement in achievements {
+            if let milestoneID = achievement.milestoneID ?? achievement.templateID {
+                keys.insert("milestone:\(milestoneID)")
+            } else if let fingerprint = achievement.sourceImageFingerprint, !fingerprint.isEmpty {
+                keys.insert("photo:\(fingerprint)")
+            }
+        }
+        return keys.count
+    }
+
+    private func persist() {
+        guard let data = try? JSONEncoder().encode(entitlements) else { return }
+        UserDefaults.standard.set(data, forKey: storageKey)
+    }
+}
+
 // MARK: - Tabs
 
 enum RootTab: Int, CaseIterable {
@@ -1871,9 +2638,9 @@ enum RootTab: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .record: return "记录"
-        case .companion: return "陪伴"
-        case .growth: return "成长"
+        case .record: return "记录".localized
+        case .companion: return "陪伴".localized
+        case .growth: return "成长".localized
         }
     }
 
@@ -1911,15 +2678,15 @@ enum BabyAction: String, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .idle: return "待机"
-        case .shake: return "摇一摇"
-        case .pet: return "抚摸"
-        case .poke: return "戳一戳"
-        case .listen: return "听"
-        case .nursing: return "记录喂养"
-        case .diaper: return "记录尿布"
-        case .breastfeed: return "记录吸乳"
-        case .sleep: return "记录睡眠"
+        case .idle: return "待机".localized
+        case .shake: return "摇一摇".localized
+        case .pet: return "抚摸".localized
+        case .poke: return "戳一戳".localized
+        case .listen: return "听".localized
+        case .nursing: return "记录喂养".localized
+        case .diaper: return "记录尿布".localized
+        case .breastfeed: return "记录吸乳".localized
+        case .sleep: return "记录睡眠".localized
         }
     }
 
@@ -2018,6 +2785,7 @@ enum WidgetStorageKey {
     static let appGroupID = "group.73AUQDMCJ2.babybuddy"
     static let feedingSessions = "feeding_sessions"
     static let careRecords = "care_records_v1"
+    static let careRecencySnapshot = "care_recency_snapshot_v1"
     static let babyInfo = "baby_info"
     static let lastFeedingWidgetKind = "v.babybuddy.LastFeeding"
 }
@@ -2097,12 +2865,7 @@ struct BabyProfileData: Codable {
     }
 
     var ageDisplayText: String {
-        if ageDays < 60 {
-            return "\(ageDays) days"
-        }
-        let months = ageDays / 30
-        let days = ageDays % 30
-        return "\(months)m, \(days)d"
+        BabyAgeFormatter.displayText(birthDate: birthDate, on: Date())
     }
 
     func widgetInfo() -> WidgetBabyInfo {
@@ -2139,22 +2902,69 @@ struct BabyProfileAvatarView: View {
     var emojiSize: CGFloat
     var lineWidth: CGFloat = 1.5
     var motionScale: CGFloat = 1
+    var allowsMotion: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        BabyAvatarContentView(
-            sourceKind: profile.avatarSourceKind,
-            emoji: profile.displayAvatar,
-            imageData: profile.avatarImageData,
-            companionID: profile.avatarCompanionID,
-            videoFilename: profile.avatarVideoFilename,
-            size: size,
-            emojiSize: emojiSize,
-            lineWidth: lineWidth,
-            motionEnabled: profile.isAvatarMotionEnabled && !reduceMotion,
-            motionScale: motionScale
+        Group {
+            if profile.avatarSourceKind == .emoji {
+                BabyDefaultAvatarView(size: size, lineWidth: lineWidth)
+            } else {
+                BabyAvatarContentView(
+                    sourceKind: profile.avatarSourceKind,
+                    emoji: profile.displayAvatar,
+                    imageData: profile.avatarImageData,
+                    companionID: profile.avatarCompanionID,
+                    videoFilename: profile.avatarVideoFilename,
+                    size: size,
+                    emojiSize: emojiSize,
+                    lineWidth: lineWidth,
+                    motionEnabled: allowsMotion && profile.isAvatarMotionEnabled && !reduceMotion,
+                    motionScale: motionScale
+                )
+            }
+        }
+    }
+}
+
+private struct BabyDefaultAvatarView: View {
+    let size: CGFloat
+    let lineWidth: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            DesignToken.surfaceRaised.opacity(0.98),
+                            DesignToken.primary.opacity(0.18),
+                            DesignToken.accentBlue.opacity(0.12)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Image(systemName: "figure.child")
+                .font(.system(size: size * 0.34, weight: .semibold))
+                .foregroundStyle(DesignToken.primary)
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        colors: [.white.opacity(0.95), DesignToken.primary.opacity(0.70)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: lineWidth
+                )
         )
+        .contentShape(Circle())
     }
 }
 
@@ -2194,67 +3004,69 @@ private struct BabyAvatarContentView: View {
     let motionScale: CGFloat
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { context in
-            let phase = motionEnabled
-                ? avatarPhase(at: context.date)
-                : (offset: CGFloat.zero, rotation: 0.0, scale: CGFloat.zero)
-
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.98),
-                                DesignToken.primary.opacity(0.16),
-                                DesignToken.accentBlue.opacity(0.12)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(color: Color(hex: "#4D4B70").opacity(size > 52 ? 0.10 : 0.05), radius: size > 52 ? 12 : 5, y: size > 52 ? 6 : 2)
-
-                avatarImage
-                    .scaleEffect(1 + phase.scale)
-                    .rotationEffect(.degrees(phase.rotation))
-                    .offset(y: phase.offset)
-                    .animation(nil, value: phase.offset)
+        Group {
+            if motionEnabled {
+                TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { context in
+                    avatarFrame(phase: avatarPhase(at: context.date))
+                }
+            } else {
+                avatarFrame(phase: .zero)
             }
-            .frame(width: size, height: size)
-            .clipShape(Circle())
-            .overlay(
-                Circle()
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.95),
-                                DesignToken.primary.opacity(0.70)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: lineWidth
-                    )
-            )
-            .contentShape(Circle())
         }
         .frame(width: size, height: size)
+    }
+
+    private func avatarFrame(phase: BabyAvatarMotionPhase) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.98),
+                            DesignToken.primary.opacity(0.16),
+                            DesignToken.accentBlue.opacity(0.12)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: DesignToken.shadowColor.opacity(size > 52 ? 0.10 : 0.05), radius: size > 52 ? 12 : 5, y: size > 52 ? 6 : 2)
+
+            avatarImage
+                .scaleEffect(1 + phase.scale)
+                .rotationEffect(.degrees(phase.rotation))
+                .offset(y: phase.offset)
+                .animation(nil, value: phase.offset)
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.95),
+                            DesignToken.primary.opacity(0.70)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: lineWidth
+                )
+        )
+        .contentShape(Circle())
     }
 
     @ViewBuilder
     private var avatarImage: some View {
         switch sourceKind {
         case .photo:
-            if let imageData,
-               let image = UIImage(data: imageData) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: size, height: size)
-                    .clipShape(Circle())
-            } else {
-                Text(emoji).font(.system(size: emojiSize))
-            }
+            DecodedAvatarPhotoView(
+                imageData: imageData,
+                fallbackEmoji: emoji,
+                size: size,
+                emojiSize: emojiSize
+            )
         case .companion:
             if let companionID {
                 Image(BabyCompanion.companion(for: companionID).portraitAssetName)
@@ -2262,11 +3074,10 @@ private struct BabyAvatarContentView: View {
                     .scaledToFit()
                     .padding(size * 0.09)
             } else {
-                Text(emoji).font(.system(size: emojiSize))
+                defaultAvatarSymbol
             }
         case .emoji:
-            Text(emoji)
-                .font(.system(size: emojiSize))
+            defaultAvatarSymbol
         case .video:
             if let videoFilename,
                let url = BabyAvatarVideoStore.url(for: videoFilename) {
@@ -2274,21 +3085,69 @@ private struct BabyAvatarContentView: View {
                     .frame(width: size, height: size)
                     .clipShape(Circle())
             } else {
-                Text(emoji)
-                    .font(.system(size: emojiSize))
+                defaultAvatarSymbol
             }
         }
     }
 
-    private func avatarPhase(at date: Date) -> (offset: CGFloat, rotation: Double, scale: CGFloat) {
+    private var defaultAvatarSymbol: some View {
+        Image(systemName: "figure.child")
+            .font(.system(size: emojiSize * 0.72, weight: .semibold))
+            .foregroundStyle(DesignToken.primary)
+    }
+
+    private func avatarPhase(at date: Date) -> BabyAvatarMotionPhase {
         let elapsed = date.timeIntervalSinceReferenceDate
         let wave = sin(elapsed * 2.4)
         let secondary = sin(elapsed * 1.25 + 0.7)
-        return (
+        return BabyAvatarMotionPhase(
             offset: CGFloat(wave) * 1.3 * motionScale,
             rotation: secondary * 1.8 * Double(motionScale),
             scale: CGFloat((wave + 1) * 0.006) * motionScale
         )
+    }
+}
+
+private struct BabyAvatarMotionPhase {
+    var offset: CGFloat
+    var rotation: Double
+    var scale: CGFloat
+
+    static let zero = BabyAvatarMotionPhase(offset: .zero, rotation: 0, scale: .zero)
+}
+
+private struct DecodedAvatarPhotoView: View {
+    let imageData: Data?
+    let fallbackEmoji: String
+    let size: CGFloat
+    let emojiSize: CGFloat
+
+    @State private var decodedImage: UIImage?
+
+    var body: some View {
+        Group {
+            if let decodedImage {
+                Image(uiImage: decodedImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "figure.child")
+                    .font(.system(size: emojiSize * 0.72, weight: .semibold))
+                    .foregroundStyle(DesignToken.primary)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .task(id: imageData) {
+            decodedImage = await decodeImage(from: imageData)
+        }
+    }
+
+    private func decodeImage(from data: Data?) async -> UIImage? {
+        guard let data else { return nil }
+        return await Task.detached(priority: .utility) {
+            UIImage(data: data)
+        }.value
     }
 }
 
@@ -2306,6 +3165,13 @@ enum BabyAvatarVideoStore {
     }
 
     static func url(for filename: String) -> URL? {
+        guard filename.hasPrefix("avatar-"),
+              filename.utf8.count <= 255,
+              !filename.contains("/"),
+              !filename.contains("\\"),
+              (filename as NSString).pathExtension.lowercased() == "mov" else {
+            return nil
+        }
         guard let directory = try? directoryURL() else { return nil }
         let url = directory.appendingPathComponent(filename)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
@@ -2339,6 +3205,10 @@ private struct LoopingAvatarVideoView: UIViewRepresentable {
         uiView.configure(url: url)
     }
 
+    static func dismantleUIView(_ uiView: PlayerView, coordinator: Void) {
+        uiView.cleanup()
+    }
+
     final class PlayerView: UIView {
         private var playerLayer = AVPlayerLayer()
         private var player: AVQueuePlayer?
@@ -2352,7 +3222,9 @@ private struct LoopingAvatarVideoView: UIViewRepresentable {
         }
 
         required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
+            super.init(coder: coder)
+            playerLayer.videoGravity = .resizeAspectFill
+            layer.addSublayer(playerLayer)
         }
 
         override func layoutSubviews() {
@@ -2372,6 +3244,20 @@ private struct LoopingAvatarVideoView: UIViewRepresentable {
             looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
             player = queuePlayer
             queuePlayer.play()
+        }
+
+        func cleanup() {
+            player?.pause()
+            looper?.disableLooping()
+            looper = nil
+            player?.removeAllItems()
+            player = nil
+            playerLayer.player = nil
+            currentURL = nil
+        }
+
+        deinit {
+            cleanup()
         }
     }
 }
@@ -2413,7 +3299,7 @@ final class BabyProfileStore: Observable {
         }
         set {
             withMutation(keyPath: \.profile) {
-                _profile = newValue
+                _profile = newValue.map { Self.sanitized($0) }
                 save()
             }
         }
@@ -2426,10 +3312,10 @@ final class BabyProfileStore: Observable {
     init() {
         if let data = UserDefaults.standard.data(forKey: key),
            let decoded = try? JSONDecoder().decode(BabyProfileData.self, from: data) {
-            _profile = decoded
+            _profile = Self.sanitized(decoded)
         } else if let data = UserDefaults.standard.data(forKey: key),
                   let decoded = try? JSONDecoder().decode(BabyProfile.self, from: data) {
-            _profile = decoded.data
+            _profile = Self.sanitized(decoded.data)
         } else {
             _profile = Self.defaultProfile
         }
@@ -2577,11 +3463,35 @@ final class BabyProfileStore: Observable {
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetStorageKey.lastFeedingWidgetKind)
         #endif
         let ageMonths = profileData.ageMonths
-        if let last = FeedingStore.sharedLastFeedingTime() {
-            Task { @MainActor in
-                LiveActivityManager.shared.startOrUpdate(lastFeedingDate: last, babyAgeMonths: ageMonths)
-            }
+        Task { @MainActor in
+            CareRecencyCoordinator.refreshFromSharedStorage(babyAgeMonths: ageMonths)
         }
+    }
+
+    private static func sanitized(_ input: BabyProfileData, now: Date = Date()) -> BabyProfileData {
+        var value = input
+        let cleanedName = value.name
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
+        value.name = String((cleanedName.isEmpty ? "宝宝" : cleanedName).prefix(40))
+        value.birthDate = min(value.birthDate, now)
+        value.heightCm = value.heightCm.flatMap { metric in
+            metric.isFinite && GrowthMetricKind.height.validRange.contains(metric) ? metric : nil
+        }
+        value.weightKg = value.weightKg.flatMap { metric in
+            metric.isFinite && GrowthMetricKind.weight.validRange.contains(metric) ? metric : nil
+        }
+        if let data = value.avatarImageData, data.count > 8 * 1_024 * 1_024 {
+            value.avatarImageData = nil
+        }
+        value.avatarHistory = value.avatarHistoryItems
+            .filter { snapshot in
+                guard let data = snapshot.imageData else { return true }
+                return data.count <= 8 * 1_024 * 1_024
+            }
+            .prefix(8)
+            .map { $0 }
+        return value
     }
 
     private static var defaultProfile: BabyProfileData {
@@ -2692,6 +3602,12 @@ enum FeedingType: String, Codable, CaseIterable {
         }
     }
 
+    var localizedDisplayName: String { displayName.localized }
+
+    func localizedDisplayName(withMilkType milkType: MilkType?) -> String {
+        displayName(withMilkType: milkType).localized
+    }
+
     /// 根据瓶喂中的母乳/奶粉区分显示名
     func displayName(withMilkType milkType: MilkType?) -> String {
         switch self {
@@ -2724,6 +3640,8 @@ enum MilkType: String, Codable, CaseIterable, Identifiable {
         case .formula: return "奶粉"
         }
     }
+
+    var localizedDisplayName: String { displayName.localized }
 }
 
 enum BabyMood: String, Codable, CaseIterable {
@@ -2744,6 +3662,8 @@ enum BreastSide: String, Codable, CaseIterable, Identifiable {
         case .right: return "右"
         }
     }
+
+    var localizedDisplayName: String { displayName.localized }
 }
 
 enum BreastFeedingMode: String, Codable, CaseIterable, Identifiable {
@@ -2760,6 +3680,8 @@ enum BreastFeedingMode: String, Codable, CaseIterable, Identifiable {
         case .pumping: return "吸乳"
         }
     }
+
+    var localizedDisplayName: String { displayName.localized }
 
     var systemImage: String {
         switch self {
@@ -2796,6 +3718,8 @@ enum SolidUnit: String, Codable, CaseIterable, Identifiable {
         case .tbsp: return "大勺"
         }
     }
+
+    var localizedDisplayName: String { displayName.localized }
 }
 
 enum SolidFood: String, Codable, CaseIterable, Identifiable {
@@ -2829,6 +3753,8 @@ enum SolidFood: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    var localizedDisplayName: String { displayName.localized }
+
     var emoji: String {
         switch self {
         case .rice: return "🍚"
@@ -2842,6 +3768,22 @@ enum SolidFood: String, Codable, CaseIterable, Identifiable {
         case .bread: return "🍞"
         case .yogurt: return "🥛"
         case .other: return "🍽️"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .rice: return "米"
+        case .porridge: return "粥"
+        case .vegetable: return "蔬"
+        case .fruit: return "果"
+        case .meat: return "肉"
+        case .fish: return "鱼"
+        case .egg: return "蛋"
+        case .noodle: return "面"
+        case .bread: return "包"
+        case .yogurt: return "奶"
+        case .other: return "其"
         }
     }
 
@@ -2890,6 +3832,31 @@ struct FeedingEntry: Identifiable, Codable {
         self.solidFood = solidFood
         self.solidAmount = solidAmount
         self.solidUnit = solidUnit
+    }
+
+    func sanitized() -> FeedingEntry? {
+        var value = self
+        switch type {
+        case .breast:
+            guard let duration = breastDuration, duration > 0 else { return nil }
+            value.breastDuration = min(duration, 240)
+            value.bottleAmount = nil
+            value.bottleDuration = nil
+            value.solidAmount = nil
+        case .bottle:
+            guard let amount = bottleAmount, amount > 0 else { return nil }
+            value.bottleAmount = min(amount, 2_000)
+            value.bottleDuration = bottleDuration.flatMap { $0 > 0 ? min($0, 240) : nil }
+            value.breastDuration = nil
+            value.solidAmount = nil
+        case .solid:
+            guard let amount = solidAmount, amount.isFinite, amount > 0 else { return nil }
+            value.solidAmount = min(amount, 2_000)
+            value.breastDuration = nil
+            value.bottleAmount = nil
+            value.bottleDuration = nil
+        }
+        return value
     }
 }
 
@@ -3019,26 +3986,37 @@ struct FeedingSession: Identifiable, Codable {
     }
 
     var solidsGram: Int? {
-        entries.compactMap { $0.solidAmount.map(Int.init) }.first
+        entries.compactMap { entry in
+            guard let amount = entry.solidAmount, amount.isFinite else { return nil }
+            return Int(min(max(amount, 0), 2_000))
+        }.first
     }
 
     var mood: BabyMood { babyMood }
     var note: String { notes }
 
     var totalBreastDuration: Int {
-        entries.compactMap(\.breastDuration).reduce(0, +)
+        entries.compactMap(\.breastDuration)
+            .filter { $0 > 0 }
+            .reduce(0) { min($0 + min($1, 240), 1_440) }
     }
 
     var totalBottleAmount: Int {
-        entries.compactMap(\.bottleAmount).reduce(0, +)
+        entries.compactMap(\.bottleAmount)
+            .filter { $0 > 0 }
+            .reduce(0) { min($0 + min($1, 2_000), 20_000) }
     }
 
     var totalBottleDuration: Int {
-        entries.compactMap(\.bottleDuration).reduce(0, +)
+        entries.compactMap(\.bottleDuration)
+            .filter { $0 > 0 }
+            .reduce(0) { min($0 + min($1, 240), 1_440) }
     }
 
     var totalSolidAmount: Double {
-        entries.compactMap(\.solidAmount).reduce(0, +)
+        entries.compactMap(\.solidAmount)
+            .filter { $0.isFinite && $0 > 0 }
+            .reduce(0) { min($0 + min($1, 2_000), 20_000) }
     }
 
     var hasData: Bool {
@@ -3082,6 +4060,38 @@ struct FeedingSession: Identifiable, Codable {
         return FeedingResolvedTimeSpan(startAt: resolvedEnd, endAt: resolvedEnd, source: .point)
     }
 
+    func sanitized(referenceDate: Date = Date()) -> FeedingSession? {
+        let latestAcceptedDate = referenceDate.addingTimeInterval(5 * 60)
+        guard createdAt <= latestAcceptedDate else { return nil }
+
+        var value = self
+        value.createdAt = min(createdAt, referenceDate)
+        value.entries = entries.prefix(64).compactMap { $0.sanitized() }
+        guard !value.entries.isEmpty else { return nil }
+        value.notes = String(
+            notes
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\n", with: " ")
+                .prefix(2_000)
+        )
+        if let imageData, imageData.count > 8 * 1_024 * 1_024 {
+            value.imageData = nil
+        }
+
+        if let startAt, let endAt,
+           startAt <= endAt,
+           endAt <= latestAcceptedDate,
+           endAt.timeIntervalSince(startAt) <= 24 * 60 * 60 {
+            value.startAt = startAt
+            value.endAt = min(endAt, referenceDate)
+        } else {
+            value.startAt = nil
+            value.endAt = nil
+            value.timeSpanSource = nil
+        }
+        return value
+    }
+
     var recordedDurationMinutes: Int {
         totalBreastDuration + totalBottleDuration
     }
@@ -3099,7 +4109,7 @@ struct FeedingSession: Identifiable, Codable {
                 let rawMinutes = Int(ceil(Double(amount) / profile.mlPerMinute))
                 estimated += min(max(rawMinutes, profile.minMinutes), profile.maxMinutes)
             case .solid:
-                guard let amount = entry.solidAmount, amount > 0 else { break }
+                guard let amount = entry.solidAmount, amount.isFinite, amount > 0 else { break }
                 let normalizedAmount = Self.normalizedSolidAmount(amount, unit: entry.solidUnit ?? .g)
                 let rawMinutes = Int(ceil(normalizedAmount / 12.0))
                 estimated += min(max(rawMinutes, 5), 20)
@@ -3164,8 +4174,8 @@ enum GrowthMetricKind: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .weight: return "体重"
-        case .height: return "身高"
+        case .weight: return "体重".localized
+        case .height: return "身高".localized
         }
     }
 
@@ -3178,8 +4188,8 @@ enum GrowthMetricKind: String, Codable, CaseIterable, Identifiable {
 
     var accent: Color {
         switch self {
-        case .weight: return Color(hex: "#8E93F6")
-        case .height: return Color(hex: "#A66FF2")
+        case .weight: return DesignToken.primary
+        case .height: return DesignToken.accentBlue
         }
     }
 
@@ -3194,6 +4204,13 @@ enum GrowthMetricKind: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .weight: return "record_weight_scale_hero"
         case .height: return "record_height_meter_hero"
+        }
+    }
+
+    var validRange: ClosedRange<Double> {
+        switch self {
+        case .weight: return 0.5...40
+        case .height: return 30...130
         }
     }
 }
@@ -3239,7 +4256,7 @@ final class GrowthMetricStore: ObservableObject {
     }
 
     func saveRecord(kind: GrowthMetricKind, value: Double, note: String = "", recordedAt: Date = Date()) {
-        guard value > 0, recordedAt <= Date() else { return }
+        guard value.isFinite, kind.validRange.contains(value), recordedAt <= Date() else { return }
         let cleanedNote = clean(note)
         records.append(GrowthMetricRecord(kind: kind, value: value, note: cleanedNote, recordedAt: recordedAt))
         records.sort { $0.recordedAt > $1.recordedAt }
@@ -3247,7 +4264,7 @@ final class GrowthMetricStore: ObservableObject {
     }
 
     func updateRecord(_ record: GrowthMetricRecord, value: Double, note: String, recordedAt: Date) {
-        guard value > 0, recordedAt <= Date() else { return }
+        guard value.isFinite, record.kind.validRange.contains(value), recordedAt <= Date() else { return }
         let updated = GrowthMetricRecord(
             id: record.id,
             kind: record.kind,
@@ -3311,7 +4328,10 @@ final class GrowthMetricStore: ObservableObject {
     }
 
     func importRecords(_ records: [GrowthMetricRecord]) {
-        self.records = records.sorted { $0.recordedAt > $1.recordedAt }
+        let now = Date()
+        self.records = records
+            .filter { $0.value.isFinite && $0.kind.validRange.contains($0.value) && $0.recordedAt <= now }
+            .sorted { $0.recordedAt > $1.recordedAt }
         syncLatestProfileMetrics()
     }
 
@@ -3322,7 +4342,10 @@ final class GrowthMetricStore: ObservableObject {
               let decoded = try? JSONDecoder().decode([GrowthMetricRecord].self, from: data) else {
             return
         }
-        records = decoded.sorted { $0.recordedAt > $1.recordedAt }
+        let now = Date()
+        records = decoded
+            .filter { $0.value.isFinite && $0.kind.validRange.contains($0.value) && $0.recordedAt <= now }
+            .sorted { $0.recordedAt > $1.recordedAt }
     }
 
     private func persist() {
@@ -3345,164 +4368,6 @@ final class GrowthMetricStore: ObservableObject {
     }
 }
 
-// MARK: - Live Activity
-
-enum FeedingIntervalStatus: Int, Codable, CaseIterable {
-    case justFed = 0
-    case tooSoon = 1
-    case safe = 2
-    case maybeHungry = 3
-    case definitelyHungry = 4
-    case warning = 5
-
-    init(lastFeedingDate: Date, babyAgeMonths: Int?, now: Date = Date()) {
-        let hours = now.timeIntervalSince(lastFeedingDate) / 3600
-        let thresholds = FeedingIntervalStatus.thresholds(for: babyAgeMonths)
-
-        if hours < thresholds.justFed {
-            self = .justFed
-        } else if hours < thresholds.tooSoon {
-            self = .tooSoon
-        } else if hours < thresholds.safe {
-            self = .safe
-        } else if hours < thresholds.maybeHungry {
-            self = .maybeHungry
-        } else if hours < thresholds.definitelyHungry {
-            self = .definitelyHungry
-        } else {
-            self = .warning
-        }
-    }
-
-    static func thresholds(for babyAgeMonths: Int?) -> (justFed: Double, tooSoon: Double, safe: Double, maybeHungry: Double, definitelyHungry: Double) {
-        guard let months = babyAgeMonths else {
-            return (1.5, 2.5, 4, 5, 6)
-        }
-        if months < 1 {
-            return (0.75, 1.25, 2, 3, 4)
-        }
-        if months < 3 {
-            return (1, 2, 3, 4, 5)
-        }
-        if months < 6 {
-            return (1.5, 2.5, 4, 5, 6)
-        }
-        return (2, 3, 5, 6.5, 8)
-    }
-
-    var label: String {
-        switch self {
-        case .justFed: return "刚喂过"
-        case .tooSoon: return "还不饿"
-        case .safe: return "状态正好"
-        case .maybeHungry: return "可能饿了"
-        case .definitelyHungry: return "饿了"
-        case .warning: return "尽快喂养"
-        }
-    }
-
-    var emoji: String {
-        switch self {
-        case .justFed: return "😌"
-        case .tooSoon: return "🙂"
-        case .safe: return "😊"
-        case .maybeHungry: return "🥺"
-        case .definitelyHungry: return "😢"
-        case .warning: return "⚠️"
-        }
-    }
-
-    var backgroundColorHex: String {
-        switch self {
-        case .justFed: return "#DFF5E5"
-        case .tooSoon: return "#E8F4FF"
-        case .safe: return "#FFF7D6"
-        case .maybeHungry: return "#FFE9D6"
-        case .definitelyHungry: return "#FFE0DE"
-        case .warning: return "#FFD6D6"
-        }
-    }
-
-    var accentColorHex: String {
-        switch self {
-        case .justFed: return "#34C759"
-        case .tooSoon: return "#64A9FF"
-        case .safe: return "#F6C453"
-        case .maybeHungry: return "#F6A04D"
-        case .definitelyHungry: return "#FF7A70"
-        case .warning: return "#FF5A5A"
-        }
-    }
-}
-
-#if canImport(ActivityKit)
-struct FeedingActivityAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        var lastFeedingDate: Date
-        var babyAgeMonths: Int?
-        var status: FeedingIntervalStatus
-    }
-
-    var babyAgeMonths: Int?
-}
-#endif
-
-@MainActor
-final class LiveActivityManager {
-    static let shared = LiveActivityManager()
-
-    private init() {}
-
-    private var pendingUpdate = false
-
-    func startOrUpdate(lastFeedingDate: Date, babyAgeMonths: Int?) {
-        #if canImport(ActivityKit)
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        guard !pendingUpdate else { return }
-        pendingUpdate = true
-        let status = FeedingIntervalStatus(lastFeedingDate: lastFeedingDate, babyAgeMonths: babyAgeMonths)
-        let state = FeedingActivityAttributes.ContentState(lastFeedingDate: lastFeedingDate, babyAgeMonths: babyAgeMonths, status: status)
-        let content = ActivityContent(state: state, staleDate: lastFeedingDate.addingTimeInterval(24 * 60 * 60))
-
-        Task {
-            defer { pendingUpdate = false }
-            let activities = Activity<FeedingActivityAttributes>.activities
-            if activities.isEmpty {
-                let attributes = FeedingActivityAttributes(babyAgeMonths: babyAgeMonths)
-                _ = try? Activity.request(attributes: attributes, content: content)
-                return
-            }
-
-            let shouldRecreate = activities.count > 1 || activities.contains { activity in
-                abs(activity.content.state.lastFeedingDate.timeIntervalSince(lastFeedingDate)) > 1
-            }
-
-            if shouldRecreate {
-                for activity in activities {
-                    await activity.end(nil, dismissalPolicy: .immediate)
-                }
-                let attributes = FeedingActivityAttributes(babyAgeMonths: babyAgeMonths)
-                _ = try? Activity.request(attributes: attributes, content: content)
-            } else {
-                for activity in activities {
-                    await activity.update(content)
-                }
-            }
-        }
-        #endif
-    }
-
-    func endCurrentActivity() {
-        #if canImport(ActivityKit)
-        Task {
-            for activity in Activity<FeedingActivityAttributes>.activities {
-                await activity.end(nil, dismissalPolicy: .immediate)
-            }
-        }
-        #endif
-    }
-}
-
 @MainActor
 final class FeedingStore: ObservableObject {
     @Published var sessions: [FeedingSession] = [] {
@@ -3519,7 +4384,9 @@ final class FeedingStore: ObservableObject {
             let data = Self.loadInitialData(key: key),
             let decoded = try? JSONDecoder().decode([FeedingSession].self, from: data)
         {
-            sessions = decoded.sorted { $0.createdAt > $1.createdAt }
+            let now = Date()
+            sessions = decoded.compactMap { $0.sanitized(referenceDate: now) }
+                .sorted { $0.createdAt > $1.createdAt }
         } else {
             sessions = []
         }
@@ -3562,7 +4429,10 @@ final class FeedingStore: ObservableObject {
         sessions(on: date).reduce(0) { total, session in
             total + session.entries
                 .filter { $0.type == .solid }
-                .compactMap { $0.solidAmount.map(Int.init) }
+                .compactMap { entry in
+                    guard let amount = entry.solidAmount, amount.isFinite else { return nil }
+                    return Int(min(max(amount, 0), 2_000))
+                }
                 .reduce(0, +)
         }
     }
@@ -3611,29 +4481,35 @@ final class FeedingStore: ObservableObject {
     }
 
     func saveSession(_ session: FeedingSession) {
-        guard session.createdAt <= Date() else { return }
-        sessions.append(session)
-        sessions.sort { $0.createdAt > $1.createdAt }
-        EasyCycleStore.shared.trackFeedingSession(session)
-        CompanionRecruitmentStore.shared.awardBBBucks(forRecord: .nursing, recordedAt: session.createdAt)
+        guard let sanitized = session.sanitized(),
+              !sessions.contains(where: { $0.id == sanitized.id }) else { return }
+        sessions = (sessions + [sanitized]).sorted { $0.createdAt > $1.createdAt }
+        EasyCycleStore.shared.trackFeedingSession(sanitized)
     }
 
     func deleteSession(_ session: FeedingSession) {
         sessions.removeAll { $0.id == session.id }
         EasyCycleStore.shared.removeRecordLink(type: .feeding, recordID: session.id)
+        SubjectiveStateStore.shared.deleteLinked(sourceType: .feeding, sourceRecordID: session.id)
         FamilyCloudStore.shared.markFeedingSessionDeleted(session.id)
     }
 
     func updateSession(_ session: FeedingSession) {
-        guard session.createdAt <= Date() else { return }
-        guard let index = sessions.firstIndex(where: { $0.id == session.id }) else {
-            saveSession(session)
+        guard let sanitized = session.sanitized() else { return }
+        guard let index = sessions.firstIndex(where: { $0.id == sanitized.id }) else {
+            saveSession(sanitized)
             return
         }
-        sessions[index] = session
-        sessions.sort { $0.createdAt > $1.createdAt }
-        EasyCycleStore.shared.removeRecordLink(type: .feeding, recordID: session.id)
-        EasyCycleStore.shared.trackFeedingSession(session)
+        var updatedSessions = sessions
+        updatedSessions[index] = sanitized
+        sessions = updatedSessions.sorted { $0.createdAt > $1.createdAt }
+        EasyCycleStore.shared.removeRecordLink(type: .feeding, recordID: sanitized.id)
+        EasyCycleStore.shared.trackFeedingSession(sanitized)
+        SubjectiveStateStore.shared.updateLinkedRecord(
+            sourceType: .feeding,
+            sourceRecordID: sanitized.id,
+            recordedAt: sanitized.startAt ?? sanitized.createdAt
+        )
     }
 
     func exportSessions() -> [FeedingSession] {
@@ -3641,7 +4517,9 @@ final class FeedingStore: ObservableObject {
     }
 
     func importSessions(_ sessions: [FeedingSession]) {
-        self.sessions = sessions.sorted { $0.createdAt > $1.createdAt }
+        let now = Date()
+        self.sessions = sessions.compactMap { $0.sanitized(referenceDate: now) }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     func todaySummary(for date: Date = Date()) -> FeedingSummary {
@@ -3665,11 +4543,12 @@ final class FeedingStore: ObservableObject {
         }.count
     }
 
-    func lastFeedingTime() -> Date? {
-        sessions
-            .filter { $0.createdAt <= Date() }
-            .sorted { $0.createdAt > $1.createdAt }
-            .first?.createdAt
+    func lastFeedingTime(relativeTo referenceDate: Date = Date()) -> Date? {
+        CareRecencyCalculator.snapshot(
+            feedingSessions: sessions,
+            careRecords: [],
+            referenceDate: referenceDate
+        ).feeding.completedAt
     }
 
     nonisolated static func sharedLastFeedingTime() -> Date? {
@@ -3683,10 +4562,11 @@ final class FeedingStore: ObservableObject {
         else {
             return nil
         }
-        return sessions
-            .filter { $0.createdAt <= Date() }
-            .max { $0.createdAt < $1.createdAt }?
-            .createdAt
+        return CareRecencyCalculator.snapshot(
+            feedingSessions: sessions,
+            careRecords: [],
+            referenceDate: Date()
+        ).feeding.completedAt
     }
 
     private func persist() {
@@ -3699,11 +4579,9 @@ final class FeedingStore: ObservableObject {
             WidgetCenter.shared.reloadTimelines(ofKind: WidgetStorageKey.lastFeedingWidgetKind)
             #endif
         }
-        if let last = lastFeedingTime() {
-            LiveActivityManager.shared.startOrUpdate(lastFeedingDate: last, babyAgeMonths: BabyProfileStore.shared.currentProfile.ageMonths)
-        } else {
-            LiveActivityManager.shared.endCurrentActivity()
-        }
+        CareRecencyCoordinator.refreshFromSharedStorage(
+            babyAgeMonths: BabyProfileStore.shared.currentProfile.ageMonths
+        )
     }
 
     private static func loadInitialData(key: String) -> Data? {

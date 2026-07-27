@@ -11,14 +11,8 @@ struct WeeklyRhythmSnapshot {
     let totalSleepMinutes: Int
     let averageFeedingIntervalHours: Double
 
-    private static let titleFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "M月d日"
-        return f
-    }()
-
     var title: String {
-        "本周节奏曲 · \(Self.titleFormatter.string(from: weekStart))-\(Self.titleFormatter.string(from: weekEnd))"
+        "本周节奏曲 · \(AppDateTimeFormat.date(weekStart))-\(AppDateTimeFormat.date(weekEnd))"
     }
 
     var description: String {

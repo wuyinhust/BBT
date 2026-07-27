@@ -4,7 +4,7 @@ import Foundation
 final class SleepDraftStore: ObservableObject {
     @Published var activeSleepStartAt: Date?
     @Published var note = ""
-    @Published var currentTime = Date()
+    var currentTime = Date()
 
     private let draftKey = "sleep_sheet_draft_v1"
 
@@ -21,6 +21,16 @@ final class SleepDraftStore: ObservableObject {
         SleepRecordFormatter.durationText(minutes: max(elapsedSeconds / 60, 0))
     }
 
+    var activeTimingItem: ActiveTimingItem? {
+        guard let activeSleepStartAt else { return nil }
+        return ActiveTimingItem(kind: .sleep, startedAt: activeSleepStartAt, detail: "已睡 \(statusDetail)")
+    }
+
+    var activeTimingStateID: String {
+        guard let item = activeTimingItem else { return "none" }
+        return "\(item.kind.rawValue)-\(item.startedAt.timeIntervalSince1970)"
+    }
+
     init() {
         restoreDraft()
     }
@@ -33,9 +43,6 @@ final class SleepDraftStore: ObservableObject {
 
     func updateCurrentTime(_ date: Date) {
         currentTime = date
-        if isRecording {
-            persistDraft()
-        }
     }
 
     func updateStartTime(_ date: Date) {
@@ -64,6 +71,7 @@ final class SleepDraftStore: ObservableObject {
         guard let data = try? JSONEncoder().encode(draft) else { return }
         UserDefaults.standard.set(data, forKey: draftKey)
         UserDefaults(suiteName: WidgetStorageKey.appGroupID)?.set(data, forKey: draftKey)
+        ActiveTimingStorage.update(sleep: activeTimingItem, replaceSleep: true)
     }
 
     private func restoreDraft() {
@@ -73,11 +81,13 @@ final class SleepDraftStore: ObservableObject {
         activeSleepStartAt = draft.activeSleepStartAt
         note = draft.note
         currentTime = Date()
+        ActiveTimingStorage.update(sleep: activeTimingItem, replaceSleep: true)
     }
 
     private func clearPersistedDraft() {
         UserDefaults.standard.removeObject(forKey: draftKey)
         UserDefaults(suiteName: WidgetStorageKey.appGroupID)?.removeObject(forKey: draftKey)
+        ActiveTimingStorage.update(sleep: nil, replaceSleep: true)
     }
 }
 

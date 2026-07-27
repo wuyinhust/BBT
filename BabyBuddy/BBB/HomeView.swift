@@ -119,9 +119,9 @@ struct HomeView: View {
 
     private func circleShortcut(icon: String) -> some View {
         Circle()
-            .fill(.white.opacity(0.92))
+            .fill(DesignToken.surfaceRaised.opacity(0.92))
             .frame(width: 44, height: 44)
-            .shadow(color: Color(hex: "#4D4B70").opacity(0.08), radius: 12, y: 5)
+            .shadow(color: DesignToken.shadowColor.opacity(0.16), radius: 12, y: 5)
             .overlay(
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .bold))
@@ -140,27 +140,27 @@ struct HomeView: View {
                     .lineLimit(1)
                 }
                 .font(BBBFont.font(size: 13, weight: .semibold))
-                .foregroundStyle(Color(hex: "#A9A6B9"))
+                .foregroundStyle(DesignToken.textFaint)
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-                .background(Capsule().fill(Color(hex: "#ECEBF3")))
+                .background(Capsule().fill(DesignToken.surfaceSoft))
 
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color(hex: "#BDA6F2"), Color(hex: "#E9B2D1")],
+                            colors: [DesignToken.primary, DesignToken.easyActivity],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .frame(width: 40, height: 40)
-                    .overlay(Image(systemName: "mic.fill").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white))
+                    .overlay(Image(systemName: "mic.fill").font(.system(size: 16, weight: .semibold)).foregroundStyle(DesignToken.onPrimary))
             }
             .padding(7)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(.white)
-                    .shadow(color: Color(hex: "#4D4B70").opacity(0.05), radius: 16, y: 8)
+                    .fill(DesignToken.surface)
+                    .shadow(color: DesignToken.shadowColor.opacity(0.14), radius: 16, y: 8)
             )
             .frame(maxWidth: .infinity)
         }
@@ -174,9 +174,9 @@ struct HomeSoftBackground: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(hex: "#F5F1FA"),
-                    Color(hex: "#F8F7FB"),
-                    Color(hex: "#EEF6FB")
+                    DesignToken.canvas,
+                    DesignToken.surfaceSoft,
+                    DesignToken.surface
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -185,9 +185,9 @@ struct HomeSoftBackground: View {
 
             LinearGradient(
                 colors: [
-                    .white.opacity(0.36),
+                    DesignToken.glassFill.opacity(0.36),
                     .clear,
-                    Color(hex: "#F4ECFA").opacity(0.28)
+                    DesignToken.primarySoft.opacity(0.28)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -196,8 +196,8 @@ struct HomeSoftBackground: View {
 
             RadialGradient(
                 colors: [
-                    Color(hex: "#FFFFFF").opacity(0.46),
-                    Color(hex: "#FFFFFF").opacity(0.0)
+                    DesignToken.glassFill.opacity(0.46),
+                    DesignToken.glassFill.opacity(0.0)
                 ],
                 center: .top,
                 startRadius: 20,
