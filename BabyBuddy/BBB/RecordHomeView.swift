@@ -3180,7 +3180,7 @@ struct RecordHomeView: View {
             for (key, snapshot) in snapshots {
                 mergedSnapshots[key] = snapshot
             }
-            let keepKeys = Set(dates.map(RecordHomeDayKey.init))
+            let keepKeys = Set(dates.map { RecordHomeDayKey($0) })
             if mergedSnapshots.count > 21 {
                 let removableKeys = mergedSnapshots.keys.filter { !keepKeys.contains($0) }
                 for key in removableKeys.prefix(mergedSnapshots.count - 21) {
@@ -9264,7 +9264,7 @@ private extension View {
     }
 }
 
-private enum ActivityRecordDisplayFormatter {
+enum ActivityRecordDisplayFormatter {
     private static let knownActivityNames: Set<String> = [
         "趴卧", "翻身训练", "黑白卡", "追物训练", "抓握", "健身架", "悬挂玩具",
         "对视聊天", "照镜子", "绘本", "布书", "音乐律动", "听儿歌", "户外活动", "室内活动",
