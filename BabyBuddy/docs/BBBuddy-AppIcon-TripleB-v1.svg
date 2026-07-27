@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="126" y1="82" x2="898" y2="942" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8F6FF"/>
+      <stop offset="1" stop-color="#E9E3FF"/>
+    </linearGradient>
+    <linearGradient id="outerB" x1="186" y1="138" x2="846" y2="902" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A58AEF"/>
+      <stop offset="0.55" stop-color="#8567E5"/>
+      <stop offset="1" stop-color="#7054CF"/>
+    </linearGradient>
+    <linearGradient id="mother" x1="400" y1="336" x2="620" y2="744" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E46FA5"/>
+      <stop offset="1" stop-color="#CF4E8A"/>
+    </linearGradient>
+    <linearGradient id="baby" x1="468" y1="558" x2="676" y2="786" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8C6D9"/>
+      <stop offset="1" stop-color="#F09DBF"/>
+    </linearGradient>
+    <filter id="markShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#4E368F" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <!-- Full-bleed square background; iOS applies the rounded mask. -->
+  <rect width="1024" height="1024" fill="url(#background)"/>
+
+  <g filter="url(#markShadow)">
+    <!-- First read: the protective outer Buddy B. -->
+    <path fill="url(#outerB)" d="
+      M148 112
+      H520
+      C714 112 824 202 824 354
+      C824 450 774 516 686 550
+      C798 580 866 668 866 788
+      C866 938 746 940 520 940
+      H148
+      C124 940 108 924 108 900
+      V152
+      C108 128 124 112 148 112
+      Z"/>
+
+    <!-- Second read: a complete, inset white B rather than an outline. -->
+    <path fill="#FFFFFF" d="
+      M282 238
+      H506
+      C650 238 728 302 728 408
+      C728 478 690 522 626 548
+      C710 570 754 632 754 718
+      C754 824 674 836 510 836
+      H282
+      C260 836 246 822 246 800
+      V274
+      C246 252 260 238 282 238
+      Z"/>
+
+    <!-- Third read: mother and baby themselves construct the pink B. -->
+    <g>
+      <!-- The baby's solid swaddle is the entire lower bowl. -->
+      <path d="M470 584 H536 C624 584 672 632 672 696 C672 758 628 786 542 786 H450"
+            fill="none" stroke="url(#baby)" stroke-width="82" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- The mother's back is the stem; her shoulder and embrace form the upper bowl. -->
+      <path d="M414 452 V748"
+            fill="none" stroke="url(#mother)" stroke-width="78" stroke-linecap="round"/>
+      <path d="M434 390 H524 C604 390 648 432 648 490 C648 546 612 574 546 574 H492"
+            fill="none" stroke="url(#mother)" stroke-width="78" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- A single asymmetric arm reaches diagonally into the baby's swaddle. -->
+      <path d="M424 514 C438 574 474 616 532 644"
+            fill="none" stroke="#C8447F" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Exactly one mother head and one smaller baby head. -->
+      <circle cx="420" cy="366" r="56" fill="url(#mother)"/>
+      <circle cx="560" cy="626" r="34" fill="#F8C2D6"/>
+    </g>
+  </g>
+</svg>
