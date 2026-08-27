@@ -1,0 +1,150 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "CFBundleName": {
+      "comment": "Bundle name",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "BBBuddy"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BBBuddy"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BBBuddy"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription": {
+      "comment": "Privacy - Camera Usage Description",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "用于拍摄宝宝成长照片、Live Photo 和成长贴纸。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用於拍攝寶寶成長相片、Live Photo 與成長貼紙。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow camera access to capture baby growth photos, Live Photos, and achievement stickers."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription": {
+      "comment": "Privacy - Microphone Usage Description",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "用于语音录入宝宝记录，以及为 Live Photo 记录拍摄前后的声音。语音内容仅用于生成待确认记录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用於語音錄入寶寶記錄，以及在拍攝 Live Photo 時錄下前後聲音。語音內容僅用於產生待確認記錄。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow microphone access for voice entry and to include sound when capturing your baby’s Live Photos. Voice content is used only to create records for your review."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "comment": "Privacy - Speech Recognition Usage Description",
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于把你说出的宝宝照护内容实时转换为可确认的记录。识别可能由 Apple 系统语音服务处理。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用於把你說出的寶寶照護內容即時轉換為可確認的記錄。辨識可能由 Apple 系統語音服務處理。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Apple’s system speech service to turn spoken baby-care details into records you can review before saving."
+          }
+        }
+      }
+    },
+    "NSMotionUsageDescription": {
+      "comment": "Privacy - Motion Usage Description",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "用于让 Buddy 卡片和记录动效轻微响应设备姿态；运动数据仅在当前界面本地使用，不会保存或上传。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用於讓 Buddy 卡片與記錄動效輕微回應裝置姿態；動作資料只會在目前畫面於裝置上使用，不會儲存或上傳。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motion lets Buddy cards and record animations respond gently to device movement. Motion data stays on device, is used only on the current screen, and is never saved or uploaded."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "comment": "Privacy - Photo Library Usage Description",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "用于从相册中选择宝宝照片，裁切生成成长照片和贴纸。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用於從相簿選擇寶寶相片，裁切後製作成長相片與貼紙。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow photo-library access to choose and crop baby photos for growth memories and stickers."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
